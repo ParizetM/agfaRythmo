@@ -13,7 +13,7 @@
           v-if="videoWidth && videoHeight"
           class="preview-rythmo"
           :style="{
-            width: videoWidth + 'px',
+            width: rythmoBarWidth + 'px',
             left: '50%',
             transform: 'translateX(-50%)',
             bottom: '0',
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, watch } from 'vue';
+import { ref, onUnmounted, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import RythmoBand from '../components/RythmoBand.vue';
 
@@ -45,6 +45,7 @@ const videoHeight = ref<number>(0);
 const videoDuration = ref<number>(0);
 const playError = ref('');
 const videoReady = ref(false);
+const rythmoBarWidth = ref<number>(0);
 let interval: number;
 let rafId: number;
 
@@ -93,6 +94,29 @@ function updateTime() {
     }
   }
 }
+
+function updateRythmoBarWidth() {
+  if (video.value) {
+    const rect = video.value.getBoundingClientRect();
+    rythmoBarWidth.value = rect.width;
+    console.log('[updateRythmoBarWidth] largeur vidéo affichée:', rect.width);
+  }
+}
+
+watch([videoWidth, videoHeight, videoReady, started, countdown], () => {
+  setTimeout(updateRythmoBarWidth, 50);
+});
+
+onMounted(() => {
+  window.addEventListener('resize', updateRythmoBarWidth);
+});
+
+onUnmounted(() => {
+  clearInterval(interval);
+  cancelAnimationFrame(rafId);
+  window.removeEventListener('resize', updateRythmoBarWidth);
+  console.log('[onUnmounted] Clean up');
+});
 
 async function waitForVideoReady() {
   return new Promise<void>((resolve) => {
