@@ -24,4 +24,19 @@ class VideoController extends Controller
             'url' => $url,
         ]);
     }
+
+    public function stream($filename)
+    {
+        $path = 'public/videos/' . $filename;
+        if (!Storage::exists($path)) {
+            abort(404);
+        }
+        $stream = Storage::readStream($path);
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+        }, 200, [
+            'Content-Type' => Storage::mimeType($path),
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
+    }
 }
