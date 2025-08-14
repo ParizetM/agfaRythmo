@@ -1,4 +1,3 @@
-
 <template>
   <router-view />
 </template>
@@ -9,6 +8,9 @@
 
 <style scoped>
 body {
-  background: #f5f5f5;
+  margin: 0;
+  padding: 0;
+  background: #181c24;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
 }
 </style>
