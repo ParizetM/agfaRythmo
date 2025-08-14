@@ -15,16 +15,32 @@
       </button>
     </div>
     <div class="main-grid">
-      <div class="left-panel">
-        <TimecodesList
-          v-if="project"
-          :timecodes="project.timecodes || []"
-          :selected="selectedTimecodeIdx ?? undefined"
-          @select="onSelectTimecode"
-          @edit="onEditTimecode"
-          @delete="onDeleteTimecode"
-          @add="onAddTimecode"
-        />
+      <div :class="['left-panel', { collapsed: isTimecodesCollapsed }]">
+        <button class="collapse-btn" @click="toggleTimecodesPanel" :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'">
+          <span v-if="isTimecodesCollapsed">
+            <!-- Flèche droite SVG pour déplier -->
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 5L11 9L7 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span v-else>
+            <!-- Flèche gauche SVG pour replier -->
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 5L7 9L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+        <div v-show="!isTimecodesCollapsed" class="timecodes-content">
+          <TimecodesList
+            v-if="project"
+            :timecodes="project.timecodes || []"
+            :selected="selectedTimecodeIdx ?? undefined"
+            @select="onSelectTimecode"
+            @edit="onEditTimecode"
+            @delete="onDeleteTimecode"
+            @add="onAddTimecode"
+          />
+        </div>
       </div>
       <div class="center-panel">
         <VideoPlayer
@@ -68,6 +84,11 @@
 </template>
 
 <script setup lang="ts">
+// Gestion du repli horizontal de la partie timecodes (fermé par défaut)
+const isTimecodesCollapsed = ref(true)
+function toggleTimecodesPanel() {
+  isTimecodesCollapsed.value = !isTimecodesCollapsed.value
+}
 import { useRouter } from 'vue-router'
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
@@ -234,7 +255,6 @@ onMounted(async () => {
 }
 .main-grid {
   width: 100%;
-  max-width: 1100px;
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
@@ -245,6 +265,80 @@ onMounted(async () => {
   min-width: 220px;
   max-width: 400px;
   flex: 0 0 350px;
+  position: relative;
+  transition: min-width 0.2s, max-width 0.2s, width 0.2s;
+}
+.left-panel.collapsed {
+  min-width: 0;
+  max-width: 36px;
+  width: 36px;
+  flex: 0 0 36px;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0;
+}
+.left-panel .collapse-btn {
+  position: absolute;
+  top: 10px;
+  right: -16px;
+  z-index: 30;
+  background: #232733;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 0 6px 6px 0;
+  width: 28px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0002;
+  font-size: 1.2em;
+  padding: 0;
+  transition: background 0.2s;
+}
+.left-panel.collapsed .collapse-btn {
+  position: static;
+  margin: 0 auto;
+  right: auto;
+  left: auto;
+  top: auto;
+  transform: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.left-panel .collapse-btn:hover {
+  background: #3182ce;
+}
+.left-panel .timecodes-content {
+  width: 100%;
+  height: 100%;
+}
+.collapse-btn {
+  position: absolute;
+  top: 10px;
+  right: -16px;
+  z-index: 20;
+  background: #232733;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 0 6px 6px 0;
+  width: 28px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0002;
+  font-size: 1.2em;
+  padding: 0;
+  transition: background 0.2s;
+}
+.collapse-btn:hover {
+  background: #3182ce;
 }
 .center-panel {
   flex: 1 1 0;
@@ -256,6 +350,7 @@ onMounted(async () => {
   padding: 1rem 0.5rem 0.5rem 0.5rem;
   box-shadow: 0 1px 6px #0002;
   min-width: 0;
+  margin-right: 1rem;
 }
 .no-video {
   width: 100%;

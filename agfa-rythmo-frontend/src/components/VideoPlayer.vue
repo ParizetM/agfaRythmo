@@ -54,6 +54,6 @@ function onLoadedMetadata(e: Event) {
   border-radius: 6px;
   background: #000;
   box-shadow: 0 1px 4px #0003;
-  max-height: 50vh;
+  max-height: 70vh;
 }
 </style>
