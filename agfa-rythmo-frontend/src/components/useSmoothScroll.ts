@@ -10,7 +10,7 @@ export function useSmoothScroll(targetScroll: () => number) {
   function animate() {
     const diff = targetScroll() - smoothScroll.value;
     if (Math.abs(diff) > 0.5) {
-      smoothScroll.value += diff * 0.1;
+      smoothScroll.value += diff * 0.05;
       rafId = requestAnimationFrame(animate);
     } else {
       smoothScroll.value = targetScroll();
