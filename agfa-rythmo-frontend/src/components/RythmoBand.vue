@@ -66,7 +66,7 @@
     </div>
   </div>
   <!-- Debug infos -->
-  <div class="rythmo-debug">
+  <!-- <div class="rythmo-debug">
     <div><b>videoDuration</b> : {{ videoDuration }}</div>
     <div><b>totalDuration</b> : {{ totalDuration }}</div>
     <div><b>visibleWidth</b> : {{ visibleWidth }}</div>
@@ -74,7 +74,7 @@
       <b>timecodes</b> :
       <pre>{{ timecodes }}</pre>
     </div>
-  </div>
+  </div> -->
 </template>
 
 <script setup lang="ts">
@@ -205,9 +205,7 @@ watch(smoothScroll, (val, oldVal) => {
   opacity: 0.8;
   word-break: break-all;
 }
-.rythmo-block {
-  background-color: rgb(81, 53, 53);
-}
+
 .rythmo-block-gap {
   background: #2d3748 !important;
   opacity: 0.5;

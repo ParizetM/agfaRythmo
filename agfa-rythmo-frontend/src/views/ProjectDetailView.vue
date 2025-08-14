@@ -5,6 +5,14 @@
         <h2>{{ project?.name }}</h2>
         <p>{{ project?.description }}</p>
       </div>
+      <button
+        v-if="project && project.video_path && project.timecodes && project.timecodes.length"
+        class="final-preview-btn"
+        @click="goToFinalPreview"
+        title="Aperçu final plein écran"
+      >
+        Aperçu final
+      </button>
     </div>
     <div class="main-grid">
       <div class="left-panel">
@@ -60,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api/axios'
@@ -68,6 +77,18 @@ import VideoPlayer from '../components/VideoPlayer.vue'
 import RythmoBand from '../components/RythmoBand.vue'
 
 const route = useRoute()
+const router = useRouter()
+
+function goToFinalPreview() {
+  if (!project.value || !project.value.video_path || !project.value.timecodes) return;
+  router.push({
+    name: 'final-preview',
+    query: {
+      video: getVideoUrl(project.value.video_path),
+      rythmo: JSON.stringify(project.value.timecodes),
+    },
+  });
+}
 interface Timecode {
   start: number
   end: number
@@ -323,4 +344,26 @@ onMounted(async () => {
     padding: 0.2rem 0.1rem;
   }
 }
+
+/* Bouton Aperçu final */
+.final-preview-btn {
+  position: absolute;
+  top: 1.2rem;
+  right: 2rem;
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 8px #0002;
+  transition: background 0.2s;
+}
+.final-preview-btn:hover {
+  background: #225ea8;
+}
 </style>
+
