@@ -83,6 +83,8 @@ interface Project {
 const project = ref<Project | null>(null)
 const loading = ref(true)
 const currentTime = ref(0)
+// Pour éviter de rebinder le currentTime à chaque update (empêche le seek natif)
+let lastSeekFromTimecode = false
 const videoDuration = ref(0)
 const selectedTimecodeIdx = ref<number | null>(null)
 
@@ -99,6 +101,11 @@ function getVideoUrl(path?: string) {
 }
 
 function onVideoTimeUpdate(time: number) {
+  // Si le seek vient d'un clic sur timecode, on ignore le premier event
+  if (lastSeekFromTimecode) {
+    lastSeekFromTimecode = false
+    return
+  }
   currentTime.value = time
   // Sélectionne le timecode courant
   if (project.value && project.value.timecodes) {
@@ -113,7 +120,10 @@ function onSelectTimecode(idx: number) {
   selectedTimecodeIdx.value = idx
   // Seek vidéo si possible
   const tc = project.value?.timecodes?.[idx]
-  if (tc) currentTime.value = tc.start
+  if (tc) {
+    lastSeekFromTimecode = true
+    currentTime.value = tc.start
+  }
 }
 function onEditTimecode(idx: number) {
   editTimecodeIdx.value = idx
