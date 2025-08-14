@@ -1,9 +1,15 @@
 <template>
   <div class="project-edit-container">
-    <div class="header-panel">
+    <header class="header-panel">
+      <button class="back-btn" @click="goBack" title="Retour aux projets">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 18L8 11L14 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Projets</span>
+      </button>
       <div class="project-infos">
-        <h2>{{ project?.name }}</h2>
-        <p>{{ project?.description }}</p>
+        <h1>{{ project?.name }}</h1>
+        <p class="desc">{{ project?.description }}</p>
       </div>
       <button
         v-if="project && project.video_path && project.timecodes && project.timecodes.length"
@@ -13,7 +19,7 @@
       >
         Aperçu final
       </button>
-    </div>
+    </header>
     <div class="main-grid">
       <div :class="['left-panel', { collapsed: isTimecodesCollapsed }]">
         <button class="collapse-btn" @click="toggleTimecodesPanel" :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'">
@@ -84,6 +90,9 @@
 </template>
 
 <script setup lang="ts">
+function goBack() {
+  router.push({ name: 'projects' })
+}
 // Gestion du repli horizontal de la partie timecodes (fermé par défaut)
 const isTimecodesCollapsed = ref(true)
 function toggleTimecodesPanel() {
@@ -243,11 +252,75 @@ onMounted(async () => {
 }
 .header-panel {
   width: 100%;
-  max-width: 1100px;
+  position: relative;
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 1rem;
-  padding: 0.5rem 0.5rem 0 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  background: #232733;
+  box-shadow: 0 2px 12px #0003;
+  margin-bottom: 1.5rem;
+  padding: 1.2rem 0;
+  border-radius: 0;
+  min-width: 0;
+}
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.3em 0.8em 0.3em 0.2em;
+  border-radius: 6px;
+  transition: background 0.18s;
+  margin-right: 1.2em;
+}
+.back-btn:hover {
+  background: #181c24;
+}
+.header-panel .project-infos {
+  flex: 1 1 auto;
+  color: #fff;
+  text-align: left;
+  margin: 0 1.5em;
+  min-width: 0;
+}
+.header-panel h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0 0 0.2em 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-panel .desc {
+  font-size: 1.08em;
+  color: #bfc7d5;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.final-preview-btn {
+  position: static;
+  margin-left: auto;
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 8px #0002;
+  transition: background 0.2s;
+}
+.final-preview-btn:hover {
+  background: #225ea8;
 }
 .project-infos {
   color: #fff;
