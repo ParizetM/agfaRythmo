@@ -8,7 +8,14 @@
     </div>
     <div v-else class="preview-content">
       <div class="video-wrapper">
-        <video ref="video" :src="videoSrc" class="preview-video" @loadedmetadata="onLoadedMetadata" @click="playError && video.value && video.value.play()" tabindex="0"/>
+        <video
+          ref="video"
+          :src="videoSrc"
+          class="preview-video"
+          @loadedmetadata="onLoadedMetadata"
+          @click="playError && video.value && video.value.play()"
+          tabindex="0"
+        />
         <div
           v-if="videoWidth && videoHeight"
           class="preview-rythmo"
@@ -19,7 +26,12 @@
             bottom: '0',
           }"
         >
-          <RythmoBand :timecodes="rythmoData" :currentTime="currentTime" :videoDuration="videoDuration" />
+          <RythmoBand
+            :timecodes="rythmoData"
+            :currentTime="currentTime"
+            :videoDuration="videoDuration"
+            :visibleWidth="rythmoBarWidth"
+          />
         </div>
       </div>
     </div>
@@ -27,138 +39,144 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, watch, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import RythmoBand from '../components/RythmoBand.vue';
+import { ref, onUnmounted, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import RythmoBand from '../components/RythmoBand.vue'
 
-const router = useRouter();
-const route = useRoute();
+const router = useRouter()
+const route = useRoute()
 
-const video = ref<HTMLVideoElement|null>(null);
-const videoSrc = route.query.video as string || '';
-const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : [];
-const started = ref(false);
-const countdown = ref(3);
-const currentTime = ref(0);
-const videoWidth = ref<number>(0);
-const videoHeight = ref<number>(0);
-const videoDuration = ref<number>(0);
-const playError = ref('');
-const videoReady = ref(false);
-const rythmoBarWidth = ref<number>(0);
-let interval: number;
-let rafId: number;
+const video = ref<HTMLVideoElement | null>(null)
+const videoSrc = (route.query.video as string) || ''
+const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
+const started = ref(false)
+const countdown = ref(3)
+const currentTime = ref(0)
+const videoWidth = ref<number>(0)
+const videoHeight = ref<number>(0)
+const videoDuration = ref<number>(0)
+const playError = ref('')
+const videoReady = ref(false)
+const rythmoBarWidth = ref<number>(0)
+let interval: number
+let rafId: number
 
 function onLoadedMetadata() {
   if (video.value) {
-    videoWidth.value = video.value.videoWidth;
-    videoHeight.value = video.value.videoHeight;
-    videoDuration.value = video.value.duration;
-    videoReady.value = true;
-    console.log('[onLoadedMetadata] video readyState:', video.value.readyState, 'duration:', video.value.duration);
+    videoWidth.value = video.value.videoWidth
+    videoHeight.value = video.value.videoHeight
+    videoDuration.value = video.value.duration
+    videoReady.value = true
+    console.log(
+      '[onLoadedMetadata] video readyState:',
+      video.value.readyState,
+      'duration:',
+      video.value.duration,
+    )
   }
 }
 
 watch([started, videoReady, countdown], async ([isStarted, isReady, count]) => {
   if (isStarted && isReady && count === 0) {
     if (video.value) {
-      video.value.currentTime = 0;
-      video.value.muted = false;
+      video.value.currentTime = 0
+      video.value.muted = false
       try {
-        video.value.focus();
-        console.log('[watch] Tentative de play()');
-        await video.value.play();
-        playError.value = '';
-        console.log('[watch] play() OK');
+        video.value.focus()
+        console.log('[watch] Tentative de play()')
+        await video.value.play()
+        playError.value = ''
+        console.log('[watch] play() OK')
       } catch {
-        playError.value = "Impossible de démarrer la vidéo automatiquement. Cliquez sur la vidéo pour lancer la lecture.";
-        console.log('[watch] play() ECHEC');
+        playError.value =
+          'Impossible de démarrer la vidéo automatiquement. Cliquez sur la vidéo pour lancer la lecture.'
+        console.log('[watch] play() ECHEC')
       }
-      updateTime();
+      updateTime()
     }
   }
-});
+})
 
 function exitPreview() {
-  console.log('[exitPreview] retour arrière');
-  router.back();
+  console.log('[exitPreview] retour arrière')
+  router.back()
 }
 
 function updateTime() {
   if (video.value) {
-    currentTime.value = video.value.currentTime;
-    rafId = requestAnimationFrame(updateTime);
+    currentTime.value = video.value.currentTime
+    rafId = requestAnimationFrame(updateTime)
     // Log toutes les 10 frames
     if (Math.floor(currentTime.value * 10) % 10 === 0) {
-      console.log('[updateTime] currentTime:', currentTime.value);
+      console.log('[updateTime] currentTime:', currentTime.value)
     }
   }
 }
 
 function updateRythmoBarWidth() {
   if (video.value) {
-    const rect = video.value.getBoundingClientRect();
-    rythmoBarWidth.value = rect.width;
-    console.log('[updateRythmoBarWidth] largeur vidéo affichée:', rect.width);
+    const rect = video.value.getBoundingClientRect()
+    rythmoBarWidth.value = rect.width
+    console.log('[updateRythmoBarWidth] largeur vidéo affichée:', rect.width)
   }
 }
 
 watch([videoWidth, videoHeight, videoReady, started, countdown], () => {
-  setTimeout(updateRythmoBarWidth, 50);
-});
+  setTimeout(updateRythmoBarWidth, 50)
+})
 
 onMounted(() => {
-  window.addEventListener('resize', updateRythmoBarWidth);
-});
+  window.addEventListener('resize', updateRythmoBarWidth)
+})
 
 onUnmounted(() => {
-  clearInterval(interval);
-  cancelAnimationFrame(rafId);
-  window.removeEventListener('resize', updateRythmoBarWidth);
-  console.log('[onUnmounted] Clean up');
-});
+  clearInterval(interval)
+  cancelAnimationFrame(rafId)
+  window.removeEventListener('resize', updateRythmoBarWidth)
+  console.log('[onUnmounted] Clean up')
+})
 
 async function waitForVideoReady() {
   return new Promise<void>((resolve) => {
     if (!video.value) {
-      console.log('[waitForVideoReady] Pas de ref vidéo');
-      return resolve();
+      console.log('[waitForVideoReady] Pas de ref vidéo')
+      return resolve()
     }
     if (video.value.readyState >= 2) {
-      console.log('[waitForVideoReady] Vidéo déjà prête');
-      return resolve();
+      console.log('[waitForVideoReady] Vidéo déjà prête')
+      return resolve()
     }
     const onCanPlay = () => {
-      video.value?.removeEventListener('canplay', onCanPlay);
-      console.log('[waitForVideoReady] canplay event');
-      resolve();
-    };
-    video.value.addEventListener('canplay', onCanPlay);
-    console.log('[waitForVideoReady] En attente de canplay...');
-  });
+      video.value?.removeEventListener('canplay', onCanPlay)
+      console.log('[waitForVideoReady] canplay event')
+      resolve()
+    }
+    video.value.addEventListener('canplay', onCanPlay)
+    console.log('[waitForVideoReady] En attente de canplay...')
+  })
 }
 
 async function startPreview() {
-  started.value = true;
-  let c = 3;
-  countdown.value = c;
-  console.log('[startPreview] Lancement du compte à rebours');
+  started.value = true
+  let c = 3
+  countdown.value = c
+  console.log('[startPreview] Lancement du compte à rebours')
   interval = window.setInterval(() => {
-    c--;
-    countdown.value = c;
-    console.log('[startPreview] Countdown:', c);
+    c--
+    countdown.value = c
+    console.log('[startPreview] Countdown:', c)
     if (c === 0) {
-      clearInterval(interval);
+      clearInterval(interval)
       // Le play sera déclenché par le watcher
     }
-  }, 1000);
+  }, 1000)
 }
 
 onUnmounted(() => {
-  clearInterval(interval);
-  cancelAnimationFrame(rafId);
-  console.log('[onUnmounted] Clean up');
-});
+  clearInterval(interval)
+  cancelAnimationFrame(rafId)
+  console.log('[onUnmounted] Clean up')
+})
 </script>
 
 <style scoped>

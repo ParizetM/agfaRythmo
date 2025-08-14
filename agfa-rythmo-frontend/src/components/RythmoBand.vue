@@ -4,10 +4,7 @@
       <div
         class="rythmo-text"
         :class="{ 'no-transition': noTransition }"
-        :style="{
-          width: `${bandWidth}px`,
-          transform: `translateX(-${smoothScroll}px)`,
-        }"
+        :style="rythmoTextStyle"
       >
         <template v-if="timecodes.length">
           <!-- Gap avant le premier timecode -->
@@ -84,24 +81,37 @@ const props = defineProps<{
   timecodes: { start: number; end: number; text: string }[]
   currentTime: number
   videoDuration?: number
+  visibleWidth?: number
 }>()
-const { timecodes, videoDuration } = props
 
 const trackContainer = ref<HTMLDivElement | null>(null)
 const PX_PER_SEC = 80
 const MIN_BLOCK_WIDTH = 40
 
-// Responsive: largeur visible = largeur du conteneur
-const visibleWidth = ref(400)
-onMounted(() => {
-  const updateWidth = () => {
-    if (trackContainer.value) visibleWidth.value = trackContainer.value.offsetWidth
-  }
-  window.addEventListener('resize', updateWidth)
-  updateWidth()
-  // Clean up
-  onBeforeUnmount(() => window.removeEventListener('resize', updateWidth))
+
+// Responsive: largeur visible = largeur du conteneur ou prop
+const localVisibleWidth = ref(400)
+const computedVisibleWidth = computed(() => {
+  if (typeof props.visibleWidth === 'number' && props.visibleWidth > 0) return props.visibleWidth
+  return localVisibleWidth.value
 })
+onMounted(() => {
+  if (typeof props.visibleWidth !== 'number') {
+    const updateWidth = () => {
+      if (trackContainer.value) localVisibleWidth.value = trackContainer.value.offsetWidth
+    }
+    window.addEventListener('resize', updateWidth)
+    updateWidth()
+    // Clean up
+    onBeforeUnmount(() => window.removeEventListener('resize', updateWidth))
+  }
+})
+
+const rythmoTextStyle = computed(() => ({
+  width: `${bandWidth.value}px`,
+  transform: `translateX(-${smoothScroll.value}px)`,
+  paddingLeft: computedVisibleWidth.value / 2 + 'px',
+}))
 
 const totalDuration = computed(() => {
   if (props.videoDuration && props.videoDuration > 0) return props.videoDuration
@@ -174,9 +184,9 @@ function getGapBlockStyle(start: number, end: number) {
 
 const noTransition = ref(false)
 const targetScroll = computed(() => {
-  const maxScroll = Math.max(0, bandWidth.value + visibleWidth.value)
+  const maxScroll = Math.max(0, bandWidth.value + computedVisibleWidth.value)
   // Si la bande est plus courte que la fenêtre, scroll=0
-  if (bandWidth.value <= visibleWidth.value) return 0
+  if (bandWidth.value <= computedVisibleWidth.value) return 0
   // Sinon, scroll jusqu'à la toute fin
   return Math.min(props.currentTime * PX_PER_SEC, maxScroll)
 })
@@ -237,7 +247,7 @@ watch(smoothScroll, (val, oldVal) => {
   font-size: 1.1rem;
   color: #fff;
   /* padding: 0.5rem 1rem; */
-  padding-left: 200px;
+  /* padding-left dynamique via style binding */
   height: 2.5rem;
   position: absolute;
   left: 0;
@@ -272,7 +282,7 @@ watch(smoothScroll, (val, oldVal) => {
 .rythmo-cursor {
   position: absolute;
   top: 0;
-  left: 200px;
+  left: 50%;
   width: 3px;
   height: 100%;
   background: #fff;
