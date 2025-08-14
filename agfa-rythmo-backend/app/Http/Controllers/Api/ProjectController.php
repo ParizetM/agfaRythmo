@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectController extends Controller
 {
@@ -75,6 +76,13 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
+        // Supprimer la vidéo associée si elle existe
+        if ($project->video_path) {
+            $videoPath = 'public/videos/' . $project->video_path;
+            if (Storage::exists($videoPath)) {
+                Storage::delete($videoPath);
+            }
+        }
         $project->delete();
         return response()->json(['message' => 'Projet supprimé']);
     }
