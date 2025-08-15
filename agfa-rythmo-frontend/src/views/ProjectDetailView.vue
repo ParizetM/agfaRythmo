@@ -31,31 +31,34 @@
     </header>
 
     <!-- Main Grid -->
-    <div class="w-full flex flex-row gap-6 items-start justify-center lg:flex-col lg:gap-2">
-      <!-- Left Panel - Timecodes -->
-      <div :class="['relative transition-all duration-300', isTimecodesCollapsed ? 'min-w-0 max-w-9 w-9 flex-none overflow-visible flex items-center justify-end p-0' : 'min-w-56 max-w-96 flex-none w-80']">
+    <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2">
+      <!-- Overlay Left Panel - Timecodes -->
+      <div>
         <button
-          class="absolute top-3 -right-4 z-30 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-9 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300 lg:static lg:mx-auto lg:right-auto lg:left-auto lg:top-auto lg:transform-none"
-          :class="{ 'static mx-auto right-auto left-auto top-auto transform-none': isTimecodesCollapsed }"
+          class="fixed top-[88px] left-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
           @click="toggleTimecodesPanel"
           :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'"
+          style="transition: left 0.2s;"
         >
-          <ArrowSvg
-            :class="isTimecodesCollapsed ? 'w-4 h-4' : 'w-4 h-4 rotate-180'"
-          />
+          <ArrowSvg :class="isTimecodesCollapsed ? 'w-4 h-4' : 'w-4 h-4 rotate-180'" />
         </button>
 
-        <div v-show="!isTimecodesCollapsed" class="w-full h-full">
-          <TimecodesList
-            v-if="project"
-            :timecodes="project.timecodes || []"
-            :selected="selectedTimecodeIdx ?? undefined"
-            @select="onSelectTimecode"
-            @edit="onEditTimecode"
-            @delete="onDeleteTimecode"
-            @add="onAddTimecode"
-          />
-        </div>
+        <transition name="fade">
+          <div
+            v-if="!isTimecodesCollapsed"
+            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-r border-gray-700 flex flex-col p-4"
+          >
+            <TimecodesList
+              v-if="project"
+              :timecodes="project.timecodes || []"
+              :selected="selectedTimecodeIdx ?? undefined"
+              @select="onSelectTimecode"
+              @edit="onEditTimecode"
+              @delete="onDeleteTimecode"
+              @add="onAddTimecode"
+            />
+          </div>
+        </transition>
       </div>
 
       <!-- Center Panel - Video and Controls -->
@@ -147,6 +150,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -377,3 +381,11 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 </script>
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>

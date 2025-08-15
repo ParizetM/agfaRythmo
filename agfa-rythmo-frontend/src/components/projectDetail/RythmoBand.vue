@@ -13,7 +13,7 @@
             class="rythmo-block rythmo-block-gap"
             :style="getGapBlockStyle(0, timecodes[0].start)"
           >
-            <span class="gap-label">{{ (timecodes[0].start - 0).toFixed(2) }}s</span>
+            <span class="gap-label">{{ timecodes[0].start >= 1 ? timecodes[0].start.toFixed(2) + 's' : '' }}</span>
           </div>
           <!-- Timecodes + gaps intermédiaires -->
           <template v-for="(line, idx) in timecodes" :key="'tc' + idx">
@@ -32,7 +32,7 @@
               :style="getGapBlockStyle(timecodes[idx].end, timecodes[idx + 1].start)"
             >
               <span class="gap-label">
-                {{ (timecodes[idx + 1].start - timecodes[idx].end).toFixed(2) }}s
+                {{ (timecodes[idx + 1].start - timecodes[idx].end) >= 1 ? (timecodes[idx + 1].start - timecodes[idx].end).toFixed(2) + 's' : '' }}
               </span>
             </div>
           </template>
