@@ -155,9 +155,11 @@ function getBlockStyle(idx: number) {
   }
 }
 
-const activeIdx = computed(() =>
-  props.timecodes.findIndex((tc) => props.currentTime >= tc.start && props.currentTime < tc.end),
-)
+const activeIdx = computed(() => {
+  const OFFSET = -0.1 // décalage en secondes
+  const t = (props.currentTime ?? 0) + OFFSET
+  return props.timecodes.findIndex((tc) => t >= tc.start && t < tc.end)
+})
 
 function getDistortStyle(idx: number) {
   const width = getBlockWidth(idx)
