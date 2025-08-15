@@ -46,7 +46,7 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-r border-gray-700 flex flex-col p-4 rounded-md"
+            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-r border-gray-700 flex flex-col pl-2 rounded-md"
           >
             <TimecodesList
               v-if="project"
