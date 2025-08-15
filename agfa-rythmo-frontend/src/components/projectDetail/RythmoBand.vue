@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
 const props = defineProps<{
   timecodes: { start: number; end: number; text: string }[]
@@ -90,7 +90,7 @@ const MIN_BLOCK_WIDTH = 40
 
 
 // Responsive: largeur visible = largeur du conteneur ou prop
-const localVisibleWidth = ref(400)
+const localVisibleWidth = ref(0)
 const computedVisibleWidth = computed(() => {
   if (typeof props.visibleWidth === 'number' && props.visibleWidth > 0) return props.visibleWidth
   return localVisibleWidth.value
@@ -100,10 +100,27 @@ onMounted(() => {
     const updateWidth = () => {
       if (trackContainer.value) localVisibleWidth.value = trackContainer.value.offsetWidth
     }
+
+    // ResizeObserver reference (may be assigned in nextTick)
+    let ro: ResizeObserver | null = null
+
+    // Ensure DOM painted before measuring and attach a ResizeObserver when possible
+    nextTick(() => {
+      updateWidth()
+      if (typeof ResizeObserver !== 'undefined' && trackContainer.value) {
+        ro = new ResizeObserver(updateWidth)
+        ro.observe(trackContainer.value)
+      }
+    })
+
+    // Fallback to window resize for environments without ResizeObserver
     window.addEventListener('resize', updateWidth)
-    updateWidth()
-    // Clean up
-    onBeforeUnmount(() => window.removeEventListener('resize', updateWidth))
+
+    // Clean up listeners and observer
+    onBeforeUnmount(() => {
+      window.removeEventListener('resize', updateWidth)
+      if (ro) ro.disconnect()
+    })
   }
 })
 
@@ -215,15 +232,6 @@ watch(smoothScroll, (val, oldVal) => {
   opacity: 0.8;
   word-break: break-all;
 }
-
-.rythmo-block-gap {
-  background: #2d3748 !important;
-  opacity: 0.5;
-}
-
-/* Bande rythmo fluide et proportionnelle */
-/* Bande rythmo fluide, proportionnelle, avec curseur central et texte étiré */
-/* Bande rythmo responsive, fluide, texte étiré, curseur mobile */
 .rythmo-band {
   width: 100%;
   overflow: hidden;
@@ -246,14 +254,26 @@ watch(smoothScroll, (val, oldVal) => {
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
   font-size: 1.1rem;
   color: #fff;
-  /* padding: 0.5rem 1rem; */
-  /* padding-left dynamique via style binding */
   height: 2.5rem;
   position: absolute;
   left: 0;
   top: 0;
 }
-.rythmo-text span {
+.rythmo-block,
+.rythmo-block-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 100%;
+  flex-shrink: 0;
+}
+.rythmo-block-gap {
+  background: #2d3748 !important;
+  opacity: 0.5;
+}
+.rythmo-text span,
+.distort-text {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,19 +285,14 @@ watch(smoothScroll, (val, oldVal) => {
   font-size: 2.1rem;
   overflow: visible;
   flex-grow: 1;
+  width: 100%;
+  white-space: pre;
 }
 .rythmo-text span.active {
   opacity: 1;
   color: #38a169;
   font-weight: bold;
   background: #38a16922;
-}
-.distort-text {
-  width: 100%;
-  display: inline-block;
-  white-space: pre;
-  /* étirement horizontal naturel */
-  margin: 0;
 }
 .rythmo-cursor {
   position: absolute;
@@ -296,6 +311,6 @@ watch(smoothScroll, (val, oldVal) => {
   color: #cbd5e1;
   font-style: italic;
   user-select: none;
-  opacity: 0.2!important;
+  opacity: 0.2 !important;
 }
 </style>

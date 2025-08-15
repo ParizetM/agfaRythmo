@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import RythmoBand from '../components/RythmoBand.vue'
+import RythmoBand from '../components/projectDetail/RythmoBand.vue'
 
 const router = useRouter()
 const route = useRoute()
