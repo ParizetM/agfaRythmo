@@ -79,7 +79,10 @@
           :timecodes="project.timecodes"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
+          @seek="onRythmoSeek"
         />
+
+
 
         <RythmoControls
           :isVideoPaused="isVideoPaused"
@@ -378,6 +381,21 @@ function handleKeydown(e: KeyboardEvent) {
   else if (e.key === 'e' || e.key === 'E') {
     e.preventDefault()
     seekFrame(1)
+  }
+}
+
+
+// Seek déclenché par clic sur un bloc de la bande rythmo
+const onRythmoSeek = (time: number) => {
+  lastSeekFromTimecode = true
+  currentTime.value = time
+  // Met à jour la vidéo si possible
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (videoEl) videoEl.currentTime = time
+  // Sélectionne le timecode courant
+  if (project.value && project.value.timecodes) {
+  const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
+  selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
 }
 </script>

@@ -21,6 +21,8 @@
               class="rythmo-block"
               :class="{ active: idx === activeIdx }"
               :style="getBlockStyle(idx)"
+              @click="onBlockClick(idx)"
+              style="cursor: pointer;"
             >
               <span class="distort-text" :style="getDistortStyle(idx)">{{ line.text }}</span>
             </div>
@@ -212,6 +214,13 @@ const targetScroll = computed(() => {
 const smoothScroll = useSmoothScroll(() => targetScroll.value)
 
 // Désactive la transition si le scroll saute brutalement (seek, pause/play)
+// Gestion du clic sur un block (hors gap)
+const emit = defineEmits(['seek'])
+const onBlockClick = (idx: number) => {
+  if (props.timecodes[idx]) {
+    emit('seek', props.timecodes[idx].start)
+  }
+}
 watch(smoothScroll, (val, oldVal) => {
   if (Math.abs(val - oldVal) > 40) {
     noTransition.value = true
