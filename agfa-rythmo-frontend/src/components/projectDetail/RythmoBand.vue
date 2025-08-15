@@ -9,7 +9,7 @@
         <template v-if="timecodes.length">
           <!-- Gap avant le premier timecode -->
           <div
-            v-if="timecodes[0].start > 0.5"
+            v-if="timecodes[0].start > 0.2"
             class="rythmo-block rythmo-block-gap"
             :style="getGapBlockStyle(0, timecodes[0].start)"
           >

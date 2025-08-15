@@ -343,6 +343,13 @@ onMounted(async () => {
 })
 
 function handleKeydown(e: KeyboardEvent) {
+  // Ignore si focus dans un champ de saisie (input, textarea, ou contenteditable)
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  const tag = target.tagName.toLowerCase()
+  const isEditable = tag === 'input' || tag === 'textarea' || target.isContentEditable
+  if (isEditable) return
+
   // Espace = play/pause
   if (e.code === 'Space') {
     e.preventDefault()
