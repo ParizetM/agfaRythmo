@@ -1,11 +1,11 @@
 <template>
   <div class="home-container">
-    <h1>Bienvenue sur Agfa Rythmo</h1>
+    <h1 class="text-4xl font-bold text-white mb-8">Bienvenue sur Agfa Rythmo</h1>
     <router-link to="/projects">
-      <button class="main-btn">Gérer mes projets</button>
+      <button class="main-btn bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg text-white font-semibold transition-colors">Gérer mes projets</button>
     </router-link>
     <div class="projects-thumbnails">
-      <h2>Mes projets</h2>
+      <h2 class="text-2xl font-semibold text-white mb-6">Mes projets</h2>
       <div v-if="loading">Chargement...</div>
       <div v-else>
         <div v-if="projects.length === 0">Aucun projet pour le moment.</div>
