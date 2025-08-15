@@ -79,6 +79,7 @@
           :timecodes="project.timecodes"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
+          :instant="instantRythmoScroll"
           @seek="onRythmoSeek"
         />
 
@@ -157,6 +158,9 @@
 </template>
 
 <script setup lang="ts">
+// Contrôle du scroll instantané pour la bande rythmo
+
+const instantRythmoScroll = ref(true) // true = instantané, false = smooth
 import BackSvg from '../assets/icons/back.svg'
 import ArrowSvg from '../assets/icons/arrow.svg'
 function goBack() {
@@ -235,6 +239,9 @@ function onVideoTimeUpdate(time: number) {
     const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
     selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
+  // Si la vidéo joue, smooth, sinon instantané
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  instantRythmoScroll.value = !videoEl || videoEl.paused
 }
 function onLoadedMetadata(duration: number) {
   videoDuration.value = duration
@@ -247,8 +254,10 @@ function seek(delta: number) {
     if (videoEl) {
       if (videoEl.paused) {
         videoEl.play()
+        instantRythmoScroll.value = false // smooth
       } else {
         videoEl.pause()
+        instantRythmoScroll.value = true // instantané
       }
       isVideoPaused.value = videoEl.paused
     }
@@ -260,6 +269,7 @@ function seek(delta: number) {
   currentTime.value = t
   // Si on modifie le temps, on met à jour la vidéo si possible
   if (videoEl) videoEl.currentTime = t
+  instantRythmoScroll.value = true // instantané
 }
 function seekFrame(delta: number) {
   // Avance/recul d'une frame selon les fps
@@ -270,6 +280,7 @@ function seekFrame(delta: number) {
   // Met à jour la vidéo si possible
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
   if (videoEl) videoEl.currentTime = t
+  instantRythmoScroll.value = true // instantané
 }
 function onSelectTimecode(idx: number) {
   selectedTimecodeIdx.value = idx
@@ -278,6 +289,8 @@ function onSelectTimecode(idx: number) {
   if (tc) {
     lastSeekFromTimecode = true
     currentTime.value = tc.start
+    // Scroll instantané lors d'un seek manuel
+    instantRythmoScroll.value = true
   }
 }
 function onEditTimecode(idx: number) {
@@ -394,9 +407,11 @@ const onRythmoSeek = (time: number) => {
   if (videoEl) videoEl.currentTime = time
   // Sélectionne le timecode courant
   if (project.value && project.value.timecodes) {
-  const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
-  selectedTimecodeIdx.value = idx >= 0 ? idx : null
+    const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
+    selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
+  // Scroll instantané lors d'un seek manuel
+  instantRythmoScroll.value = true
 }
 </script>
 <style scoped>

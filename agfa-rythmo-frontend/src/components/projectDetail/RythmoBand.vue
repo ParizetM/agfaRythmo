@@ -77,13 +77,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch, nextTick, isRef } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
 const props = defineProps<{
   timecodes: { start: number; end: number; text: string }[]
   currentTime: number
   videoDuration?: number
   visibleWidth?: number
+  instant?: boolean | import('vue').Ref<boolean>
 }>()
 
 const trackContainer = ref<HTMLDivElement | null>(null)
@@ -211,7 +212,11 @@ const targetScroll = computed(() => {
   // Sinon, scroll jusqu'à la toute fin
   return Math.min(props.currentTime * PX_PER_SEC, maxScroll)
 })
-const smoothScroll = useSmoothScroll(() => targetScroll.value)
+const instantRef = computed(() => {
+  if (isRef(props.instant)) return props.instant.value
+  return !!props.instant
+})
+const smoothScroll = useSmoothScroll(() => targetScroll.value, instantRef)
 
 // Désactive la transition si le scroll saute brutalement (seek, pause/play)
 // Gestion du clic sur un block (hors gap)
