@@ -2,7 +2,7 @@
   <div class="project-edit-container">
     <header class="header-panel">
       <button class="back-btn" @click="goBack" title="Retour aux projets">
-        <Backsvg/>
+        <BackSvg/>
 
         <span>Projets</span>
       </button>
@@ -28,39 +28,11 @@
         >
           <span v-if="isTimecodesCollapsed">
             <!-- Flèche droite SVG pour déplier -->
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 18 18"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M7 5L11 9L7 13"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <ArrowSvg />
           </span>
           <span v-else>
             <!-- Flèche gauche SVG pour replier -->
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 18 18"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M11 5L7 9L11 13"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <ArrowSvg style="transform: rotate(180deg);" />
           </span>
         </button>
         <div v-show="!isTimecodesCollapsed" class="timecodes-content">
@@ -147,7 +119,8 @@
 
 <script setup lang="ts">
 import '../assets/styles/ProjectDetailView.css'
- import Backsvg from '../assets/icons/back.svg'
+ import BackSvg from '../assets/icons/back.svg'
+ import ArrowSvg from '../assets/icons/arrow.svg'
 function goBack() {
   router.push({ name: 'projects' })
 }
