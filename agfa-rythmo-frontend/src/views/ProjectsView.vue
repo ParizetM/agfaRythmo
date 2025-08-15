@@ -1,82 +1,204 @@
 <template>
-  <div class="projects-container">
-    <h2>Mes projets</h2>
-    <button class="create-btn" @click="showCreateModal = true">Créer un nouveau projet</button>
+  <div class="min-h-screen p-8 animate-fade-in">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-4xl font-bold text-white">Mes projets</h2>
+        <button
+          @click="showCreateModal = true"
+          class="bg-agfa-blue hover:bg-agfa-blue-hover text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+        >
+          Créer un nouveau projet
+        </button>
+      </div>
 
-    <div v-if="loading" class="loading">Chargement...</div>
-    <div v-else>
-      <div class="card-list">
-        <div v-for="project in projects.filter(isValidProject)" :key="project.id" class="project-card">
-          <router-link :to="`/projects/${project.id}`" class="card-link">
-            <div class="card-thumb">
-              <video
-                v-if="project.video_path && !videoError[project.id]"
-                :src="getVideoUrl(project.video_path)"
-                width="220"
-                height="124"
-                preload="metadata"
-                muted
-                playsinline
-                :poster="getPosterFrame(project.video_path)"
-                @mouseover="onVideoHover($event)"
-                @mouseleave="onVideoLeave($event)"
-                @error="onVideoError($event, project.id)"
-                style="object-fit:cover; border-radius:10px; background:#222;"
-              ></video>
-              <div v-else class="no-thumb">Vidéo non trouvée</div>
+      <div v-if="loading" class="text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mr-4"></div>
+        <span class="text-white text-xl">Chargement...</span>
+      </div>
+
+      <div v-else>
+        <div v-if="projects.filter(isValidProject).length === 0" class="text-center py-16">
+          <div class="text-white text-xl mb-4">Aucun projet pour le moment.</div>
+          <button
+            @click="showCreateModal = true"
+            class="bg-agfa-green hover:bg-agfa-green-hover text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300"
+          >
+            Créer votre premier projet
+          </button>
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div
+            v-for="project in projects.filter(isValidProject)"
+            :key="project.id"
+            class="group bg-white rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-300 transform hover:-translate-y-2"
+          >
+            <router-link :to="`/projects/${project.id}`" class="block">
+              <div class="aspect-video bg-gray-800 relative overflow-hidden">
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 z-0"></div>
+                <video
+                  v-if="project.video_path && !videoError[project.id]"
+                  :src="getVideoUrl(project.video_path)"
+                  class="w-full h-full object-cover relative z-10"
+                  preload="metadata"
+                  muted
+                  playsinline
+                  @mouseover="onVideoHover($event)"
+                  @mouseleave="onVideoLeave($event)"
+                  @error="onVideoError($event, project.id)"
+                ></video>
+                <div v-else class="flex items-center justify-center h-full text-white text-lg relative z-10">
+                  Vidéo non trouvée
+                </div>
+              </div>
+
+              <div class="p-6">
+                <h3 class="text-xl font-bold text-agfa-dark mb-2 group-hover:text-agfa-blue transition-colors duration-300">
+                  {{ project.name }}
+                </h3>
+                <p class="text-gray-600 text-sm line-clamp-2">
+                  {{ project.description || 'Pas de description' }}
+                </p>
+              </div>
+            </router-link>
+
+            <div class="px-6 pb-6 flex gap-3">
+              <button
+                @click.stop="openEditModal(project)"
+                class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover text-white py-2 px-4 rounded-lg transition-all duration-300 text-sm font-medium"
+              >
+                Modifier
+              </button>
+              <button
+                @click.stop="openDeleteModal(project)"
+                class="flex-1 bg-agfa-red hover:bg-agfa-red-hover text-white py-2 px-4 rounded-lg transition-all duration-300 text-sm font-medium"
+              >
+                Supprimer
+              </button>
             </div>
-            <div class="card-content">
-              <div class="card-title">{{ project.name }}</div>
-              <div class="card-desc">{{ project.description || 'Pas de description' }}</div>
-            </div>
-          </router-link>
-          <div class="card-actions">
-            <button class="edit-btn" @click.stop="openEditModal(project)">Modifier</button>
-            <button class="delete-btn" @click.stop="openDeleteModal(project)">Supprimer</button>
           </div>
         </div>
       </div>
-      <div v-if="projects.filter(isValidProject).length === 0">Aucun projet pour le moment.</div>
     </div>
 
     <!-- Modal création projet -->
-    <div v-if="showCreateModal" class="modal-backdrop">
-      <div class="modal">
-        <h3>Nouveau projet</h3>
-        <form @submit.prevent="createProject">
-          <input v-model="form.name" placeholder="Nom du projet" required />
-          <textarea v-model="form.description" placeholder="Description"></textarea>
-          <input type="file" accept="video/*" @change="onFileChange" required />
-          <button type="submit">Créer</button>
-          <button type="button" @click="showCreateModal = false">Annuler</button>
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100">
+        <h3 class="text-2xl font-bold text-agfa-dark mb-6">Nouveau projet</h3>
+        <form @submit.prevent="createProject" class="space-y-4">
+          <input
+            v-model="form.name"
+            placeholder="Nom du projet"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+          />
+          <textarea
+            v-model="form.description"
+            placeholder="Description"
+            rows="3"
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300 resize-none"
+          ></textarea>
+          <input
+            type="file"
+            accept="video/*"
+            @change="onFileChange"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+          />
+
+          <div class="flex gap-4 pt-4">
+            <button
+              type="submit"
+              :disabled="uploading"
+              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover disabled:bg-gray-400 text-white py-3 rounded-lg transition-all duration-300 font-medium"
+            >
+              {{ uploading ? 'Création...' : 'Créer' }}
+            </button>
+            <button
+              type="button"
+              @click="showCreateModal = false"
+              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
+            >
+              Annuler
+            </button>
+          </div>
         </form>
-        <div v-if="uploading">Upload en cours...</div>
+
+        <div v-if="uploading" class="mt-4 text-center">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-agfa-blue mr-2"></div>
+          <span class="text-agfa-blue">Upload en cours...</span>
+        </div>
       </div>
     </div>
 
     <!-- Modal édition projet -->
-    <div v-if="showEditModal" class="modal-backdrop">
-      <div class="modal">
-        <h3>Modifier le projet</h3>
-        <form @submit.prevent="updateProject">
-          <input v-model="editForm.name" placeholder="Nom du projet" required />
-          <textarea v-model="editForm.description" placeholder="Description"></textarea>
-          <input type="file" accept="video/*" @change="onEditFileChange" />
-          <button type="submit">Enregistrer</button>
-          <button type="button" @click="showEditModal = false">Annuler</button>
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100">
+        <h3 class="text-2xl font-bold text-agfa-dark mb-6">Modifier le projet</h3>
+        <form @submit.prevent="updateProject" class="space-y-4">
+          <input
+            v-model="editForm.name"
+            placeholder="Nom du projet"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+          />
+          <textarea
+            v-model="editForm.description"
+            placeholder="Description"
+            rows="3"
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300 resize-none"
+          ></textarea>
+          <input
+            type="file"
+            accept="video/*"
+            @change="onEditFileChange"
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+          />
+
+          <div class="flex gap-4 pt-4">
+            <button
+              type="submit"
+              :disabled="editUploading"
+              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover disabled:bg-gray-400 text-white py-3 rounded-lg transition-all duration-300 font-medium"
+            >
+              {{ editUploading ? 'Mise à jour...' : 'Enregistrer' }}
+            </button>
+            <button
+              type="button"
+              @click="showEditModal = false"
+              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
+            >
+              Annuler
+            </button>
+          </div>
         </form>
-        <div v-if="editUploading">Mise à jour en cours...</div>
+
+        <div v-if="editUploading" class="mt-4 text-center">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-agfa-blue mr-2"></div>
+          <span class="text-agfa-blue">Mise à jour en cours...</span>
+        </div>
       </div>
     </div>
 
     <!-- Modal suppression projet -->
-    <div v-if="showDeleteModal" class="modal-backdrop">
-      <div class="modal">
-        <h3>Supprimer le projet</h3>
-        <p>Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.</p>
-        <div class="modal-actions">
-          <button @click="confirmDeleteProject" class="delete-btn">Oui, supprimer</button>
-          <button @click="showDeleteModal = false">Annuler</button>
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100">
+        <h3 class="text-2xl font-bold text-agfa-dark mb-4">Supprimer le projet</h3>
+        <p class="text-gray-600 mb-6">Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.</p>
+
+        <div class="flex gap-4">
+          <button
+            @click="confirmDeleteProject"
+            class="flex-1 bg-agfa-red hover:bg-agfa-red-hover text-white py-3 rounded-lg transition-all duration-300 font-medium"
+          >
+            Oui, supprimer
+          </button>
+          <button
+            @click="showDeleteModal = false"
+            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
+          >
+            Annuler
+          </button>
         </div>
       </div>
     </div>
@@ -266,146 +388,5 @@ function isValidProject(project: unknown): project is Project {
   return typeof project === 'object' && project !== null && 'id' in project && 'name' in project;
 }
 
-function getPosterFrame(path?: string) {
-  // Si tu as un service de génération de thumbnail, adapte ici
-  // Sinon, on retourne la même image que la vidéo (le navigateur prendra la première frame)
-  return path ? getVideoUrl(path) : '';
-}
-
 onMounted(fetchProjects);
 </script>
-
-<style scoped>
-.projects-container {
-  max-width: 700px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background: #f7fafc;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px #0001;
-}
-.create-btn {
-  margin-bottom: 1.5rem;
-  padding: 0.7rem 1.5rem;
-  background: #3182ce;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.create-btn:hover {
-  background: #2563eb;
-}
-.card-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-.project-card {
-  background: #fff;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px #0002;
-  transition: transform 0.2s;
-  cursor: pointer;
-}
-.project-card:hover {
-  transform: translateY(-2px);
-}
-.card-thumb {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%; /* 16:9 ratio */
-}
-.card-thumb video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 10px 10px 0 0;
-}
-.card-content {
-  padding: 1rem;
-}
-.card-title {
-  font-weight: 500;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-.card-desc {
-  font-size: 0.9rem;
-  color: #555;
-  margin-bottom: 1rem;
-}
-.card-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.view-btn, .edit-btn, .delete-btn {
-  flex: 1;
-  padding: 0.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-}
-.view-btn {
-  background: #38a169;
-  color: #fff;
-}
-.view-btn:hover {
-  background: #2f855a;
-}
-.edit-btn {
-  background: #3182ce;
-  color: #fff;
-}
-.edit-btn:hover {
-  background: #2563eb;
-}
-.delete-btn {
-  background: #e53e3e;
-  color: #fff;
-}
-.delete-btn:hover {
-  background: #c53030;
-}
-.loading {
-  color: #888;
-}
-.modal-backdrop {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: #0005;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 10px;
-  min-width: 320px;
-  box-shadow: 0 2px 12px #0002;
-}
-.modal input, .modal textarea {
-  width: 100%;
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
-.modal button {
-  margin-right: 1rem;
-  padding: 0.5rem 1.2rem;
-  border: none;
-  border-radius: 4px;
-  background: #3182ce;
-  color: #fff;
-  cursor: pointer;
-}
-.modal button[type="button"] {
-  background: #aaa;
-}
-</style>

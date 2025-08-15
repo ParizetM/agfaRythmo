@@ -1,23 +1,44 @@
 <template>
-	<div class="video-uploader">
-		<form @submit.prevent="uploadVideo">
-			<label for="video">Choisir une vidéo :</label>
-			<input
-				id="video"
-				type="file"
-				accept="video/mp4,video/quicktime"
-				@change="onFileChange"
-				required
-			/>
-			<button type="submit" :disabled="loading || !selectedFile">Uploader</button>
-		</form>
+  <div class="max-w-2xl mx-auto my-8 p-8 bg-white rounded-2xl shadow-xl">
+    <form @submit.prevent="uploadVideo" class="space-y-6">
+      <div>
+        <label for="video" class="block text-lg font-semibold text-agfa-dark mb-3">
+          Choisir une vidéo :
+        </label>
+        <input
+          id="video"
+          type="file"
+          accept="video/mp4,video/quicktime"
+          @change="onFileChange"
+          required
+          class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-agfa-blue file:text-white hover:file:bg-agfa-blue-hover"
+        />
+      </div>
 
-		<div v-if="previewUrl" class="preview">
-			<h3>Preview :</h3>
-			<video :src="previewUrl" controls width="400"></video>
-		</div>
-		<div v-if="error" class="error">{{ error }}</div>
-	</div>
+      <button
+        type="submit"
+        :disabled="loading || !selectedFile"
+        class="w-full py-3 px-6 bg-agfa-blue hover:bg-agfa-blue-hover disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:transform-none"
+      >
+        {{ loading ? 'Upload en cours...' : 'Uploader' }}
+      </button>
+    </form>
+
+    <div v-if="previewUrl" class="mt-8 animate-fade-in">
+      <h3 class="text-xl font-bold text-agfa-dark mb-4">Aperçu :</h3>
+      <div class="bg-gray-800 rounded-xl overflow-hidden">
+        <video
+          :src="previewUrl"
+          controls
+          class="w-full max-w-md mx-auto block rounded-xl"
+        ></video>
+      </div>
+    </div>
+
+    <div v-if="error" class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg animate-fade-in">
+      {{ error }}
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -65,21 +86,3 @@ async function uploadVideo() {
 	}
 }
 </script>
-
-<style scoped>
-.video-uploader {
-	max-width: 500px;
-	margin: 2rem auto;
-	padding: 2rem;
-	border: 1px solid #ccc;
-	border-radius: 8px;
-	background: #fafafa;
-}
-.preview {
-	margin-top: 1.5rem;
-}
-.error {
-	color: red;
-	margin-top: 1rem;
-}
-</style>

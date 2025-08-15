@@ -1,2 +1,105 @@
 @import "tailwindcss";
 
+/* Variables CSS globales */
+:root {
+  --agfa-dark: #2d3748;
+  --agfa-gray: #4a5568;
+  /* Couleurs additionnelles du projet (du tailwind config / instructions) */
+  --menu-color: #202937;
+  --agfa-strong: #8455F6;
+  --agfa-button: #384152;
+  --text-color: #FFFFFF;
+  --agfa-light: #f7fafc;
+  --agfa-blue: #3182ce;
+  --agfa-blue-hover: #2563eb;
+  --agfa-green: #38a169;
+  --agfa-green-hover: #2f855a;
+  --agfa-red: #e53e3e;
+  --agfa-red-hover: #c53030;
+}
+
+/* Styles globaux */
+body {
+  background: linear-gradient(135deg, var(--agfa-dark) 0%, #374151 50%, var(--agfa-gray) 100%);
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Animations personnalisées */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--agfa-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--agfa-blue-hover);
+}
+
+/* Classes utilitaires personnalisées */
+.glass-morphism {
+  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.card-shadow-hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.bg-agfa-blue {
+  background-color: var(--agfa-blue);
+}
+.bg-agfa-blue-hover {
+  background-color: var(--agfa-blue-hover);
+}
+.bg-agfa-green {
+  background-color: var(--agfa-green);
+}
+.bg-agfa-green-hover {
+  background-color: var(--agfa-green-hover);
+}
+.bg-agfa-red {
+  background-color: var(--agfa-red);
+}
+.bg-agfa-red-hover {
+  background-color: var(--agfa-red-hover);
+}
+.bg-agfa-dark {
+  background-color: var(--agfa-dark);
+}
+.bg-agfa-gray {
+  background-color: var(--agfa-gray);
+}

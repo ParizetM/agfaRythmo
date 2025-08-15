@@ -235,17 +235,18 @@ watch(smoothScroll, (val, oldVal) => {
 .rythmo-band {
   width: 100%;
   overflow: hidden;
-  background: #181c24;
-  border-radius: 6px;
-  margin-top: 0.5rem;
-  min-height: 2.5rem;
+  background: #1f2937;
+  border-radius: 8px;
+  margin-top: 0.75rem;
+  min-height: 3rem;
   display: flex;
   align-items: center;
-  box-shadow: 0 1px 4px #0002;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 .rythmo-track-container {
   position: relative;
-  height: 2.5rem;
+  height: 3rem;
   overflow: hidden;
 }
 .rythmo-text {
@@ -254,10 +255,13 @@ watch(smoothScroll, (val, oldVal) => {
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
   font-size: 1.1rem;
   color: #fff;
-  height: 2.5rem;
+  height: 3rem;
   position: absolute;
   left: 0;
   top: 0;
+}
+.rythmo-text.no-transition {
+  transition: none;
 }
 .rythmo-block,
 .rythmo-block-gap {
@@ -267,50 +271,65 @@ watch(smoothScroll, (val, oldVal) => {
   overflow: hidden;
   height: 100%;
   flex-shrink: 0;
+  border-radius: 4px;
+  margin: 0 1px;
+}
+.rythmo-block {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.rythmo-block.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 .rythmo-block-gap {
-  background: #2d3748 !important;
-  opacity: 0.5;
+  background: var(--agfa-gray) !important;
+  opacity: 0.3;
+  border: 1px solid rgba(75, 85, 99, 0.3);
 }
 .rythmo-text span,
 .distort-text {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: left;
+  text-align: center;
   margin: 0 0.2rem;
-  opacity: 0.5;
+  opacity: 0.9;
   background: none;
   border-radius: 3px;
-  font-size: 2.1rem;
+  font-size: 1.8rem;
+  font-weight: 600;
   overflow: visible;
   flex-grow: 1;
   width: 100%;
   white-space: pre;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
-.rythmo-text span.active {
+.rythmo-block.active .distort-text {
   opacity: 1;
-  color: #38a169;
+  color: #ffffff;
   font-weight: bold;
-  background: #38a16922;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 .rythmo-cursor {
   position: absolute;
   top: 0;
   left: 50%;
-  width: 3px;
+  width: 4px;
   height: 100%;
-  background: #fff;
+  background: linear-gradient(to bottom, #ffffff, #e5e7eb);
   border-radius: 2px;
-  box-shadow: 0 0 6px #0008;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), 0 0 16px rgba(0, 0, 0, 0.8);
   z-index: 2;
   transition: none;
 }
 .gap-label {
-  font-size: 1rem;
-  color: #cbd5e1;
+  font-size: 0.875rem;
+  color: #9ca3af;
   font-style: italic;
   user-select: none;
-  opacity: 0.2 !important;
+  opacity: 0.6 !important;
+  font-weight: 500;
 }
 </style>

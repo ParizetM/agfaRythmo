@@ -1,41 +1,51 @@
 <template>
-  <div class="project-edit-container">
-    <header class="header-panel">
-      <button class="back-btn" @click="goBack" title="Retour aux projets">
-        <BackSvg/>
-
+  <div class="flex flex-col items-center bg-gray-900 min-h-screen p-0 m-0">
+    <!-- Header Panel -->
+    <header class="w-full relative flex items-center justify-between bg-agfa-dark shadow-lg mb-6 py-5 px-6">
+      <button
+        class="flex items-center gap-2 bg-transparent border-none text-white text-lg font-medium cursor-pointer px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors duration-300"
+        @click="goBack"
+        title="Retour aux projets"
+      >
+        <BackSvg class="w-5 h-5"/>
         <span>Projets</span>
       </button>
-      <div class="project-infos">
-        <h1>{{ project?.name }}</h1>
-        <p class="desc">{{ project?.description }}</p>
+
+      <div class="flex-1 text-white text-left mx-6 min-w-0">
+        <h1 class="text-3xl font-bold mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+          {{ project?.name }}
+        </h1>
+        <p class="text-lg text-gray-300 m-0 whitespace-nowrap overflow-hidden text-ellipsis">
+          {{ project?.description }}
+        </p>
       </div>
+
       <button
         v-if="project && project.video_path && project.timecodes && project.timecodes.length"
-        class="final-preview-btn"
+        class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
         @click="goToFinalPreview"
         title="Aperçu final plein écran"
       >
         Aperçu final
       </button>
     </header>
-    <div class="main-grid">
-      <div :class="['left-panel', { collapsed: isTimecodesCollapsed }]">
+
+    <!-- Main Grid -->
+    <div class="w-full flex flex-row gap-6 items-start justify-center lg:flex-col lg:gap-2">
+      <!-- Left Panel - Timecodes -->
+      <div :class="['relative transition-all duration-300', isTimecodesCollapsed ? 'min-w-0 max-w-9 w-9 flex-none overflow-visible flex items-center justify-end p-0' : 'min-w-56 max-w-96 flex-none w-80']">
         <button
-          class="collapse-btn"
+          class="absolute top-3 -right-4 z-30 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-9 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300 lg:static lg:mx-auto lg:right-auto lg:left-auto lg:top-auto lg:transform-none"
+          :class="{ 'static mx-auto right-auto left-auto top-auto transform-none': isTimecodesCollapsed }"
           @click="toggleTimecodesPanel"
           :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'"
         >
-          <span v-if="isTimecodesCollapsed">
-            <!-- Flèche droite SVG pour déplier -->
-            <ArrowSvg />
-          </span>
-          <span v-else>
-            <!-- Flèche gauche SVG pour replier -->
-            <ArrowSvg style="transform: rotate(180deg);" />
-          </span>
+          <ArrowSvg
+            :class="isTimecodesCollapsed ? 'w-4 h-4' : 'w-4 h-4 rotate-180'"
+          />
         </button>
-        <div v-show="!isTimecodesCollapsed" class="timecodes-content">
+
+        <div v-show="!isTimecodesCollapsed" class="w-full h-full">
           <TimecodesList
             v-if="project"
             :timecodes="project.timecodes || []"
@@ -47,7 +57,9 @@
           />
         </div>
       </div>
-      <div class="center-panel">
+
+      <!-- Center Panel - Video and Controls -->
+      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg p-4 shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1">
         <VideoPlayer
           v-if="project && project.video_path"
           :src="getVideoUrl(project.video_path)"
@@ -55,13 +67,17 @@
           @timeupdate="onVideoTimeUpdate"
           @loadedmetadata="onLoadedMetadata"
         />
-        <div v-else class="no-video">Aucune vidéo</div>
+        <div v-else class="w-full max-w-3xl h-96 bg-gray-800 text-white flex items-center justify-center rounded-lg">
+          Aucune vidéo
+        </div>
+
         <RythmoBand
           v-if="project && project.timecodes"
           :timecodes="project.timecodes"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
         />
+
         <RythmoControls
           :isVideoPaused="isVideoPaused"
           @seek="seek"
@@ -69,23 +85,63 @@
         />
       </div>
     </div>
-    <!-- Modal d'édition/ajout de timecode (simple) -->
-    <div v-if="showTimecodeModal" class="modal-bg">
-      <div class="modal">
-        <h4>{{ editTimecodeIdx !== null ? 'Éditer' : 'Ajouter' }} un timecode</h4>
-        <form @submit.prevent="saveTimecode">
-          <label
-            >Début (s):
-            <input v-model.number="modalTimecode.start" type="number" step="0.01" min="0" required
-          /></label>
-          <label
-            >Fin (s):
-            <input v-model.number="modalTimecode.end" type="number" step="0.01" min="0" required
-          /></label>
-          <label>Texte: <input v-model="modalTimecode.text" type="text" required /></label>
-          <div class="modal-actions">
-            <button type="submit">Valider</button>
-            <button type="button" @click="closeTimecodeModal">Annuler</button>
+
+    <!-- Modal d'édition/ajout de timecode -->
+    <div v-if="showTimecodeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-agfa-dark text-white rounded-xl p-8 min-w-80 shadow-2xl">
+        <h4 class="text-xl font-bold mb-6">
+          {{ editTimecodeIdx !== null ? 'Éditer' : 'Ajouter' }} un timecode
+        </h4>
+
+        <form @submit.prevent="saveTimecode" class="space-y-4">
+          <label class="block">
+            <span class="text-white mb-2 block">Début (s):</span>
+            <input
+              v-model.number="modalTimecode.start"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+            />
+          </label>
+
+          <label class="block">
+            <span class="text-white mb-2 block">Fin (s):</span>
+            <input
+              v-model.number="modalTimecode.end"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+            />
+          </label>
+
+          <label class="block">
+            <span class="text-white mb-2 block">Texte:</span>
+            <input
+              v-model="modalTimecode.text"
+              type="text"
+              required
+              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
+            />
+          </label>
+
+          <div class="flex gap-4 pt-4">
+            <button
+              type="submit"
+              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg py-3 px-5 cursor-pointer text-base font-medium transition-colors duration-300"
+            >
+              Valider
+            </button>
+            <button
+              type="button"
+              @click="closeTimecodeModal"
+              class="flex-1 bg-gray-600 hover:bg-gray-700 text-white border-none rounded-lg py-3 px-5 cursor-pointer text-base font-medium transition-colors duration-300"
+            >
+              Annuler
+            </button>
           </div>
         </form>
       </div>
@@ -94,9 +150,8 @@
 </template>
 
 <script setup lang="ts">
-import '../assets/styles/ProjectDetailView.css'
- import BackSvg from '../assets/icons/back.svg'
- import ArrowSvg from '../assets/icons/arrow.svg'
+import BackSvg from '../assets/icons/back.svg'
+import ArrowSvg from '../assets/icons/arrow.svg'
 function goBack() {
   router.push({ name: 'projects' })
 }

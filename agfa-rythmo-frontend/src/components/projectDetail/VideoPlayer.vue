@@ -1,12 +1,12 @@
 <template>
-  <div class="video-player">
+  <div class="flex justify-center items-center w-full">
     <video
       ref="videoRef"
       :src="src"
       controls
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
-      class="main-video"
+      class="w-full max-w-4xl rounded-lg bg-black shadow-xl max-h-[60vh] object-contain"
     />
   </div>
 </template>
@@ -40,20 +40,3 @@ function onLoadedMetadata(e: Event) {
   emit('loadedmetadata', (e.target as HTMLVideoElement).duration)
 }
 </script>
-
-<style scoped>
-.video-player {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-.main-video {
-  width: 100%;
-  max-width: 720px;
-  border-radius: 6px;
-  background: #000;
-  box-shadow: 0 1px 4px #0003;
-  max-height: 60vh;
-}
-</style>

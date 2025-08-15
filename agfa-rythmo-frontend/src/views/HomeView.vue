@@ -1,33 +1,56 @@
 <template>
-  <div class="home-container">
-    <h1 class="text-4xl font-bold text-white mb-8">Bienvenue sur Agfa Rythmo</h1>
-    <router-link to="/projects">
-      <button class="main-btn bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg text-white font-semibold transition-colors">Gérer mes projets</button>
+  <div class="flex flex-col items-center justify-start min-h-screen p-8 animate-fade-in">
+    <h1 class="text-5xl font-bold text-white mb-12 text-center animate-float">
+      Bienvenue sur Agfa Rythmo
+    </h1>
+
+    <router-link to="/projects" class="mb-16">
+      <button class="bg-agfa-blue hover:bg-agfa-blue-hover text-white font-semibold px-10 py-4 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
+        Gérer mes projets
+      </button>
     </router-link>
-    <div class="projects-thumbnails">
-      <h2 class="text-2xl font-semibold text-white mb-6">Mes projets</h2>
-      <div v-if="loading">Chargement...</div>
-      <div v-else>
-        <div v-if="projects.length === 0">Aucun projet pour le moment.</div>
-        <div class="card-list">
-          <div v-for="project in projects" :key="project.id" class="project-card">
-            <router-link :to="`/projects/${project.id}`">
-              <div class="card-thumb">
-                <video
-                  v-if="project.video_path"
-                  :src="getVideoUrl(project.video_path)"
-                  width="220"
-                  height="124"
-                  preload="metadata"
-                  muted
-                  playsinline
-                  @mouseover="onVideoHover($event)"
-                  @mouseleave="onVideoLeave($event)"
-                  style="object-fit:cover; border-radius:10px; background:#222;"
-                ></video>
-                <div v-else class="no-thumb">Pas de vidéo</div>
+
+    <div class="w-full max-w-7xl">
+      <h2 class="text-3xl font-semibold text-white mb-8 text-center">Mes projets</h2>
+
+      <div v-if="loading" class="text-white text-center text-lg">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
+        Chargement...
+      </div>
+
+      <div v-else class="animate-fade-in">
+        <div v-if="projects.length === 0" class="text-white text-center text-lg">
+          Aucun projet pour le moment.
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div
+            v-for="project in projects"
+            :key="project.id"
+            class="group cursor-pointer transform transition-all duration-300 hover:scale-105"
+          >
+            <router-link :to="`/projects/${project.id}`" class="block">
+              <div class="bg-white rounded-2xl p-6 card-shadow hover:card-shadow-hover transition-all duration-300">
+                <div class="w-full h-32 bg-gray-800 rounded-xl overflow-hidden mb-4 relative">
+                  <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 rounded-xl z-0"></div>
+                  <video
+                    v-if="project.video_path"
+                    :src="getVideoUrl(project.video_path)"
+                    class="w-full h-full object-cover relative z-10"
+                    preload="metadata"
+                    muted
+                    playsinline
+                    @mouseover="onVideoHover($event)"
+                    @mouseleave="onVideoLeave($event)"
+                  ></video>
+                  <div v-else class="flex items-center justify-center h-full text-white text-lg relative z-10">
+                    Pas de vidéo
+                  </div>
+                </div>
+                <h3 class="text-xl font-bold text-agfa-dark text-center group-hover:text-agfa-blue transition-colors duration-300">
+                  {{ project.name }}
+                </h3>
               </div>
-              <div class="card-title">{{ project.name }}</div>
             </router-link>
           </div>
         </div>
@@ -80,75 +103,3 @@ function onVideoLeave(event: MouseEvent) {
   }
 }
 </script>
-
-<style scoped>
-.home-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: 80vh;
-}
-.main-btn {
-  margin-top: 2rem;
-  padding: 1rem 2rem;
-  font-size: 1.2rem;
-  background: #2d3748;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.main-btn:hover {
-  background: #4a5568;
-}
-.projects-thumbnails {
-  margin-top: 3rem;
-  width: 100%;
-  max-width: 1100px;
-}
-.card-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  justify-content: flex-start;
-}
-.project-card {
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px #0002;
-  width: 240px;
-  padding: 1rem 1rem 0.7rem 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-.project-card:hover {
-  box-shadow: 0 6px 24px #0003;
-  transform: translateY(-4px) scale(1.03);
-}
-.card-thumb {
-  width: 220px;
-  height: 124px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #222;
-  border-radius: 10px;
-  overflow: hidden;
-}
-.no-thumb {
-  color: #fff;
-  font-size: 1.1rem;
-  text-align: center;
-}
-.card-title {
-  margin-top: 0.7rem;
-  font-weight: bold;
-  text-align: center;
-  font-size: 1.1rem;
-  color: #2d3748;
-}
-</style>
