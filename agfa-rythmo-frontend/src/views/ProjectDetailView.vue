@@ -62,35 +62,11 @@
           :currentTime="currentTime"
           :videoDuration="videoDuration"
         />
-        <div class="rythmo-controls">
-          <button @click="seek(-1)" title="← 1s (Flèche gauche)">-1s</button>
-          <button @click="seekFrame(-1)" title="← 1 frame (A)">-1 frame</button>
-          <button @click="seek(0)" title="Lecture/Pause (Espace)">
-            <svg
-              v-if="isVideoPaused"
-              width="22"
-              height="22"
-              viewBox="0 0 22 22"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <polygon points="6,4 18,11 6,18" fill="#fff" />
-            </svg>
-            <svg
-              v-else
-              width="22"
-              height="22"
-              viewBox="0 0 22 22"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect x="6" y="4" width="3.5" height="14" fill="#fff" />
-              <rect x="12.5" y="4" width="3.5" height="14" fill="#fff" />
-            </svg>
-          </button>
-          <button @click="seekFrame(1)" title="→ 1 frame (E)">+1 frame</button>
-          <button @click="seek(1)" title="→ 1s (Flèche droite)">+1s</button>
-        </div>
+        <RythmoControls
+          :isVideoPaused="isVideoPaused"
+          @seek="seek"
+          @seekFrame="seekFrame"
+        />
       </div>
     </div>
     <!-- Modal d'édition/ajout de timecode (simple) -->
@@ -136,6 +112,8 @@ import api from '../api/axios'
 import TimecodesList from '../components/projectDetail/TimecodesList.vue'
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
 import RythmoBand from '../components/projectDetail/RythmoBand.vue'
+
+import RythmoControls from '../components/projectDetail/RythmoControls.vue'
 
 const route = useRoute()
 const router = useRouter()
