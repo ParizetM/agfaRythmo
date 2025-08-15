@@ -105,9 +105,8 @@ const isTimecodesCollapsed = ref(true)
 function toggleTimecodesPanel() {
   isTimecodesCollapsed.value = !isTimecodesCollapsed.value
 }
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive } from 'vue'
-import { useRoute } from 'vue-router'
 import api from '../api/axios'
 import TimecodesList from '../components/projectDetail/TimecodesList.vue'
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'

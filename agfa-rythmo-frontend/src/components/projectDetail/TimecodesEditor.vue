@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, watch, toRefs } from 'vue';
-import api from '../api/axios';
+import api from '../../api/axios';
 
 const props = defineProps<{ projectId: number; timecodes: { start: number; end: number; text: string }[] }>();
 const emit = defineEmits(['updated']);
