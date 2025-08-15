@@ -6,58 +6,29 @@
         :class="{ 'no-transition': noTransition }"
         :style="rythmoTextStyle"
       >
-        <template v-if="timecodes.length">
-          <!-- Gap avant le premier timecode -->
-          <div
-            v-if="timecodes[0].start > 0.2"
-            class="rythmo-block rythmo-block-gap"
-            :style="getGapBlockStyle(0, timecodes[0].start)"
-          >
-            <span class="gap-label">{{ timecodes[0].start >= 1 ? timecodes[0].start.toFixed(2) + 's' : '' }}</span>
-          </div>
-          <!-- Timecodes + gaps intermédiaires -->
-          <template v-for="(line, idx) in timecodes" :key="'tc' + idx">
+        <template v-if="bandElements.length">
+          <template v-for="(el, idx) in bandElements" :key="'el' + idx">
             <div
+              v-if="el.type === 'block'"
               class="rythmo-block"
-              :class="{ active: idx === activeIdx }"
-              :style="getBlockStyle(idx)"
-              @click="onBlockClick(idx)"
-              style="cursor: pointer;"
+              :class="{ active: el.tcIdx === activeIdx }"
+              :style="getAbsoluteBlockStyle(el)"
+              @click="onBlockClick(el.tcIdx)"
+              style="cursor: pointer; position: absolute;"
             >
-              <span class="distort-text" :style="getDistortStyle(idx)">{{ line.text }}</span>
+              <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
             </div>
-
-            <!-- Gap entre timecodes (si trou) -->
             <div
-              v-if="idx < timecodes.length - 1 && timecodes[idx].end < timecodes[idx + 1].start"
+              v-else-if="el.type === 'gap'"
               class="rythmo-block rythmo-block-gap"
-              :style="getGapBlockStyle(timecodes[idx].end, timecodes[idx + 1].start)"
+              :style="getAbsoluteGapStyle(el)"
+              style="position: absolute;"
             >
-              <span class="gap-label">
-                {{ (timecodes[idx + 1].start - timecodes[idx].end) >= 1 ? (timecodes[idx + 1].start - timecodes[idx].end).toFixed(2) + 's' : '' }}
-              </span>
+              <span class="gap-label">{{ el.label }}</span>
             </div>
           </template>
-          <!-- Gap après le dernier timecode -->
-          <div
-            v-if="
-              Math.round((totalDuration - timecodes[timecodes.length - 1].end) * 100) / 100 >= 0.5
-            "
-            class="rythmo-block rythmo-block-gap"
-            :style="getGapBlockStyle(timecodes[timecodes.length - 1].end, totalDuration)"
-          >
-            <span class="gap-label">
-              {{ (totalDuration - timecodes[timecodes.length - 1].end).toFixed(2) }}s
-            </span>
-          </div>
-          <!-- Padding transparent pour permettre le scroll complet jusqu'à la fin -->
         </template>
-        <!-- Si aucun timecode, toute la barre = gap -->
-        <div
-          v-else
-          class="rythmo-block rythmo-block-gap"
-          :style="getGapBlockStyle(0, totalDuration)"
-        >
+        <div v-else class="rythmo-block rythmo-block-gap" :style="getAbsoluteGapStyle({ x: 0, width: bandWidth, label: `0s - ${totalDuration.toFixed(2)}s` })" style="position: absolute;">
           <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
         </div>
       </div>
@@ -130,7 +101,7 @@ onMounted(() => {
 const rythmoTextStyle = computed(() => ({
   width: `${bandWidth.value}px`,
   transform: `translateX(-${smoothScroll.value}px)`,
-  paddingLeft: computedVisibleWidth.value / 2 + 'px',
+  // plus de paddingLeft, tout est positionné en absolu
 }))
 
 const totalDuration = computed(() => {
@@ -146,15 +117,28 @@ function getBlockWidth(idx: number) {
   return Math.max(MIN_BLOCK_WIDTH, (tc.end - tc.start) * PX_PER_SEC)
 }
 
-function getBlockStyle(idx: number) {
+// Nouvelle fonction : calcule la position x (en px) d'un timecode
+function getBlockX(idx: number) {
+  const tc = props.timecodes[idx]
+  return tc.start * PX_PER_SEC + computedVisibleWidth.value / 2
+}
+
+function getAbsoluteBlockStyle(el: any) {
   return {
-    width: getBlockWidth(idx) + 'px',
-    flexShrink: 0,
+    left: el.x + 'px',
+    width: el.width + 'px',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    height: '100%',
+    flexShrink: 0,
+    borderRadius: '4px',
+    margin: '0 1px',
+    background: el.active ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
+    border: el.active ? '1px solid #10b981' : undefined,
+    boxShadow: el.active ? '0 0 12px rgba(16, 185, 129, 0.4)' : undefined,
+    position: 'absolute',
   }
 }
 
@@ -188,21 +172,64 @@ function getDistortStyle(idx: number) {
   }
 }
 
-// Bloc "gap" avant/après : width proportionnelle à la durée
-function getGapBlockStyle(start: number, end: number) {
-  const width = Math.max(10, (end - start) * PX_PER_SEC)
+function getGapWidth(start: number, end: number) {
+  return Math.max(10, (end - start) * PX_PER_SEC)
+}
+
+function getGapX(start: number) {
+  return start * PX_PER_SEC + computedVisibleWidth.value / 2
+}
+
+function getAbsoluteGapStyle(el: any) {
   return {
-    width: width + 'px',
-    flexShrink: 0,
+    left: el.x + 'px',
+    width: el.width + 'px',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    height: '100%',
+    flexShrink: 0,
+    borderRadius: '4px',
+    margin: '0 1px',
     background: '#2d3748',
     opacity: 0.5,
+    position: 'absolute',
   }
 }
+// Génère la liste des éléments (blocs et gaps) avec coordonnées précises
+const bandElements = computed(() => {
+  const arr: any[] = []
+  const tcs = props.timecodes
+  if (!tcs.length) return arr
+  // Gap avant le premier timecode
+  if (tcs[0].start > 0.2) {
+    const x = getGapX(0)
+    const width = getGapWidth(0, tcs[0].start)
+    arr.push({ type: 'gap', x, width, label: tcs[0].start >= 1 ? tcs[0].start.toFixed(2) + 's' : '' })
+  }
+  // Blocs + gaps intermédiaires
+  for (let i = 0; i < tcs.length; i++) {
+    // Bloc
+    const x = getBlockX(i)
+    const width = getBlockWidth(i)
+    arr.push({ type: 'block', x, width, text: tcs[i].text, tcIdx: i })
+    // Gap après ce bloc (si trou)
+    if (i < tcs.length - 1 && tcs[i].end < tcs[i + 1].start) {
+      const gapX = getGapX(tcs[i].end)
+      const gapWidth = getGapWidth(tcs[i].end, tcs[i + 1].start)
+      arr.push({ type: 'gap', x: gapX, width: gapWidth, label: (tcs[i + 1].start - tcs[i].end) >= 1 ? (tcs[i + 1].start - tcs[i].end).toFixed(2) + 's' : '' })
+    }
+  }
+  // Gap après le dernier timecode
+  const last = tcs[tcs.length - 1]
+  if (Math.round((totalDuration.value - last.end) * 100) / 100 >= 0.5) {
+    const x = getGapX(last.end)
+    const width = getGapWidth(last.end, totalDuration.value)
+    arr.push({ type: 'gap', x, width, label: (totalDuration.value - last.end).toFixed(2) + 's' })
+  }
+  return arr
+})
 
 const noTransition = ref(false)
 const targetScroll = computed(() => {
@@ -266,15 +293,19 @@ watch(smoothScroll, (val, oldVal) => {
   overflow: hidden;
 }
 .rythmo-text {
-  display: flex;
-  align-items: center;
-  transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
-  font-size: 1.1rem;
-  color: #fff;
-  height: 3rem;
+  /* plus de flex, tout est positionné en absolu */
   position: absolute;
   left: 0;
   top: 0;
+  width: 100%;
+  height: 3rem;
+  font-size: 1.1rem;
+  color: #fff;
+  transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
+  pointer-events: none;
+}
+.rythmo-text > div {
+  pointer-events: auto;
 }
 .rythmo-text.no-transition {
   transition: none;
