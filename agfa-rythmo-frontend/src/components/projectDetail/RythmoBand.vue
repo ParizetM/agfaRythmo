@@ -1,11 +1,7 @@
 <template>
   <div class="rythmo-band">
     <div class="rythmo-track-container" ref="trackContainer" :style="{ width: `${bandWidth}px` }">
-      <div
-        class="rythmo-text"
-        :class="{ 'no-transition': noTransition }"
-        :style="rythmoTextStyle"
-      >
+      <div class="rythmo-text" :class="{ 'no-transition': noTransition }" :style="rythmoTextStyle">
         <template v-if="bandElements.length">
           <template v-for="(el, idx) in bandElements" :key="'el' + idx">
             <div
@@ -14,21 +10,110 @@
               :class="{ active: el.tcIdx === activeIdx }"
               :style="getAbsoluteBlockStyle(el)"
               @click="onBlockClick(el.tcIdx)"
-              style="cursor: pointer; position: absolute;"
+              @dblclick="onBlockDblClick(el.tcIdx, el.text)"
+              style="cursor: pointer; position: absolute"
             >
-              <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+              <template v-if="editingIdx === el.tcIdx">
+                <input
+                  :ref="setEditInputRef"
+                  v-model="editingText"
+                  @blur="finishEdit"
+                  @keyup.enter="finishEdit"
+                  @keyup.esc="cancelEdit"
+                  class="rythmo-edit-input"
+                  :style="{ minWidth: getBlockWidth(el.tcIdx) + 'px', overflow: 'visible', whiteSpace: 'pre' }"
+                  style="
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    background: #23272f;
+                    color: #fff;
+                    border-radius: 4px;
+                    border: 1px solid #8455f6;
+                    padding: 0 6px;
+                    outline: none;
+                    height: 2.2rem;
+                    overflow: visible;
+                    white-space: pre;
+                  "
+                />
+              </template>
+              <template v-else>
+                <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+              </template>
             </div>
+
             <div
               v-else-if="el.type === 'gap'"
               class="rythmo-block rythmo-block-gap"
               :style="getAbsoluteGapStyle(el)"
-              style="position: absolute;"
+              style="position: absolute"
+            >
+              <span class="gap-label">{{ el.label }}</span>
+            </div>
+          </template>
+          <!-- Blocs -->
+          <template v-for="(el, idx) in bandElements" :key="'block' + idx">
+            <div
+              v-if="el.type === 'block'"
+              class="rythmo-block"
+              :class="{ active: el.tcIdx === activeIdx }"
+              :style="getAbsoluteBlockStyle(el)"
+              @click="onBlockClick(el.tcIdx)"
+              @dblclick="onBlockDblClick(el.tcIdx, el.text)"
+              style="cursor: pointer; position: absolute"
+            >
+              <template v-if="editingIdx === el.tcIdx">
+                <input
+                  :ref="setEditInputRef"
+                  v-model="editingText"
+                  @blur="finishEdit"
+                  @keyup.enter="finishEdit"
+                  @keyup.esc="cancelEdit"
+                  class="rythmo-edit-input"
+                  :style="{ width: getBlockWidth(el.tcIdx) + 'px' }"
+                  style="
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    background: #23272f;
+                    color: #fff;
+                    border-radius: 4px;
+                    border: 1px solid #8455f6;
+                    padding: 0 6px;
+                    outline: none;
+                    height: 2.2rem;
+                  "
+                />
+              </template>
+              <template v-else>
+                <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+              </template>
+            </div>
+          </template>
+          <!-- Gaps -->
+          <template v-for="(el, idx) in bandElements" :key="'gap' + idx">
+            <div
+              v-if="el.type === 'gap'"
+              class="rythmo-block rythmo-block-gap"
+              :style="getAbsoluteGapStyle(el)"
+              style="position: absolute"
             >
               <span class="gap-label">{{ el.label }}</span>
             </div>
           </template>
         </template>
-        <div v-else class="rythmo-block rythmo-block-gap" :style="getAbsoluteGapStyle({ x: 0, width: bandWidth, label: `0s - ${totalDuration.toFixed(2)}s` })" style="position: absolute;">
+        <div
+          v-else
+          class="rythmo-block rythmo-block-gap"
+          :style="
+            getAbsoluteGapStyle({
+              x: 0,
+              width: bandWidth,
+              label: `0s - ${totalDuration.toFixed(2)}s`,
+              type: 'gap',
+            })
+          "
+          style="position: absolute"
+        >
           <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
         </div>
       </div>
@@ -48,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch, nextTick, isRef } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, isRef, type ComponentPublicInstance } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
 const props = defineProps<{
   timecodes: { start: number; end: number; text: string }[]
@@ -57,7 +142,10 @@ const props = defineProps<{
   visibleWidth?: number
   instant?: boolean | import('vue').Ref<boolean>
 }>()
-
+// Types pour la bande rythmo
+type BandBlock = { type: 'block'; x: number; width: number; text: string; tcIdx: number }
+type BandGap = { type: 'gap'; x: number; width: number; label: string }
+type BandElement = BandBlock | BandGap
 const trackContainer = ref<HTMLDivElement | null>(null)
 const PX_PER_SEC = 80
 const MIN_BLOCK_WIDTH = 40
@@ -123,7 +211,7 @@ function getBlockX(idx: number) {
   return tc.start * PX_PER_SEC + computedVisibleWidth.value / 2
 }
 
-function getAbsoluteBlockStyle(el: any) {
+function getAbsoluteBlockStyle(el: BandBlock) {
   return {
     left: el.x + 'px',
     width: el.width + 'px',
@@ -135,9 +223,6 @@ function getAbsoluteBlockStyle(el: any) {
     flexShrink: 0,
     borderRadius: '4px',
     margin: '0 1px',
-    background: el.active ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
-    border: el.active ? '1px solid #10b981' : undefined,
-    boxShadow: el.active ? '0 0 12px rgba(16, 185, 129, 0.4)' : undefined,
     position: 'absolute',
   }
 }
@@ -180,7 +265,7 @@ function getGapX(start: number) {
   return start * PX_PER_SEC + computedVisibleWidth.value / 2
 }
 
-function getAbsoluteGapStyle(el: any) {
+function getAbsoluteGapStyle(el: BandGap) {
   return {
     left: el.x + 'px',
     width: el.width + 'px',
@@ -192,14 +277,12 @@ function getAbsoluteGapStyle(el: any) {
     flexShrink: 0,
     borderRadius: '4px',
     margin: '0 1px',
-    background: '#2d3748',
-    opacity: 0.5,
     position: 'absolute',
   }
 }
 // Génère la liste des éléments (blocs et gaps) avec coordonnées précises
-const bandElements = computed(() => {
-  const arr: any[] = []
+const bandElements = computed<BandElement[]>(() => {
+  const arr: BandElement[] = []
   const tcs = props.timecodes
   if (!tcs.length) return arr
   // Gap avant le premier timecode
@@ -247,7 +330,10 @@ const smoothScroll = useSmoothScroll(() => targetScroll.value, instantRef)
 
 // Désactive la transition si le scroll saute brutalement (seek, pause/play)
 // Gestion du clic sur un block (hors gap)
-const emit = defineEmits(['seek'])
+const emit = defineEmits<{
+  (e: 'seek', time: number): void
+  (e: 'update-timecode', payload: { idx: number; text: string }): void
+}>()
 const onBlockClick = (idx: number) => {
   if (props.timecodes[idx]) {
     emit('seek', props.timecodes[idx].start)
@@ -261,6 +347,62 @@ watch(smoothScroll, (val, oldVal) => {
     }, 40)
   }
 })
+
+// --- Edition du texte d'un bloc ---
+const editingIdx = ref<number|null>(null)
+const editingText = ref('')
+
+const editInput = ref<HTMLInputElement|null>(null)
+function setEditInputRef(el: Element | ComponentPublicInstance | null) {
+  // On ne garde la ref que si c'est l'input actuellement édité
+  if (el === null) {
+    editInput.value = null
+    return
+  }
+
+  // Détecte un input DOM directement ou récupère le $el d'un composant
+  let inputEl: HTMLInputElement | null = null
+  if (el instanceof HTMLInputElement) {
+    inputEl = el
+  } else if (el && '$el' in el) {
+    // Utilise le type ComponentPublicInstance déjà importé pour accéder à $el
+    const maybeEl = (el as ComponentPublicInstance).$el
+    if (maybeEl instanceof HTMLInputElement) {
+      inputEl = maybeEl
+    }
+  }
+
+  if (inputEl && editingIdx.value !== null) {
+    editInput.value = inputEl
+    nextTick(() => {
+      editInput.value?.focus()
+    })
+  } else {
+    // Si ce n'est pas l'input attendu, on nettoie la ref
+    editInput.value = null
+  }
+}
+
+function onBlockDblClick(idx: number, text: string) {
+  editingIdx.value = idx
+  editingText.value = text
+  nextTick(() => {
+    if (editInput.value) editInput.value.focus()
+  })
+}
+
+function finishEdit() {
+  if (editingIdx.value !== null && editingText.value.trim() !== '') {
+    emit('update-timecode', { idx: editingIdx.value, text: editingText.value })
+  }
+  editingIdx.value = null
+  editingText.value = ''
+}
+
+function cancelEdit() {
+  editingIdx.value = null
+  editingText.value = ''
+}
 </script>
 
 <style scoped>
@@ -367,7 +509,9 @@ watch(smoothScroll, (val, oldVal) => {
   height: 100%;
   background: linear-gradient(to bottom, #ffffff, #e5e7eb);
   border-radius: 2px;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), 0 0 16px rgba(0, 0, 0, 0.8);
+  box-shadow:
+    0 0 8px rgba(255, 255, 255, 0.6),
+    0 0 16px rgba(0, 0, 0, 0.8);
   z-index: 2;
   transition: none;
 }
@@ -378,5 +522,13 @@ watch(smoothScroll, (val, oldVal) => {
   user-select: none;
   opacity: 0.6 !important;
   font-weight: 500;
+}
+/* Permet à l'input d'édition de dépasser sur la droite si le texte est long */
+.rythmo-edit-input {
+  min-width: 0;
+  width: fit-content;
+  white-space: pre;
+  overflow: visible;
+  z-index: 10;
 }
 </style>

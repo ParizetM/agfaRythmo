@@ -4,7 +4,7 @@ applyTo: '**'
 # Instructions pour GitHub Copilot
 ne pas utiliser de navigateur simple dans vscode
 Ne pas faire npm run dev
-quand tu ajoutes des fonctions js ajoute les bien au bon endroit dans le fichier vue
+quand tu ajoutes des fonctions js ajoute les bien au bon endroit dans le fichier vue dans les scripts setup
 ## Contexte du projet
 
 Ce projet vise à recréer l’application Capella en version web, avec une architecture backend Laravel (API REST) et un frontend Vue.js. L’application permet l’import de vidéos, l’édition de texte synchronisé (bande rythmo), la prévisualisation et la sauvegarde des projets.

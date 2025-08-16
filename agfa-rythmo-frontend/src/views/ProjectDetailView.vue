@@ -81,7 +81,9 @@
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
           @seek="onRythmoSeek"
+          @update-timecode="onUpdateTimecode"
         />
+
 
 
 
@@ -412,6 +414,12 @@ const onRythmoSeek = (time: number) => {
   }
   // Scroll instantané lors d'un seek manuel
   instantRythmoScroll.value = true
+}
+// Mise à jour d'un timecode depuis la bande rythmo (édition inline)
+const onUpdateTimecode = async ({ idx, text }: { idx: number; text: string }) => {
+  if (!project.value?.timecodes) return
+  project.value.timecodes[idx].text = text
+  await saveTimecodes()
 }
 </script>
 <style scoped>
