@@ -1,123 +1,144 @@
 <template>
   <div class="rythmo-band">
     <div class="rythmo-track-container" ref="trackContainer" :style="{ width: `${bandWidth}px` }">
-      <div class="rythmo-text" :class="{ 'no-transition': noTransition }" :style="rythmoTextStyle">
-        <template v-if="bandElements.length">
-          <template v-for="(el, idx) in bandElements" :key="'el' + idx">
-            <div
-              v-if="el.type === 'block'"
-              class="rythmo-block"
-              :class="{ active: el.tcIdx === activeIdx }"
-              :style="getAbsoluteBlockStyle(el)"
-              @click="onBlockClick(el.tcIdx)"
-              @dblclick="onBlockDblClick(el.tcIdx, el.text)"
-              style="cursor: pointer; position: absolute"
-            >
-              <template v-if="editingIdx === el.tcIdx">
-                <input
-                  :ref="setEditInputRef"
-                  v-model="editingText"
-                  @blur="finishEdit"
-                  @keyup.enter="finishEdit"
-                  @keyup.esc="cancelEdit"
-                  class="rythmo-edit-input"
-                  :style="{ minWidth: getBlockWidth(el.tcIdx) + 'px', overflow: 'visible', whiteSpace: 'pre' }"
-                  style="
-                    font-size: 1.2rem;
-                    font-weight: 600;
-                    background: #23272f;
-                    color: #fff;
-                    border-radius: 4px;
-                    border: 1px solid #8455f6;
-                    padding: 0 6px;
-                    outline: none;
-                    height: 2.2rem;
-                    overflow: visible;
-                    white-space: pre;
-                  "
-                />
-              </template>
-              <template v-else>
-                <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
-              </template>
-            </div>
+      <div
+        class="rythmo-content"
+        :class="{ 'no-transition': noTransition }"
+        :style="rythmoTextStyle"
+      >
 
-            <div
-              v-else-if="el.type === 'gap'"
-              class="rythmo-block rythmo-block-gap"
-              :style="getAbsoluteGapStyle(el)"
-              style="position: absolute"
-            >
-              <span class="gap-label">{{ el.label }}</span>
-            </div>
+        <div class="rythmo-text">
+          <template v-if="bandElements.length">
+            <template v-for="(el, idx) in bandElements" :key="'el' + idx">
+              <div
+                v-if="el.type === 'block'"
+                class="rythmo-block"
+                :class="{ active: el.tcIdx === activeIdx }"
+                :style="getAbsoluteBlockStyle(el)"
+                @click="onBlockClick(el.tcIdx)"
+                @dblclick="onBlockDblClick(el.tcIdx, el.text)"
+                style="cursor: pointer; position: absolute"
+              >
+                <template v-if="editingIdx === el.tcIdx">
+                  <input
+                    :ref="setEditInputRef"
+                    v-model="editingText"
+                    @blur="finishEdit"
+                    @keyup.enter="finishEdit"
+                    @keyup.esc="cancelEdit"
+                    class="rythmo-edit-input"
+                    :style="{
+                      minWidth: getBlockWidth(el.tcIdx) + 'px',
+                      overflow: 'visible',
+                      whiteSpace: 'pre',
+                    }"
+                    style="
+                      font-size: 1.2rem;
+                      font-weight: 600;
+                      background: #23272f;
+                      color: #fff;
+                      border-radius: 4px;
+                      border: 1px solid #8455f6;
+                      padding: 0 6px;
+                      outline: none;
+                      height: 2.2rem;
+                      overflow: visible;
+                      white-space: pre;
+                    "
+                  />
+                </template>
+                <template v-else>
+                  <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+                </template>
+              </div>
+
+              <div
+                v-else-if="el.type === 'gap'"
+                class="rythmo-block rythmo-block-gap"
+                :style="getAbsoluteGapStyle(el)"
+                style="position: absolute"
+              >
+                <span class="gap-label">{{ el.label }}</span>
+              </div>
+            </template>
+            <!-- Blocs -->
+            <template v-for="(el, idx) in bandElements" :key="'block' + idx">
+              <div
+                v-if="el.type === 'block'"
+                class="rythmo-block"
+                :class="{ active: el.tcIdx === activeIdx }"
+                :style="getAbsoluteBlockStyle(el)"
+                @click="onBlockClick(el.tcIdx)"
+                @dblclick="onBlockDblClick(el.tcIdx, el.text)"
+                style="cursor: pointer; position: absolute"
+              >
+                <template v-if="editingIdx === el.tcIdx">
+                  <input
+                    :ref="setEditInputRef"
+                    v-model="editingText"
+                    @blur="finishEdit"
+                    @keyup.enter="finishEdit"
+                    @keyup.esc="cancelEdit"
+                    class="rythmo-edit-input"
+                    :style="{ width: getBlockWidth(el.tcIdx) + 'px' }"
+                    style="
+                      font-size: 1.2rem;
+                      font-weight: 600;
+                      background: #23272f;
+                      color: #fff;
+                      border-radius: 4px;
+                      border: 1px solid #8455f6;
+                      padding: 0 6px;
+                      outline: none;
+                      height: 2.2rem;
+                    "
+                  />
+                </template>
+                <template v-else>
+                  <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+                </template>
+              </div>
+            </template>
+            <!-- Gaps -->
+            <template v-for="(el, idx) in bandElements" :key="'gap' + idx">
+              <div
+                v-if="el.type === 'gap'"
+                class="rythmo-block rythmo-block-gap"
+                :style="getAbsoluteGapStyle(el)"
+                style="position: absolute"
+              >
+                <span class="gap-label">{{ el.label }}</span>
+              </div>
+            </template>
           </template>
-          <!-- Blocs -->
-          <template v-for="(el, idx) in bandElements" :key="'block' + idx">
+          <div
+            v-else
+            class="rythmo-block rythmo-block-gap"
+            :style="
+              getAbsoluteGapStyle({
+                x: 0,
+                width: bandWidth,
+                label: `0s - ${totalDuration.toFixed(2)}s`,
+                type: 'gap',
+              })
+            "
+            style="position: absolute"
+          >
+            <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
+          </div>
+        </div>
+        <div class="rythmo-ticks pointer-events-none">
+          <template v-for="tick in ticks" :key="'tick' + tick.x">
             <div
-              v-if="el.type === 'block'"
-              class="rythmo-block"
-              :class="{ active: el.tcIdx === activeIdx }"
-              :style="getAbsoluteBlockStyle(el)"
-              @click="onBlockClick(el.tcIdx)"
-              @dblclick="onBlockDblClick(el.tcIdx, el.text)"
-              style="cursor: pointer; position: absolute"
-            >
-              <template v-if="editingIdx === el.tcIdx">
-                <input
-                  :ref="setEditInputRef"
-                  v-model="editingText"
-                  @blur="finishEdit"
-                  @keyup.enter="finishEdit"
-                  @keyup.esc="cancelEdit"
-                  class="rythmo-edit-input"
-                  :style="{ width: getBlockWidth(el.tcIdx) + 'px' }"
-                  style="
-                    font-size: 1.2rem;
-                    font-weight: 600;
-                    background: #23272f;
-                    color: #fff;
-                    border-radius: 4px;
-                    border: 1px solid #8455f6;
-                    padding: 0 6px;
-                    outline: none;
-                    height: 2.2rem;
-                  "
-                />
-              </template>
-              <template v-else>
-                <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
-              </template>
-            </div>
+              class="rythmo-tick"
+              :class="{ 'tick-second': tick.isSecond }"
+              :style="getTickStyle(tick)"
+            ></div>
           </template>
-          <!-- Gaps -->
-          <template v-for="(el, idx) in bandElements" :key="'gap' + idx">
-            <div
-              v-if="el.type === 'gap'"
-              class="rythmo-block rythmo-block-gap"
-              :style="getAbsoluteGapStyle(el)"
-              style="position: absolute"
-            >
-              <span class="gap-label">{{ el.label }}</span>
-            </div>
-          </template>
-        </template>
-        <div
-          v-else
-          class="rythmo-block rythmo-block-gap"
-          :style="
-            getAbsoluteGapStyle({
-              x: 0,
-              width: bandWidth,
-              label: `0s - ${totalDuration.toFixed(2)}s`,
-              type: 'gap',
-            })
-          "
-          style="position: absolute"
-        >
-          <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
         </div>
       </div>
-      <div class="rythmo-cursor"></div>
+              <div class="rythmo-cursor"></div>
+
     </div>
   </div>
   <!-- Debug infos -->
@@ -133,7 +154,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, isRef, type ComponentPublicInstance } from 'vue'
+// --- TICKS (traits réguliers sur la bande) ---
+type Tick = { x: number; isSecond: boolean }
+const TICK_INTERVAL = 0.2 // secondes entre petits traits
+const ticks = computed<Tick[]>(() => {
+  const arr: Tick[] = []
+  const duration = totalDuration.value
+  const pxOffset = computedVisibleWidth.value / 2
+  for (let t = 0; t <= duration; t += TICK_INTERVAL) {
+    arr.push({
+      x: t * PX_PER_SEC + pxOffset,
+      isSecond: Math.abs(t % 1) < 0.01 || Math.abs((t % 1) - 1) < 0.01, // tolérance flottante
+    })
+  }
+  return arr
+})
+
+function getTickStyle(tick: Tick): CSSProperties {
+  return {
+    left: tick.x + 'px',
+    height: tick.isSecond ? '80%' : '45%',
+    width: tick.isSecond ? '3px' : '2px',
+    background: tick.isSecond ? '#8455F6' : '#aaa',
+    opacity: tick.isSecond ? 0.5 : 0.3,
+    position: 'absolute',
+    bottom: tick.isSecond ? '0%' : '0%',
+    borderRadius: '2px',
+    zIndex: 1,
+    pointerEvents: 'none',
+    transition: 'none',
+  }
+}
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+  isRef,
+  type ComponentPublicInstance,
+  type CSSProperties,
+} from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
 const props = defineProps<{
   timecodes: { start: number; end: number; text: string }[]
@@ -149,7 +211,6 @@ type BandElement = BandBlock | BandGap
 const trackContainer = ref<HTMLDivElement | null>(null)
 const PX_PER_SEC = 80
 const MIN_BLOCK_WIDTH = 40
-
 
 // Responsive: largeur visible = largeur du conteneur ou prop
 const localVisibleWidth = ref(0)
@@ -222,13 +283,13 @@ function getAbsoluteBlockStyle(el: BandBlock) {
     overflow: 'hidden',
     flexShrink: 0,
     borderRadius: '4px',
-    margin: '0 1px',
+    margin: '0',
     position: 'absolute',
   }
 }
 
 const activeIdx = computed(() => {
-  const OFFSET = -0.1 // décalage en secondes
+  const OFFSET = -0.2 // décalage en secondes
   const t = (props.currentTime ?? 0) + OFFSET
   return props.timecodes.findIndex((tc) => t >= tc.start && t < tc.end)
 })
@@ -276,7 +337,7 @@ function getAbsoluteGapStyle(el: BandGap) {
     overflow: 'hidden',
     flexShrink: 0,
     borderRadius: '4px',
-    margin: '0 1px',
+    margin: '0',
     position: 'absolute',
   }
 }
@@ -289,7 +350,12 @@ const bandElements = computed<BandElement[]>(() => {
   if (tcs[0].start > 0.2) {
     const x = getGapX(0)
     const width = getGapWidth(0, tcs[0].start)
-    arr.push({ type: 'gap', x, width, label: tcs[0].start >= 1 ? tcs[0].start.toFixed(2) + 's' : '' })
+    arr.push({
+      type: 'gap',
+      x,
+      width,
+      label: tcs[0].start >= 1 ? tcs[0].start.toFixed(2) + 's' : '',
+    })
   }
   // Blocs + gaps intermédiaires
   for (let i = 0; i < tcs.length; i++) {
@@ -301,7 +367,15 @@ const bandElements = computed<BandElement[]>(() => {
     if (i < tcs.length - 1 && tcs[i].end < tcs[i + 1].start) {
       const gapX = getGapX(tcs[i].end)
       const gapWidth = getGapWidth(tcs[i].end, tcs[i + 1].start)
-      arr.push({ type: 'gap', x: gapX, width: gapWidth, label: (tcs[i + 1].start - tcs[i].end) >= 1 ? (tcs[i + 1].start - tcs[i].end).toFixed(2) + 's' : '' })
+      arr.push({
+        type: 'gap',
+        x: gapX,
+        width: gapWidth,
+        label:
+          tcs[i + 1].start - tcs[i].end >= 1
+            ? (tcs[i + 1].start - tcs[i].end).toFixed(2) + 's'
+            : '',
+      })
     }
   }
   // Gap après le dernier timecode
@@ -349,10 +423,10 @@ watch(smoothScroll, (val, oldVal) => {
 })
 
 // --- Edition du texte d'un bloc ---
-const editingIdx = ref<number|null>(null)
+const editingIdx = ref<number | null>(null)
 const editingText = ref('')
 
-const editInput = ref<HTMLInputElement|null>(null)
+const editInput = ref<HTMLInputElement | null>(null)
 function setEditInputRef(el: Element | ComponentPublicInstance | null) {
   // On ne garde la ref que si c'est l'input actuellement édité
   if (el === null) {
@@ -406,6 +480,35 @@ function cancelEdit() {
 </script>
 
 <style scoped>
+.rythmo-ticks {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2rem;
+  pointer-events: none;
+  z-index: 1;
+
+}
+.rythmo-tick {
+  position: absolute;
+  bottom: 0%;
+  width: 2px;
+  height: 45%;
+  background: #aaa;
+  opacity: 0.45;
+  border-radius: 2px;
+  z-index: 1;
+  pointer-events: none;
+  transition: none;
+}
+.rythmo-tick.tick-second {
+  width: 3px;
+  height: 80%;
+  background: #8455f6;
+  opacity: 0.85;
+  bottom: 0;
+}
 .rythmo-debug {
   background: #222;
   color: #fff;
@@ -444,16 +547,26 @@ function cancelEdit() {
   font-size: 1.1rem;
   color: #fff;
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
-  pointer-events: none;
 }
-.rythmo-text > div {
-  pointer-events: auto;
+.rythmo-content {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3rem;
+  will-change: transform;
+  transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
 }
-.rythmo-text.no-transition {
+.rythmo-content.no-transition {
   transition: none;
 }
-.rythmo-block,
-.rythmo-block-gap {
+.rythmo-text > div {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3rem;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -461,7 +574,7 @@ function cancelEdit() {
   height: 100%;
   flex-shrink: 0;
   border-radius: 4px;
-  margin: 0 1px;
+  margin: 0;
 }
 .rythmo-block {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
@@ -483,7 +596,7 @@ function cancelEdit() {
   align-items: center;
   justify-content: center;
   text-align: center;
-  margin: 0 0.2rem;
+  margin: 0;
   opacity: 0.9;
   background: none;
   border-radius: 3px;
@@ -498,7 +611,7 @@ function cancelEdit() {
 .rythmo-block.active .distort-text {
   opacity: 1;
   color: #ffffff;
-  font-weight: bold;
+  /* font-weight: bold; */
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 .rythmo-cursor {

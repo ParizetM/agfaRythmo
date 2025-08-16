@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-center gap-3 mt-5 mb-2">
+  <div class="flex justify-center gap-3 mt-5 mb-2 select-none">
     <button
       @click="$emit('seek', -1)"
       title="← 1s (Flèche gauche)"
