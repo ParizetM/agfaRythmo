@@ -14,4 +14,9 @@ class Project extends Model
         'text_content',
         'json_path',
     ];
+
+    public function sceneChanges()
+    {
+        return $this->hasMany(SceneChange::class);
+    }
 }

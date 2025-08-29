@@ -31,8 +31,35 @@
     </header>
 
     <!-- Main Grid -->
-    <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2">
-      <!-- Overlay Left Panel - Timecodes -->
+  <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2">
+  <!-- Overlay Left Panel - Timecodes -->
+      <!-- Overlay Right Panel - Scene Changes -->
+      <div>
+        <button
+          class="fixed top-[88px] right-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-l-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
+          @click="toggleSceneChangesPanel"
+          :title="isSceneChangesCollapsed ? 'Déplier' : 'Replier'"
+          style="transition: right 0.2s;"
+        >
+          <ArrowSvg :class="isSceneChangesCollapsed ? 'w-4 h-4 rotate-180' : 'w-4 h-4'" />
+        </button>
+
+        <transition name="fade">
+          <div
+            v-if="!isSceneChangesCollapsed"
+            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-l border-gray-700 flex flex-col pr-2 rounded-md"
+          >
+            <SceneChangesList
+              :sceneChanges="sceneChanges.map(sc => sc.timecode)"
+              :selected="selectedSceneChangeIdx ?? undefined"
+              @select="onSelectSceneChange"
+              @edit="onEditSceneChange"
+              @delete="onDeleteSceneChange"
+              @add="onAddSceneChange"
+            />
+          </div>
+        </transition>
+      </div>
       <div>
         <button
           class="fixed top-[88px] left-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
@@ -74,9 +101,18 @@
           Aucune vidéo
         </div>
 
+        <!-- Bouton ajout changement de plan -->
+        <button
+          class="mt-4 mb-2 bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+          @click="addSceneChange"
+        >
+          Ajouter un changement de plan
+        </button>
+
         <RythmoBand
           v-if="project && project.timecodes"
           :timecodes="project.timecodes"
+          :sceneChanges="sceneChanges.map(sc => sc.timecode)"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
@@ -177,6 +213,40 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive } from 'vue'
 import api from '../api/axios'
 import TimecodesList from '../components/projectDetail/TimecodesList.vue'
+import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
+// Gestion du repli horizontal de la partie scene changes (fermé par défaut)
+const isSceneChangesCollapsed = ref(true)
+function toggleSceneChangesPanel() {
+  isSceneChangesCollapsed.value = !isSceneChangesCollapsed.value
+}
+
+const selectedSceneChangeIdx = ref<number | null>(null)
+function onSelectSceneChange(idx: number) {
+  selectedSceneChangeIdx.value = idx
+  // Seek vidéo si possible
+  const t = sceneChanges.value[idx]
+  if (typeof t === 'number') {
+    lastSeekFromTimecode = true
+    currentTime.value = t
+    instantRythmoScroll.value = true
+  }
+}
+function onEditSceneChange(idx: number) {
+  // TODO: ouvrir une modale pour éditer le timecode (optionnel)
+}
+function onAddSceneChange() {
+  addSceneChange()
+}
+async function onDeleteSceneChange(idx: number) {
+  const sc = sceneChanges.value[idx]
+  if (!sc) return
+  try {
+    await api.delete(`/scene-changes/${sc.id}`)
+    sceneChanges.value.splice(idx, 1)
+  } catch {
+    // TODO: gestion d'erreur
+  }
+}
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
 import RythmoBand from '../components/projectDetail/RythmoBand.vue'
 
@@ -184,6 +254,10 @@ import RythmoControls from '../components/projectDetail/RythmoControls.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// Liste des changements de plan (objets {id, timecode})
+interface SceneChange { id: number; timecode: number }
+const sceneChanges = ref<SceneChange[]>([])
 
 function goToFinalPreview() {
   if (!project.value || !project.value.video_path || !project.value.timecodes) return
@@ -216,6 +290,21 @@ const videoDuration = ref(0)
 const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
+
+// Ajout d'un changement de plan au timecode courant
+async function addSceneChange() {
+  if (!project.value) return
+  const t = Math.round(currentTime.value * 100) / 100
+  // Vérifie si déjà présent (tolérance 0.01s)
+  if (sceneChanges.value.some(sc => Math.abs(sc.timecode - t) < 0.01)) return
+  try {
+    const res = await api.post(`/projects/${project.value.id}/scene-changes`, { timecode: t })
+    sceneChanges.value.push(res.data)
+    sceneChanges.value.sort((a, b) => a.timecode - b.timecode)
+  } catch (e) {
+    // TODO: gestion d'erreur
+  }
+}
 
 // Modal d'édition/ajout de timecode
 const showTimecodeModal = ref(false)
@@ -354,8 +443,12 @@ onMounted(async () => {
       videoFps.value = data.fps
     }
     project.value = data
+    // Récupère les changements de plan
+    const scRes = await api.get(`/projects/${data.id}/scene-changes`)
+    sceneChanges.value = Array.isArray(scRes.data) ? scRes.data : []
   } catch {
     project.value = null
+    sceneChanges.value = []
   } finally {
     loading.value = false
   }

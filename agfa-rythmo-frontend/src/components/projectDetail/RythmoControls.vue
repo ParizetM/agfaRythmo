@@ -30,7 +30,7 @@
         xmlns="http://www.w3.org/2000/svg"
         class="align-middle"
       >
-        <polygon points="6,4 18,11 6,18" fill="#fff" />
+  <polygon points="6,4 18,11 6,18" fill="#fff"></polygon>
       </svg>
       <svg
         v-else
@@ -41,8 +41,8 @@
         xmlns="http://www.w3.org/2000/svg"
         class="align-middle"
       >
-        <rect x="6" y="4" width="3.5" height="14" fill="#fff" />
-        <rect x="12.5" y="4" width="3.5" height="14" fill="#fff" />
+  <rect x="6" y="4" width="3.5" height="14" fill="#fff"></rect>
+  <rect x="12.5" y="4" width="3.5" height="14" fill="#fff"></rect>
       </svg>
     </button>
 

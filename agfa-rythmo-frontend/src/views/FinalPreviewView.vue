@@ -238,10 +238,8 @@ onUnmounted(() => {
   justify-content: center;
 }
 .preview-video {
-  max-width: 100vw;
-  max-height: 100vh;
-  width: auto;
-  height: auto;
+  width: 100vw;
+  height: 100vh;
   object-fit: contain;
   background: #000;
   display: block;

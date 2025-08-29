@@ -135,6 +135,13 @@
               :style="getTickStyle(tick)"
             ></div>
           </template>
+          <!-- Barres verticales de changement de plan -->
+          <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
+            <div
+              class="scene-change-bar"
+              :style="{ left: x + 'px' }"
+            ></div>
+          </template>
         </div>
       </div>
               <div class="rythmo-cursor"></div>
@@ -203,7 +210,14 @@ const props = defineProps<{
   videoDuration?: number
   visibleWidth?: number
   instant?: boolean | import('vue').Ref<boolean>
+  sceneChanges?: number[]
 }>()
+
+// Calcule les positions X (en px) des changements de plan
+const sceneChangePositions = computed(() => {
+  if (!props.sceneChanges || !props.sceneChanges.length) return []
+  return props.sceneChanges.map(t => t * PX_PER_SEC + computedVisibleWidth.value / 2)
+})
 // Types pour la bande rythmo
 type BandBlock = { type: 'block'; x: number; width: number; text: string; tcIdx: number }
 type BandGap = { type: 'gap'; x: number; width: number; label: string }
@@ -508,6 +522,19 @@ function cancelEdit() {
   background: #8455f6;
   opacity: 0.85;
   bottom: 0;
+}
+.scene-change-bar {
+  position: absolute;
+  bottom: 0;
+  width: 5px;
+  height: 200%;
+  background: #8455f6;
+  opacity: 0.95;
+  border-radius: 2px;
+  z-index: 3;
+  box-shadow: 0 0 8px #8455f6cc;
+  pointer-events: none;
+  transition: none;
 }
 .rythmo-debug {
   background: #222;
