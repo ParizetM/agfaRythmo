@@ -33,6 +33,13 @@
                   title="Redimensionner à droite"
                 ></div>
 
+                <!-- Zone de déplacement (bord inférieur) -->
+                <div
+                  class="move-handle"
+                  @mousedown="onMoveStart(el.tcIdx, $event)"
+                  title="Déplacer le timecode"
+                ></div>
+
                 <template v-if="editingIdx === el.tcIdx">
                   <input
                     :ref="setEditInputRef"
@@ -110,6 +117,16 @@
           </div>
       </div>
       <div class="rythmo-cursor"></div>
+
+      <!-- Preview de déplacement -->
+      <div
+        v-if="previewPosition.visible && movingIdx !== null"
+        class="move-preview"
+        :style="getMovePreviewStyle()"
+      >
+        <span class="distort-text" :style="getPreviewDistortStyle()">{{ effectiveTimecodes[movingIdx]?.text || '' }}</span>
+        <div class="preview-line-indicator">Ligne {{ previewPosition.targetLine }}</div>
+      </div>
 
       <!-- Overlay avec informations de ligne -->
       <div v-if="isHovered" class="line-overlay">
@@ -258,6 +275,17 @@ const resizeStartX = ref(0)
 const resizeStartTime = ref(0)
 const resizeStartEnd = ref(0)
 
+// --- Déplacement des blocs ---
+const movingIdx = ref<number | null>(null)
+const moveStartX = ref(0)
+const moveStartY = ref(0)
+const moveStartTime = ref(0)
+const moveCurrentTargetLine = ref<number | null>(null)
+
+// Variables pour la preview de déplacement
+const previewPosition = ref({ x: 0, y: 0, visible: false, targetLine: 1 })
+const trackContainerRect = ref<DOMRect | null>(null)
+
 // Données locales pour le redimensionnement en temps réel
 const localTimecodes = ref<Timecode[]>([])
 
@@ -336,6 +364,37 @@ function getDistortStyle(idx: number) {
     transform: `scaleX(${scaleX})`,
     width: '100%',
   }
+}
+
+function getPreviewDistortStyle() {
+  if (movingIdx.value === null) return {}
+
+  const timecode = effectiveTimecodes.value[movingIdx.value]
+  if (!timecode) return {}
+
+  // Largeur de la preview basée sur la durée du timecode
+  const duration = timecode.end - timecode.start
+  const previewWidth = duration * PX_PER_SEC
+
+  const text = timecode.text || ''
+  // Crée un span temporaire pour mesurer la largeur réelle du texte
+  const span = document.createElement('span')
+  span.style.visibility = 'hidden'
+  span.style.position = 'absolute'
+  span.style.whiteSpace = 'pre'
+  span.style.fontSize = '1.8rem'
+  span.style.fontFamily = 'inherit'
+  span.innerText = text
+  document.body.appendChild(span)
+  const textWidth = span.offsetWidth || 1 // éviter division par zéro
+  document.body.removeChild(span)
+
+  // Le scaleX est le ratio entre la largeur de la preview et celle du texte
+  const scaleX = previewWidth / textWidth
+  return {
+    transform: `scaleX(${scaleX})`,
+    width: '100%',
+  } as const
 }
 
 function getGapWidth(start: number, end: number) {
@@ -427,7 +486,9 @@ const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
+  (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'add-timecode'): void
+  (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
 }>()
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
@@ -577,8 +638,134 @@ function onResizeEnd() {
 onBeforeUnmount(() => {
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
+  document.removeEventListener('mousemove', onMoveMove)
+  document.removeEventListener('mouseup', onMoveEnd)
   document.body.style.cursor = ''
 })
+
+// --- Fonctions de déplacement ---
+function getMovePreviewStyle(): CSSProperties {
+  if (!previewPosition.value.visible || movingIdx.value === null) return {}
+
+  const timecode = effectiveTimecodes.value[movingIdx.value]
+  if (!timecode) return {}
+
+  const width = Math.max(MIN_BLOCK_WIDTH, (timecode.end - timecode.start) * PX_PER_SEC)
+
+  return {
+    position: 'fixed',
+    left: previewPosition.value.x + 'px',
+    top: previewPosition.value.y + 'px',
+    width: width + 'px',
+    height: '3rem',
+    zIndex: 1000,
+    pointerEvents: 'none' as const,
+    transform: 'translate(-50%, -50%)'
+  }
+}
+
+function onMoveStart(idx: number, event: MouseEvent) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  movingIdx.value = idx
+  moveStartX.value = event.clientX
+  moveStartY.value = event.clientY
+
+  const timecode = effectiveTimecodes.value[idx]
+  moveStartTime.value = timecode.start
+  moveCurrentTargetLine.value = props.lineNumber
+
+  // Initialiser la preview
+  if (trackContainer.value) {
+    trackContainerRect.value = trackContainer.value.getBoundingClientRect()
+  }
+  previewPosition.value = {
+    x: event.clientX,
+    y: event.clientY,
+    visible: true,
+    targetLine: props.lineNumber
+  }
+
+  document.addEventListener('mousemove', onMoveMove)
+  document.addEventListener('mouseup', onMoveEnd)
+  document.body.style.cursor = 'move'
+}
+
+function onMoveMove(event: MouseEvent) {
+  if (movingIdx.value === null) return
+
+  const deltaX = event.clientX - moveStartX.value
+  const deltaTime = deltaX / PX_PER_SEC
+
+  // Calcul de la nouvelle position temporelle
+  const newStart = Math.max(0, moveStartTime.value + deltaTime)
+
+  // Calcul de la ligne cible basée sur la position Y de la souris
+  const deltaY = event.clientY - moveStartY.value
+  const lineHeight = 48 // Hauteur approximative d'une ligne rythmo (3rem = 48px)
+  const lineOffset = Math.round(deltaY / lineHeight)
+  const targetLine = Math.max(1, Math.min(6, props.lineNumber + lineOffset))
+
+  moveCurrentTargetLine.value = targetLine
+
+  // Mise à jour de la preview
+  previewPosition.value = {
+    x: event.clientX,
+    y: event.clientY,
+    visible: true,
+    targetLine: targetLine
+  }
+
+  // Mise à jour locale pour feedback visuel
+  const newTimecodes = [...localTimecodes.value]
+  if (newTimecodes[movingIdx.value]) {
+    newTimecodes[movingIdx.value] = {
+      ...newTimecodes[movingIdx.value],
+      start: newStart,
+      end: newStart + (newTimecodes[movingIdx.value].end - newTimecodes[movingIdx.value].start),
+      line_number: targetLine
+    }
+    localTimecodes.value = newTimecodes
+  }
+}
+
+function onMoveEnd() {
+  if (movingIdx.value === null) return
+
+  const finalTimecode = localTimecodes.value[movingIdx.value]
+  const originalTimecode = props.timecodes[movingIdx.value]
+  const sourceLineNumber = props.lineNumber
+  const targetLineNumber = moveCurrentTargetLine.value || props.lineNumber
+
+  if (finalTimecode && originalTimecode) {
+    // Émission de l'événement de déplacement
+    emit('move-timecode', {
+      timecode: originalTimecode,
+      newStart: finalTimecode.start,
+      newLineNumber: targetLineNumber
+    })
+
+    // Demander le rechargement des lignes concernées pour éviter les bugs visuels
+    emit('reload-lines', {
+      sourceLineNumber: sourceLineNumber,
+      targetLineNumber: targetLineNumber
+    })
+  }
+
+  movingIdx.value = null
+  moveCurrentTargetLine.value = null
+
+  // Cacher la preview
+  previewPosition.value = { x: 0, y: 0, visible: false, targetLine: 1 }
+
+  document.removeEventListener('mousemove', onMoveMove)
+  document.removeEventListener('mouseup', onMoveEnd)
+  document.body.style.cursor = ''
+
+  // Resynchronise avec les props après le déplacement
+  localTimecodes.value = [...props.timecodes]
+}
 </script>
 
 <style scoped>
@@ -786,6 +973,24 @@ onBeforeUnmount(() => {
   border-radius: 0 4px 4px 0;
 }
 
+/* Zone de déplacement */
+.move-handle {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: move;
+  z-index: 15;
+  background: transparent;
+  transition: background 0.2s;
+  border-radius: 0 0 4px 4px;
+}
+
+.move-handle:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
 /* Overlay avec informations de ligne */
 .line-overlay {
   position: absolute;
@@ -838,5 +1043,41 @@ onBeforeUnmount(() => {
 .add-timecode-btn:hover {
   background: rgba(132, 85, 246, 0.9);
   transform: scale(1.1);
+}
+
+/* Preview de déplacement */
+.move-preview {
+  position: fixed;
+  height: 3rem;
+  background: linear-gradient(135deg, #8455F6, #7c3aed);
+  color: white;
+  border-radius: 4px;
+  padding: 8px;
+  box-sizing: border-box;
+  font-size: 1.8rem;
+  font-weight: 600;
+  z-index: 1000;
+  opacity: 0.8;
+  pointer-events: none;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.preview-line-indicator {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  background-color: #ffffff;
+  color: #121827;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 </style>

@@ -23,6 +23,7 @@
     <div class="rythmo-bands-container">
       <div v-for="lineNumber in localRythmoLinesCount" :key="lineNumber" class="rythmo-line-wrapper">
         <RythmoBandSingle
+          :key="lineReloadKeys[lineNumber] || 0"
           :timecodes="getTimecodesForLine(Number(lineNumber))"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
@@ -33,6 +34,8 @@
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
+          @move-timecode="onMoveTimecode"
+          @reload-lines="onReloadLines"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
         />
       </div>
@@ -66,11 +69,15 @@ const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
+  (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
 }>()
 
 const localRythmoLinesCount = ref(props.rythmoLinesCount || 1)
+
+// Clés pour forcer le reload individuel de chaque ligne
+const lineReloadKeys = ref<Record<number, number>>({})
 
 // Synchronise avec les props
 watch(() => props.rythmoLinesCount, (newCount) => {
@@ -89,6 +96,25 @@ function onUpdateTimecode(payload: { timecode: Timecode; text: string }) {
 
 function onUpdateTimecodeBounds(payload: { timecode: Timecode; start: number; end: number }) {
   emit('update-timecode-bounds', payload)
+}
+
+function onMoveTimecode(payload: { timecode: Timecode; newStart: number; newLineNumber: number }) {
+  emit('move-timecode', payload)
+}
+
+function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: number }) {
+  // Recharge seulement les lignes concernées après un court délai
+  setTimeout(() => {
+    console.log(`Reload lignes ${payload.sourceLineNumber} et ${payload.targetLineNumber}`)
+
+    // Force le reload de la ligne source
+    lineReloadKeys.value[payload.sourceLineNumber] = (lineReloadKeys.value[payload.sourceLineNumber] || 0) + 1
+
+    // Force le reload de la ligne cible si différente
+    if (payload.targetLineNumber !== payload.sourceLineNumber) {
+      lineReloadKeys.value[payload.targetLineNumber] = (lineReloadKeys.value[payload.targetLineNumber] || 0) + 1
+    }
+  }, 100)
 }
 
 function onLinesCountChange() {

@@ -113,6 +113,7 @@
         <!-- Configuration multi-lignes et bandes rythmo -->
         <MultiRythmoBand
           v-if="project"
+          :key="rythmoReloadKey"
           :timecodes="compatibleTimecodes"
           :sceneChanges="sceneChanges.map(sc => sc.timecode)"
           :currentTime="currentTime"
@@ -122,6 +123,7 @@
           @seek="onRythmoSeek"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
+          @move-timecode="onMoveTimecode"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
         />
@@ -321,6 +323,9 @@ const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
 
+// Clé pour forcer la reconstruction complète du composant MultiRythmoBand
+const rythmoReloadKey = ref(0)
+
 // Timecodes multi-lignes (nouvelle API)
 const allTimecodes = ref<ApiTimecode[]>([])
 
@@ -468,6 +473,35 @@ async function onUpdateTimecodeBounds({ timecode, start, end }: { timecode: ApiT
     }
   } catch (error) {
     console.error('Erreur lors de la mise à jour des bornes du timecode:', error)
+  }
+}
+
+// Nouvelle fonction pour le déplacement des timecodes
+async function onMoveTimecode({ timecode, newStart, newLineNumber }: { timecode: ApiTimecode | Timecode; newStart: number; newLineNumber: number }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+
+  try {
+    // Calcule la nouvelle fin en gardant la même durée
+    const duration = tc.end - tc.start
+    const newEnd = newStart + duration
+
+    await timecodeApi.update(project.value.id, tc.id, {
+      start: newStart,
+      end: newEnd,
+      line_number: newLineNumber
+    })
+
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].start = newStart
+      allTimecodes.value[index].end = newEnd
+      allTimecodes.value[index].line_number = newLineNumber
+    }
+
+  } catch (error) {
+    console.error('Erreur lors du déplacement du timecode:', error)
   }
 }
 
