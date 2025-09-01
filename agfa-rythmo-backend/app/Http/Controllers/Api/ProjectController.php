@@ -30,6 +30,7 @@ class ProjectController extends Controller
             'timecodes' => 'nullable|array',
             'text_content' => 'nullable|string',
             'json_path' => 'nullable|string',
+            'rythmo_lines_count' => 'nullable|integer|min:1|max:6',
         ]);
 
         // Si timecodes est fourni, l'encoder en JSON
@@ -61,11 +62,25 @@ class ProjectController extends Controller
             'timecodes' => 'nullable|array',
             'text_content' => 'nullable|string',
             'json_path' => 'nullable|string',
+            'rythmo_lines_count' => 'nullable|integer|min:1|max:6',
         ]);
 
         if (isset($validated['timecodes'])) {
             $validated['timecodes'] = json_encode($validated['timecodes']);
         }
+
+        $project->update($validated);
+        return response()->json($project);
+    }
+
+    /**
+     * Update the rythmo lines count for a project.
+     */
+    public function updateRythmoLinesCount(Request $request, Project $project)
+    {
+        $validated = $request->validate([
+            'rythmo_lines_count' => 'required|integer|min:1|max:6',
+        ]);
 
         $project->update($validated);
         return response()->json($project);

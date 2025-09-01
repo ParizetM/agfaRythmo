@@ -26,11 +26,12 @@
             bottom: '0',
           }"
         >
-          <RythmoBand
+          <MultiRythmoBand
             :timecodes="rythmoData"
             :currentTime="currentTime"
             :videoDuration="videoDuration"
-            :visibleWidth="rythmoBarWidth"
+            :rythmoLinesCount="getRythmoLinesCount"
+            :hideConfig="true"
           />
         </div>
       </div>
@@ -41,14 +42,19 @@
 <script setup lang="ts">
 import { ref, onUnmounted, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import RythmoBand from '../components/projectDetail/RythmoBand.vue'
+import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 
 const router = useRouter()
 const route = useRoute()
 
+const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
+// Détermine le nombre de lignes rythmo à partir des données
+const getRythmoLinesCount = Array.isArray(rythmoData)
+  ? Math.max(1, ...rythmoData.map(tc => tc.line_number || 1))
+  : 1
+
 const video = ref<HTMLVideoElement | null>(null)
 const videoSrc = (route.query.video as string) || ''
-const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
 const started = ref(false)
 const countdown = ref(3)
 const currentTime = ref(0)

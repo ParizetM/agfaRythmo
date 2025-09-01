@@ -1,5 +1,5 @@
 <template>
-  <div class="rythmo-band">
+  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <div class="rythmo-track-container" ref="trackContainer" :style="{ width: `${bandWidth}px` }">
       <div
         class="rythmo-content"
@@ -127,24 +127,31 @@
             <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
           </div>
         </div>
-        <div class="rythmo-ticks pointer-events-none">
-          <template v-for="tick in ticks" :key="'tick' + tick.x">
-            <div
-              class="rythmo-tick"
-              :class="{ 'tick-second': tick.isSecond }"
-              :style="getTickStyle(tick)"
-            ></div>
-          </template>
-          <!-- Barres verticales de changement de plan -->
-          <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
-            <div
-              class="scene-change-bar"
-              :style="{ left: x + 'px' }"
-            ></div>
-          </template>
+          <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
+            <template v-for="tick in ticks" :key="'tick' + tick.x">
+              <div
+                class="rythmo-tick"
+                :class="{ 'tick-second': tick.isSecond }"
+                :style="getTickStyle(tick)"
+              ></div>
+            </template>
+            <!-- Barres verticales de changement de plan -->
+            <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
+              <div
+                class="scene-change-bar"
+                :style="{ left: x + 'px' }"
+              ></div>
+            </template>
+          </div>
+      </div>
+      <div class="rythmo-cursor"></div>
+
+      <!-- Overlay avec informations de ligne -->
+      <div v-if="isHovered" class="line-overlay">
+        <div class="line-info">
+          <span class="line-number-badge">Ligne {{ lineNumber }}</span>
         </div>
       </div>
-              <div class="rythmo-cursor"></div>
 
     </div>
   </div>
@@ -204,14 +211,26 @@ import {
   type CSSProperties,
 } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
+interface Timecode {
+  id?: number
+  start: number
+  end: number
+  text: string
+  line_number: number
+}
+
 const props = defineProps<{
-  timecodes: { start: number; end: number; text: string }[]
+  timecodes: Timecode[]
   currentTime: number
   videoDuration?: number
   visibleWidth?: number
   instant?: boolean | import('vue').Ref<boolean>
   sceneChanges?: number[]
+  lineNumber: number
+  isLastLine: boolean
 }>()
+
+const isHovered = ref(false)
 
 // Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
@@ -417,10 +436,10 @@ const instantRef = computed(() => {
 const smoothScroll = useSmoothScroll(() => targetScroll.value, instantRef)
 
 // Désactive la transition si le scroll saute brutalement (seek, pause/play)
-// Gestion du clic sur un block (hors gap)
 const emit = defineEmits<{
   (e: 'seek', time: number): void
-  (e: 'update-timecode', payload: { idx: number; text: string }): void
+  (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
+  (e: 'add-timecode'): void
 }>()
 const onBlockClick = (idx: number) => {
   if (props.timecodes[idx]) {
@@ -481,7 +500,10 @@ function onBlockDblClick(idx: number, text: string) {
 
 function finishEdit() {
   if (editingIdx.value !== null && editingText.value.trim() !== '') {
-    emit('update-timecode', { idx: editingIdx.value, text: editingText.value })
+    const timecode = props.timecodes[editingIdx.value]
+    if (timecode) {
+      emit('update-timecode', { timecode, text: editingText.value })
+    }
   }
   editingIdx.value = null
   editingText.value = ''
@@ -552,7 +574,7 @@ function cancelEdit() {
   overflow: hidden;
   background: #1f2937;
   border-radius: 8px;
-  margin-top: 0.75rem;
+  /* margin-top: 0.75rem; */
   min-height: 3rem;
   display: flex;
   align-items: center;
@@ -670,5 +692,59 @@ function cancelEdit() {
   white-space: pre;
   overflow: visible;
   z-index: 10;
+}
+
+/* Overlay avec informations de ligne */
+.line-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.line-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.line-number-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  height: fit-content;
+  padding: 0.25rem 0.5rem;
+  background: rgba(132, 85, 246, 0.8);
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  backdrop-filter: blur(4px);
+}
+
+.add-timecode-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: rgba(56, 65, 82, 0.9);
+  color: white;
+  border: 1px solid rgba(132, 85, 246, 0.8);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: bold;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.add-timecode-btn:hover {
+  background: rgba(132, 85, 246, 0.9);
+  transform: scale(1.1);
 }
 </style>

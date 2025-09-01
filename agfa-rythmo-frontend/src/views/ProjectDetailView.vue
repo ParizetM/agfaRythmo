@@ -21,7 +21,7 @@
       </div>
 
       <button
-        v-if="project && project.video_path && project.timecodes && project.timecodes.length"
+        v-if="project && project.video_path && compatibleTimecodes.length > 0"
         class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
         @click="goToFinalPreview"
         title="Aperçu final plein écran"
@@ -47,7 +47,7 @@
         <transition name="fade">
           <div
             v-if="!isSceneChangesCollapsed"
-            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-l border-gray-700 flex flex-col pr-2 rounded-md"
+            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col pr-2"
           >
             <SceneChangesList
               :sceneChanges="sceneChanges.map(sc => sc.timecode)"
@@ -73,17 +73,18 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full bg-agfa-dark shadow-2xl border-r border-gray-700 flex flex-col pl-2 rounded-md"
+            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col pl-2 "
           >
-            <TimecodesList
-              v-if="project"
-              :timecodes="project.timecodes || []"
-              :selected="selectedTimecodeIdx ?? undefined"
-              @select="onSelectTimecode"
-              @edit="onEditTimecode"
-              @delete="onDeleteTimecode"
-              @add="onAddTimecode"
-            />
+                      <TimecodesListMultiLine
+            :timecodes="compatibleTimecodes"
+            :rythmo-lines-count="project?.rythmo_lines_count || 1"
+            :selected="selectedTimecode || undefined"
+            @select="selectTimecode"
+            @edit="editTimecode"
+            @delete="deleteTimecode"
+            @add="onAddTimecode"
+            @add-to-line="addTimecodeToLine"
+          />
           </div>
         </transition>
       </div>
@@ -109,15 +110,19 @@
           Ajouter un changement de plan
         </button>
 
-        <RythmoBand
-          v-if="project && project.timecodes"
-          :timecodes="project.timecodes"
+        <!-- Configuration multi-lignes et bandes rythmo -->
+        <MultiRythmoBand
+          v-if="project"
+          :timecodes="compatibleTimecodes"
           :sceneChanges="sceneChanges.map(sc => sc.timecode)"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
+          :rythmoLinesCount="Number(project.rythmo_lines_count || 1)"
           @seek="onRythmoSeek"
           @update-timecode="onUpdateTimecode"
+          @add-timecode-to-line="onAddTimecodeToLine"
+          @update-lines-count="onUpdateLinesCount"
         />
 
 
@@ -139,6 +144,23 @@
         </h4>
 
         <form @submit.prevent="saveTimecode" class="space-y-4">
+          <label class="block">
+            <span class="text-white mb-2 block">Ligne rythmo:</span>
+            <select
+              v-model.number="modalTimecode.line_number"
+              :disabled="(project?.rythmo_lines_count || 1) === 1"
+              required
+              :class="[
+                'w-full p-3 rounded-lg border border-gray-600 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300',
+                (project?.rythmo_lines_count || 1) === 1 ? 'bg-gray-700 cursor-not-allowed opacity-75' : 'bg-gray-800'
+              ]"
+            >
+              <option v-for="n in (project?.rythmo_lines_count || 1)" :key="n" :value="n">
+                {{ (project?.rythmo_lines_count || 1) === 1 ? 'Ligne unique' : `Ligne ${n}` }}
+              </option>
+            </select>
+          </label>
+
           <label class="block">
             <span class="text-white mb-2 block">Début (s):</span>
             <input
@@ -210,9 +232,10 @@ function toggleTimecodesPanel() {
   isTimecodesCollapsed.value = !isTimecodesCollapsed.value
 }
 import { useRouter, useRoute } from 'vue-router'
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import api from '../api/axios'
-import TimecodesList from '../components/projectDetail/TimecodesList.vue'
+import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
+import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
@@ -232,7 +255,9 @@ function onSelectSceneChange(idx: number) {
   }
 }
 function onEditSceneChange(idx: number) {
-  // TODO: ouvrir une modale pour éditer le timecode (optionnel)
+  selectedSceneChangeIdx.value = idx
+  // TODO: Implémenter l'édition de scene change si nécessaire
+  console.log('Éditer scene change', idx)
 }
 function onAddSceneChange() {
   addSceneChange()
@@ -248,7 +273,7 @@ async function onDeleteSceneChange(idx: number) {
   }
 }
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
-import RythmoBand from '../components/projectDetail/RythmoBand.vue'
+import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 
 import RythmoControls from '../components/projectDetail/RythmoControls.vue'
 
@@ -260,19 +285,22 @@ interface SceneChange { id: number; timecode: number }
 const sceneChanges = ref<SceneChange[]>([])
 
 function goToFinalPreview() {
-  if (!project.value || !project.value.video_path || !project.value.timecodes) return
+  if (!project.value || !project.value.video_path || compatibleTimecodes.value.length === 0) return
   router.push({
     name: 'final-preview',
     query: {
       video: getVideoUrl(project.value.video_path),
-      rythmo: JSON.stringify(project.value.timecodes),
+      rythmo: JSON.stringify(compatibleTimecodes.value),
     },
   })
 }
 interface Timecode {
+  id?: number
+  project_id?: number
   start: number
   end: number
   text: string
+  line_number?: number
 }
 interface Project {
   id: number
@@ -280,6 +308,7 @@ interface Project {
   description?: string
   video_path?: string
   timecodes?: Timecode[]
+  rythmo_lines_count?: number
 }
 const project = ref<Project | null>(null)
 const loading = ref(true)
@@ -291,6 +320,139 @@ const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
 
+// Timecodes multi-lignes (nouvelle API)
+const allTimecodes = ref<ApiTimecode[]>([])
+
+// Conversion temporaire des anciens timecodes en format compatible
+const compatibleTimecodes = computed(() => {
+  // Utilise d'abord les nouveaux timecodes de l'API
+  if (allTimecodes.value.length > 0) {
+    return allTimecodes.value
+  }
+
+  // Fallback sur les anciens timecodes (JSON) s'il n'y en a pas dans la nouvelle table
+  if (!project.value?.timecodes) {
+    return []
+  }
+
+  let oldTimecodes = project.value.timecodes
+  if (typeof oldTimecodes === 'string') {
+    try {
+      oldTimecodes = JSON.parse(oldTimecodes)
+    } catch (error) {
+      console.error('Failed to parse timecodes JSON:', error)
+      oldTimecodes = []
+    }
+  }
+
+  if (!Array.isArray(oldTimecodes)) {
+    console.error('oldTimecodes is not an array:', oldTimecodes)
+    return []
+  }
+
+  // Convertit en format ApiTimecode avec line_number = 1 par défaut
+  return oldTimecodes.map((tc, index) => ({
+    id: index + 1000, // ID temporaire
+    project_id: project.value!.id,
+    line_number: 1, // Tous sur la ligne 1 par défaut
+    start: tc.start,
+    end: tc.end,
+    text: tc.text
+  }))
+})
+
+// Fonctions pour les timecodes multi-lignes
+async function loadTimecodes() {
+  if (!project.value) return
+  try {
+    const res = await timecodeApi.getAll(project.value.id)
+    allTimecodes.value = res.data.timecodes
+  } catch (error) {
+    console.error('Error loading timecodes:', error)
+    allTimecodes.value = []
+  }
+}
+
+// Computed property pour le timecode sélectionné
+const selectedTimecode = computed(() => {
+  if (selectedTimecodeIdx.value === null) return null
+  return compatibleTimecodes.value[selectedTimecodeIdx.value] || null
+})
+
+// Fonctions pour la nouvelle interface TimecodesListMultiLine
+function selectTimecode(timecode: Timecode) {
+  const idx = compatibleTimecodes.value.findIndex(tc =>
+    tc.id === timecode.id ||
+    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
+  )
+  if (idx >= 0) {
+    onSelectTimecode(idx)
+  }
+}
+
+function editTimecode(timecode: Timecode) {
+  const idx = compatibleTimecodes.value.findIndex(tc =>
+    tc.id === timecode.id ||
+    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
+  )
+  if (idx >= 0) {
+    onEditTimecode(idx)
+  }
+}
+
+function deleteTimecode(timecode: Timecode) {
+  const idx = compatibleTimecodes.value.findIndex(tc =>
+    tc.id === timecode.id ||
+    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
+  )
+  if (idx >= 0) {
+    onDeleteTimecode(idx)
+  }
+}
+
+function addTimecodeToLine(lineNumber: number) {
+  // Ouvre le modal avec la ligne pré-sélectionnée
+  editTimecodeIdx.value = null
+  Object.assign(modalTimecode, {
+    start: currentTime.value,
+    end: currentTime.value + 2,
+    text: '',
+    line_number: lineNumber
+  })
+  showTimecodeModal.value = true
+}
+
+function onAddTimecodeToLine(lineNumber: number) {
+  // TODO: Ouvrir modal pour ajouter timecode sur cette ligne
+  console.log('Ajouter timecode sur ligne', lineNumber)
+}
+
+async function onUpdateLinesCount(count: number) {
+  if (!project.value) return
+  try {
+    await api.patch(`/projects/${project.value.id}/rythmo-lines`, { rythmo_lines_count: count })
+    project.value.rythmo_lines_count = count
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du nombre de lignes:', error)
+  }
+}
+
+// Nouvelle fonction onUpdateTimecode pour le nouveau format
+async function onUpdateTimecode({ timecode, text }: { timecode: ApiTimecode | Timecode; text: string }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+  try {
+    await timecodeApi.update(project.value.id, tc.id, { text })
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].text = text
+    }
+  } catch {
+    // TODO: gestion d'erreur
+  }
+}
+
 // Ajout d'un changement de plan au timecode courant
 async function addSceneChange() {
   if (!project.value) return
@@ -301,7 +463,7 @@ async function addSceneChange() {
     const res = await api.post(`/projects/${project.value.id}/scene-changes`, { timecode: t })
     sceneChanges.value.push(res.data)
     sceneChanges.value.sort((a, b) => a.timecode - b.timecode)
-  } catch (e) {
+  } catch {
     // TODO: gestion d'erreur
   }
 }
@@ -309,7 +471,7 @@ async function addSceneChange() {
 // Modal d'édition/ajout de timecode
 const showTimecodeModal = ref(false)
 const editTimecodeIdx = ref<number | null>(null)
-const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '' })
+const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '', line_number: 1 })
 
 function getVideoUrl(path?: string) {
   if (!path) return ''
@@ -326,8 +488,8 @@ function onVideoTimeUpdate(time: number) {
   }
   currentTime.value = time
   // Sélectionne le timecode courant
-  if (project.value && project.value.timecodes) {
-    const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
+  if (compatibleTimecodes.value.length > 0) {
+    const idx = compatibleTimecodes.value.findIndex((tc) => time >= tc.start && time < tc.end)
     selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
   // Si la vidéo joue, smooth, sinon instantané
@@ -376,7 +538,7 @@ function seekFrame(delta: number) {
 function onSelectTimecode(idx: number) {
   selectedTimecodeIdx.value = idx
   // Seek vidéo si possible
-  const tc = project.value?.timecodes?.[idx]
+  const tc = compatibleTimecodes.value[idx]
   if (tc) {
     lastSeekFromTimecode = true
     currentTime.value = tc.start
@@ -386,42 +548,70 @@ function onSelectTimecode(idx: number) {
 }
 function onEditTimecode(idx: number) {
   editTimecodeIdx.value = idx
-  const tc = project.value?.timecodes?.[idx]
-  if (tc) Object.assign(modalTimecode, tc)
+  const tc = compatibleTimecodes.value[idx]
+  if (tc) {
+    Object.assign(modalTimecode, {
+      start: tc.start,
+      end: tc.end,
+      text: tc.text,
+      line_number: tc.line_number || 1
+    })
+  }
   showTimecodeModal.value = true
 }
 function onAddTimecode() {
   editTimecodeIdx.value = null
-  Object.assign(modalTimecode, { start: currentTime.value, end: currentTime.value + 2, text: '' })
+  Object.assign(modalTimecode, { start: currentTime.value, end: currentTime.value + 2, text: '', line_number: 1 })
   showTimecodeModal.value = true
 }
-function onDeleteTimecode(idx: number) {
-  if (!project.value?.timecodes) return
-  project.value.timecodes.splice(idx, 1)
-  saveTimecodes()
+async function onDeleteTimecode(idx: number) {
+  if (!project.value) return
+
+  const timecodeToDelete = compatibleTimecodes.value[idx]
+  if (!timecodeToDelete?.id) return
+
+  try {
+    await timecodeApi.delete(project.value.id, timecodeToDelete.id)
+    // Recharger les timecodes
+    await loadTimecodes()
+  } catch (error) {
+    console.error('Erreur lors de la suppression du timecode:', error)
+  }
 }
 function closeTimecodeModal() {
   showTimecodeModal.value = false
 }
-function saveTimecode() {
+async function saveTimecode() {
   if (!project.value) return
-  if (!project.value.timecodes) project.value.timecodes = []
-  if (editTimecodeIdx.value !== null) {
-    // édition
-    project.value.timecodes[editTimecodeIdx.value] = { ...modalTimecode }
-  } else {
-    // ajout
-    project.value.timecodes.push({ ...modalTimecode })
-  }
-  saveTimecodes()
-  showTimecodeModal.value = false
-}
-async function saveTimecodes() {
-  if (!project.value) return
+
   try {
-    await api.put(`/projects/${project.value.id}`, { timecodes: project.value.timecodes })
-  } catch {
-    // TODO: gestion d'erreur
+    if (editTimecodeIdx.value !== null) {
+      // Mode édition - trouver le timecode à partir de l'index dans compatibleTimecodes
+      const timecodeToEdit = compatibleTimecodes.value[editTimecodeIdx.value]
+      if (timecodeToEdit?.id) {
+        // Mettre à jour via l'API
+        await timecodeApi.update(project.value.id, timecodeToEdit.id, {
+          start: modalTimecode.start,
+          end: modalTimecode.end,
+          text: modalTimecode.text,
+          line_number: modalTimecode.line_number || 1
+        })
+      }
+    } else {
+      // Mode création - créer via l'API
+      await timecodeApi.create(project.value.id, {
+        start: modalTimecode.start,
+        end: modalTimecode.end,
+        text: modalTimecode.text,
+        line_number: modalTimecode.line_number || 1
+      })
+    }
+
+    // Recharger les timecodes
+    await loadTimecodes()
+    showTimecodeModal.value = false
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du timecode:', error)
   }
 }
 
@@ -446,6 +636,9 @@ onMounted(async () => {
     // Récupère les changements de plan
     const scRes = await api.get(`/projects/${data.id}/scene-changes`)
     sceneChanges.value = Array.isArray(scRes.data) ? scRes.data : []
+
+    // Charge les timecodes multi-lignes
+    await loadTimecodes()
   } catch {
     project.value = null
     sceneChanges.value = []
@@ -501,18 +694,12 @@ const onRythmoSeek = (time: number) => {
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
   if (videoEl) videoEl.currentTime = time
   // Sélectionne le timecode courant
-  if (project.value && project.value.timecodes) {
-    const idx = project.value.timecodes.findIndex((tc) => time >= tc.start && time < tc.end)
+  if (compatibleTimecodes.value.length > 0) {
+    const idx = compatibleTimecodes.value.findIndex((tc) => time >= tc.start && time < tc.end)
     selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
   // Scroll instantané lors d'un seek manuel
   instantRythmoScroll.value = true
-}
-// Mise à jour d'un timecode depuis la bande rythmo (édition inline)
-const onUpdateTimecode = async ({ idx, text }: { idx: number; text: string }) => {
-  if (!project.value?.timecodes) return
-  project.value.timecodes[idx].text = text
-  await saveTimecodes()
 }
 </script>
 <style scoped>
