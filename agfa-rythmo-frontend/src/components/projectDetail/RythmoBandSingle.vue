@@ -19,6 +19,20 @@
                 @dblclick="onBlockDblClick(el.tcIdx, el.text)"
                 style="cursor: pointer; position: absolute"
               >
+                <!-- Zone de redimensionnement gauche -->
+                <div
+                  class="resize-handle resize-left"
+                  @mousedown="onResizeStart(el.tcIdx, 'left', $event)"
+                  title="Redimensionner à gauche"
+                ></div>
+
+                <!-- Zone de redimensionnement droite -->
+                <div
+                  class="resize-handle resize-right"
+                  @mousedown="onResizeStart(el.tcIdx, 'right', $event)"
+                  title="Redimensionner à droite"
+                ></div>
+
                 <template v-if="editingIdx === el.tcIdx">
                   <input
                     :ref="setEditInputRef"
@@ -54,55 +68,6 @@
 
               <div
                 v-else-if="el.type === 'gap'"
-                class="rythmo-block rythmo-block-gap"
-                :style="getAbsoluteGapStyle(el)"
-                style="position: absolute"
-              >
-                <span class="gap-label">{{ el.label }}</span>
-              </div>
-            </template>
-            <!-- Blocs -->
-            <template v-for="(el, idx) in bandElements" :key="'block' + idx">
-              <div
-                v-if="el.type === 'block'"
-                class="rythmo-block"
-                :class="{ active: el.tcIdx === activeIdx }"
-                :style="getAbsoluteBlockStyle(el)"
-                @click="onBlockClick(el.tcIdx)"
-                @dblclick="onBlockDblClick(el.tcIdx, el.text)"
-                style="cursor: pointer; position: absolute"
-              >
-                <template v-if="editingIdx === el.tcIdx">
-                  <input
-                    :ref="setEditInputRef"
-                    v-model="editingText"
-                    @blur="finishEdit"
-                    @keyup.enter="finishEdit"
-                    @keyup.esc="cancelEdit"
-                    class="rythmo-edit-input"
-                    :style="{ width: getBlockWidth(el.tcIdx) + 'px' }"
-                    style="
-                      font-size: 1.2rem;
-                      font-weight: 600;
-                      background: #23272f;
-                      color: #fff;
-                      border-radius: 4px;
-                      border: 1px solid #8455f6;
-                      padding: 0 6px;
-                      outline: none;
-                      height: 2.2rem;
-                    "
-                  />
-                </template>
-                <template v-else>
-                  <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
-                </template>
-              </div>
-            </template>
-            <!-- Gaps -->
-            <template v-for="(el, idx) in bandElements" :key="'gap' + idx">
-              <div
-                v-if="el.type === 'gap'"
                 class="rythmo-block rythmo-block-gap"
                 :style="getAbsoluteGapStyle(el)"
                 style="position: absolute"
@@ -286,22 +251,44 @@ const rythmoTextStyle = computed(() => ({
   // plus de paddingLeft, tout est positionné en absolu
 }))
 
+// --- Redimensionnement des blocs ---
+const resizingIdx = ref<number | null>(null)
+const resizeMode = ref<'left' | 'right' | null>(null)
+const resizeStartX = ref(0)
+const resizeStartTime = ref(0)
+const resizeStartEnd = ref(0)
+
+// Données locales pour le redimensionnement en temps réel
+const localTimecodes = ref<Timecode[]>([])
+
+// Synchronise les timecodes locaux avec les props
+watch(() => props.timecodes, (newTimecodes) => {
+  if (resizingIdx.value === null) {
+    localTimecodes.value = [...newTimecodes]
+  }
+}, { immediate: true, deep: true })
+
+// Utilise les timecodes locaux pendant le redimensionnement, sinon les props
+const effectiveTimecodes = computed(() => {
+  return resizingIdx.value !== null ? localTimecodes.value : props.timecodes
+})
+
 const totalDuration = computed(() => {
   if (props.videoDuration && props.videoDuration > 0) return props.videoDuration
-  if (!props.timecodes.length) return 1
-  return props.timecodes[props.timecodes.length - 1].end
+  if (!effectiveTimecodes.value.length) return 1
+  return effectiveTimecodes.value[effectiveTimecodes.value.length - 1].end
 })
 
 const bandWidth = computed(() => totalDuration.value * PX_PER_SEC)
 
 function getBlockWidth(idx: number) {
-  const tc = props.timecodes[idx]
+  const tc = effectiveTimecodes.value[idx]
   return Math.max(MIN_BLOCK_WIDTH, (tc.end - tc.start) * PX_PER_SEC)
 }
 
 // Nouvelle fonction : calcule la position x (en px) d'un timecode
 function getBlockX(idx: number) {
-  const tc = props.timecodes[idx]
+  const tc = effectiveTimecodes.value[idx]
   return tc.start * PX_PER_SEC + computedVisibleWidth.value / 2
 }
 
@@ -324,14 +311,14 @@ function getAbsoluteBlockStyle(el: BandBlock) {
 const activeIdx = computed(() => {
   const OFFSET = -0.2 // décalage en secondes
   const t = (props.currentTime ?? 0) + OFFSET
-  return props.timecodes.findIndex((tc) => t >= tc.start && t < tc.end)
+  return effectiveTimecodes.value.findIndex((tc) => t >= tc.start && t < tc.end)
 })
 
 function getDistortStyle(idx: number) {
   const width = getBlockWidth(idx)
   // Calcule le scaleX pour que le texte occupe exactement la largeur du bloc
   // On mesure la longueur du texte (en px) pour ajuster le scale
-  const text = props.timecodes[idx].text || ''
+  const text = effectiveTimecodes.value[idx].text || ''
   // Crée un span temporaire pour mesurer la largeur réelle du texte
   const span = document.createElement('span')
   span.style.visibility = 'hidden'
@@ -377,7 +364,7 @@ function getAbsoluteGapStyle(el: BandGap) {
 // Génère la liste des éléments (blocs et gaps) avec coordonnées précises
 const bandElements = computed<BandElement[]>(() => {
   const arr: BandElement[] = []
-  const tcs = props.timecodes
+  const tcs = effectiveTimecodes.value
   if (!tcs.length) return arr
   // Gap avant le premier timecode
   if (tcs[0].start > 0.2) {
@@ -439,11 +426,12 @@ const smoothScroll = useSmoothScroll(() => targetScroll.value, instantRef)
 const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
+  (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'add-timecode'): void
 }>()
 const onBlockClick = (idx: number) => {
-  if (props.timecodes[idx]) {
-    emit('seek', props.timecodes[idx].start)
+  if (effectiveTimecodes.value[idx]) {
+    emit('seek', effectiveTimecodes.value[idx].start)
   }
 }
 watch(smoothScroll, (val, oldVal) => {
@@ -500,7 +488,7 @@ function onBlockDblClick(idx: number, text: string) {
 
 function finishEdit() {
   if (editingIdx.value !== null && editingText.value.trim() !== '') {
-    const timecode = props.timecodes[editingIdx.value]
+    const timecode = effectiveTimecodes.value[editingIdx.value]
     if (timecode) {
       emit('update-timecode', { timecode, text: editingText.value })
     }
@@ -513,6 +501,84 @@ function cancelEdit() {
   editingIdx.value = null
   editingText.value = ''
 }
+
+// --- Fonctions de redimensionnement ---
+function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  resizingIdx.value = idx
+  resizeMode.value = mode
+  resizeStartX.value = event.clientX
+
+  const timecode = effectiveTimecodes.value[idx]
+  resizeStartTime.value = timecode.start
+  resizeStartEnd.value = timecode.end
+
+  document.addEventListener('mousemove', onResizeMove)
+  document.addEventListener('mouseup', onResizeEnd)
+  document.body.style.cursor = 'ew-resize'
+}
+
+function onResizeMove(event: MouseEvent) {
+  if (resizingIdx.value === null || !resizeMode.value) return
+
+  const deltaX = event.clientX - resizeStartX.value
+  const deltaTime = deltaX / PX_PER_SEC
+
+  let newStart = resizeStartTime.value
+  let newEnd = resizeStartEnd.value
+
+  if (resizeMode.value === 'left') {
+    newStart = Math.max(0, resizeStartTime.value + deltaTime)
+    // S'assurer que le début ne dépasse pas la fin
+    if (newStart >= newEnd) {
+      newStart = newEnd - 0.1
+    }
+  } else if (resizeMode.value === 'right') {
+    newEnd = Math.max(resizeStartTime.value + 0.1, resizeStartEnd.value + deltaTime)
+  }
+
+  // Mise à jour locale immédiate pour le feedback visuel seulement
+  const newTimecodes = [...localTimecodes.value]
+  newTimecodes[resizingIdx.value] = {
+    ...newTimecodes[resizingIdx.value],
+    start: newStart,
+    end: newEnd
+  }
+  localTimecodes.value = newTimecodes
+}
+
+function onResizeEnd() {
+  if (resizingIdx.value === null || !resizeMode.value) return
+
+  // Calcul final des nouvelles valeurs
+  const finalTimecode = localTimecodes.value[resizingIdx.value]
+  const originalTimecode = props.timecodes[resizingIdx.value]
+
+  // Émission de l'événement de mise à jour seulement à la fin
+  emit('update-timecode-bounds', {
+    timecode: originalTimecode,
+    start: finalTimecode.start,
+    end: finalTimecode.end
+  })
+
+  resizingIdx.value = null
+  resizeMode.value = null
+  document.removeEventListener('mousemove', onResizeMove)
+  document.removeEventListener('mouseup', onResizeEnd)
+  document.body.style.cursor = ''
+
+  // Resynchronise avec les props après le redimensionnement
+  localTimecodes.value = [...props.timecodes]
+}
+
+// Nettoyer les événements en cas de démontage du composant
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', onResizeMove)
+  document.removeEventListener('mouseup', onResizeEnd)
+  document.body.style.cursor = ''
+})
 </script>
 
 <style scoped>
@@ -692,6 +758,32 @@ function cancelEdit() {
   white-space: pre;
   overflow: visible;
   z-index: 10;
+}
+
+/* Zones de redimensionnement */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 15;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.resize-left {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.resize-right {
+  right: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 /* Overlay avec informations de ligne */

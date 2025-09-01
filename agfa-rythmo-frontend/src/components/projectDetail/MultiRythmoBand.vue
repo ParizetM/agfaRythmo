@@ -32,6 +32,7 @@
           :isLastLine="lineNumber === localRythmoLinesCount"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
+          @update-timecode-bounds="onUpdateTimecodeBounds"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
         />
       </div>
@@ -64,6 +65,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
+  (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
 }>()
@@ -83,6 +85,10 @@ function getTimecodesForLine(lineNumber: number): Timecode[] {
 
 function onUpdateTimecode(payload: { timecode: Timecode; text: string }) {
   emit('update-timecode', payload)
+}
+
+function onUpdateTimecodeBounds(payload: { timecode: Timecode; start: number; end: number }) {
+  emit('update-timecode-bounds', payload)
 }
 
 function onLinesCountChange() {

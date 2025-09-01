@@ -121,6 +121,7 @@
           :rythmoLinesCount="Number(project.rythmo_lines_count || 1)"
           @seek="onRythmoSeek"
           @update-timecode="onUpdateTimecode"
+          @update-timecode-bounds="onUpdateTimecodeBounds"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
         />
@@ -450,6 +451,23 @@ async function onUpdateTimecode({ timecode, text }: { timecode: ApiTimecode | Ti
     }
   } catch {
     // TODO: gestion d'erreur
+  }
+}
+
+// Nouvelle fonction pour le redimensionnement des timecodes
+async function onUpdateTimecodeBounds({ timecode, start, end }: { timecode: ApiTimecode | Timecode; start: number; end: number }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+  try {
+    await timecodeApi.update(project.value.id, tc.id, { start, end })
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].start = start
+      allTimecodes.value[index].end = end
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des bornes du timecode:', error)
   }
 }
 
