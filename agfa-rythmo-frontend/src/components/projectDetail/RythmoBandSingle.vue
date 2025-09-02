@@ -108,13 +108,14 @@
               ></div>
             </template>
             <!-- Barres verticales de changement de plan -->
-            <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
+
+          </div>
+          <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
               <div
                 class="scene-change-bar"
                 :style="{ left: x + 'px' }"
               ></div>
             </template>
-          </div>
       </div>
       <div class="rythmo-cursor"></div>
 
@@ -803,11 +804,11 @@ function onMoveEnd() {
   bottom: 0;
   width: 5px;
   height: 200%;
-  background: #8455f6;
+  background: #657390;
   opacity: 0.95;
   border-radius: 2px;
   z-index: 3;
-  box-shadow: 0 0 8px #8455f6cc;
+  box-shadow: 0 0 8px #657390;
   pointer-events: none;
   transition: none;
 }
