@@ -262,10 +262,10 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import api from '../api/axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
-import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
-import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
-import CharactersList from '../components/projectDetail/CharactersList.vue'
-import CharacterModal from '../components/projectDetail/CharacterModal.vue'
+import TimecodesListMultiLine from '../components/projectDetailOLD/TimecodesListMultiLine.vue'
+import SceneChangesList from '../components/projectDetailOLD/SceneChangesList.vue'
+import CharactersList from '../components/projectDetailOLD/CharactersList.vue'
+import CharacterModal from '../components/projectDetailOLD/CharacterModal.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
 function toggleSceneChangesPanel() {
@@ -301,10 +301,10 @@ async function onDeleteSceneChange(idx: number) {
     // TODO: gestion d'erreur
   }
 }
-import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
-import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
+import VideoPlayer from '../components/projectDetailOLD/VideoPlayer.vue'
+import MultiRythmoBand from '../components/projectDetailOLD/MultiRythmoBand.vue'
 
-import RythmoControls from '../components/projectDetail/RythmoControls.vue'
+import RythmoControls from '../components/projectDetailOLD/RythmoControls.vue'
 
 const route = useRoute()
 const router = useRouter()
