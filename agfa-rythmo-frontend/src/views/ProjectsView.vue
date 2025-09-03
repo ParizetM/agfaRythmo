@@ -11,6 +11,15 @@
         </button>
       </div>
 
+      <!-- Banner erreur API -->
+      <div v-if="apiError" class="mb-6 p-4 bg-red-600 text-white rounded-lg flex items-center justify-between">
+        <div class="text-sm">Erreur serveur : {{ apiError }}</div>
+        <div class="flex items-center gap-3">
+          <button @click="fetchProjects" class="bg-white text-red-600 px-3 py-1 rounded-md text-sm font-medium">Réessayer</button>
+          <button @click="apiError = null" class="bg-transparent border border-white text-white px-3 py-1 rounded-md text-sm">Fermer</button>
+        </div>
+      </div>
+
       <div v-if="loading" class="text-center py-16">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mr-4"></div>
         <span class="text-white text-xl">Chargement...</span>
@@ -229,6 +238,7 @@ interface Project {
 
 const projects = ref<Project[]>([]);
 const loading = ref(true);
+const apiError = ref<string | null>(null);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
@@ -267,6 +277,9 @@ async function fetchProjects() {
   try {
     const res = await api.get('/projects');
     projects.value = Array.isArray(res.data) ? res.data : [];
+    apiError.value = null;
+  } catch (err: unknown) {
+    apiError.value = err instanceof Error ? err.message : String(err) || 'Impossible de joindre le serveur';
   } finally {
     loading.value = false;
   }
@@ -308,6 +321,9 @@ async function createProject() {
     form.value.name = '';
     form.value.description = '';
     form.value.video = null;
+    apiError.value = null;
+  } catch (err: unknown) {
+    apiError.value = err instanceof Error ? err.message : String(err) || 'Erreur lors de la création du projet';
   } finally {
     uploading.value = false;
   }
@@ -363,6 +379,9 @@ async function updateProject() {
     }
     showEditModal.value = false;
     editForm.value = { id: 0, name: '', description: '', video: null };
+    apiError.value = null;
+  } catch (err: unknown) {
+    apiError.value = err instanceof Error ? err.message : String(err) || 'Erreur lors de la mise à jour';
   } finally {
     editUploading.value = false;
   }
@@ -378,6 +397,9 @@ async function confirmDeleteProject() {
   try {
     await api.delete(`/projects/${projectToDelete.value.id}`);
     projects.value = projects.value.filter(p => p.id !== projectToDelete.value!.id);
+    apiError.value = null;
+  } catch (err: unknown) {
+    apiError.value = err instanceof Error ? err.message : String(err) || 'Erreur lors de la suppression';
   } finally {
     showDeleteModal.value = false;
     projectToDelete.value = null;

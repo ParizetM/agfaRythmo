@@ -11,6 +11,14 @@
     </router-link>
 
     <div class="w-full max-w-7xl">
+      <!-- Banner erreur API -->
+      <div v-if="apiError" class="mb-6 p-4 bg-red-600 text-white rounded-lg flex items-center justify-between">
+        <div class="text-sm">Erreur serveur : {{ apiError }}</div>
+        <div class="flex items-center gap-3">
+          <button @click="reloadProjects" class="bg-white text-red-600 px-3 py-1 rounded-md text-sm font-medium">Réessayer</button>
+          <button @click="apiError = null" class="bg-transparent border border-white text-white px-3 py-1 rounded-md text-sm">Fermer</button>
+        </div>
+      </div>
       <h2 class="text-3xl font-semibold text-white mb-8 text-center">Mes projets</h2>
 
       <div v-if="loading" class="text-white text-center text-lg">
@@ -71,6 +79,7 @@ interface Project {
 
 const projects = ref<Project[]>([]);
 const loading = ref(true);
+const apiError = ref<string | null>(null);
 
 function getVideoUrl(path?: string) {
   if (!path) return '';
@@ -81,15 +90,22 @@ function getVideoUrl(path?: string) {
   return `${apiBase}/api/videos/${encodeURIComponent(path)}`;
 }
 
-onMounted(async () => {
+onMounted(() => {
+  reloadProjects();
+});
+
+async function reloadProjects() {
   loading.value = true;
   try {
     const res = await api.get('/projects');
     projects.value = Array.isArray(res.data) ? res.data : [];
+    apiError.value = null;
+  } catch (err: unknown) {
+    apiError.value = err instanceof Error ? err.message : String(err) || 'Impossible de joindre le serveur';
   } finally {
     loading.value = false;
   }
-});
+}
 
 function onVideoHover(event: MouseEvent) {
   const video = event.target as HTMLVideoElement | null;
