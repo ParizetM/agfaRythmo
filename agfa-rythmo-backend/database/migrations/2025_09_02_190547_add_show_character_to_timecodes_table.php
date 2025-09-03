@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->integer('rythmo_lines_count')->default(1)->after('video_path');
+        Schema::table('timecodes', function (Blueprint $table) {
+            $table->boolean('show_character')->default(true)->after('character_id');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->dropColumn('rythmo_lines_count');
+        Schema::table('timecodes', function (Blueprint $table) {
+            $table->dropColumn('show_character');
         });
     }
 };

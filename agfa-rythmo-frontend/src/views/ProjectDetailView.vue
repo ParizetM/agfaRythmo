@@ -79,11 +79,13 @@
             :timecodes="compatibleTimecodes"
             :rythmo-lines-count="project?.rythmo_lines_count || 1"
             :selected="selectedTimecode || undefined"
+            :project-id="project?.id || 0"
             @select="selectTimecode"
             @edit="editTimecode"
             @delete="deleteTimecode"
             @add="onAddTimecode"
             @add-to-line="addTimecodeToLine"
+            @updated="loadTimecodes"
           />
           </div>
         </transition>
@@ -110,6 +112,17 @@
           Ajouter un changement de plan
         </button>
 
+        <!-- Gestion des personnages -->
+        <CharactersList
+          v-if="project"
+          :characters="allCharacters"
+          :activeCharacter="activeCharacter"
+          @character-selected="onCharacterSelected"
+          @add-character="onAddCharacter"
+          @edit-character="onEditCharacter"
+          @character-deleted="onCharacterDeleted"
+        />
+
         <!-- Configuration multi-lignes et bandes rythmo -->
         <MultiRythmoBand
           v-if="project"
@@ -124,6 +137,7 @@
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
+          @update-timecode-show-character="onUpdateTimecodeShowCharacter"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
         />
@@ -216,6 +230,15 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal de gestion des personnages -->
+    <CharacterModal
+      v-if="showCharacterModal && project"
+      :projectId="project.id"
+      :editingCharacter="editingCharacter"
+      @close="closeCharacterModal"
+      @saved="onCharacterSaved"
+    />
   </div>
 
 </template>
@@ -238,8 +261,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive, computed } from 'vue'
 import api from '../api/axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
+import { characterApi, type Character } from '../api/characters'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
+import CharactersList from '../components/projectDetail/CharactersList.vue'
+import CharacterModal from '../components/projectDetail/CharacterModal.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
 function toggleSceneChangesPanel() {
@@ -304,6 +330,8 @@ interface Timecode {
   end: number
   text: string
   line_number?: number
+  character_id?: number | null
+  show_character?: boolean
 }
 interface Project {
   id: number
@@ -328,6 +356,12 @@ const rythmoReloadKey = ref(0)
 
 // Timecodes multi-lignes (nouvelle API)
 const allTimecodes = ref<ApiTimecode[]>([])
+
+// Gestion des personnages
+const allCharacters = ref<Character[]>([])
+const activeCharacter = ref<Character | null>(null)
+const showCharacterModal = ref(false)
+const editingCharacter = ref<Character | null>(null)
 
 // Conversion temporaire des anciens timecodes en format compatible
 const compatibleTimecodes = computed(() => {
@@ -379,6 +413,22 @@ async function loadTimecodes() {
   }
 }
 
+// Chargement des personnages
+async function loadCharacters() {
+  if (!project.value) return
+  try {
+    const res = await characterApi.getAll(project.value.id)
+    allCharacters.value = res.data.characters
+    // Sélectionner automatiquement le premier personnage comme actif
+    if (allCharacters.value.length > 0 && !activeCharacter.value) {
+      activeCharacter.value = allCharacters.value[0]
+    }
+  } catch (error) {
+    console.error('Error loading characters:', error)
+    allCharacters.value = []
+  }
+}
+
 // Computed property pour le timecode sélectionné
 const selectedTimecode = computed(() => {
   if (selectedTimecodeIdx.value === null) return null
@@ -423,7 +473,8 @@ function addTimecodeToLine(lineNumber: number) {
     start: currentTime.value,
     end: currentTime.value + 2,
     text: '',
-    line_number: lineNumber
+    line_number: lineNumber,
+    character_id: activeCharacter.value?.id || null
   })
   showTimecodeModal.value = true
 }
@@ -441,6 +492,57 @@ async function onUpdateLinesCount(count: number) {
   } catch (error) {
     console.error('Erreur lors de la mise à jour du nombre de lignes:', error)
   }
+}
+
+// ===== GESTION DES PERSONNAGES =====
+
+function onCharacterSelected(character: Character) {
+  activeCharacter.value = character
+}
+
+function onAddCharacter() {
+  editingCharacter.value = null
+  showCharacterModal.value = true
+}
+
+function onEditCharacter(character: Character) {
+  editingCharacter.value = character
+  showCharacterModal.value = true
+}
+
+function onCharacterSaved(character: Character) {
+  showCharacterModal.value = false
+  editingCharacter.value = null
+
+  // Ajouter ou mettre à jour le personnage dans la liste
+  const existingIndex = allCharacters.value.findIndex(c => c.id === character.id)
+  if (existingIndex >= 0) {
+    allCharacters.value[existingIndex] = character
+  } else {
+    allCharacters.value.push(character)
+  }
+
+  // Si c'est le premier personnage ou pas de personnage actif, le sélectionner
+  if (!activeCharacter.value || allCharacters.value.length === 1) {
+    activeCharacter.value = character
+  }
+}
+
+function onCharacterDeleted(characterId: number) {
+  allCharacters.value = allCharacters.value.filter(c => c.id !== characterId)
+
+  // Si le personnage supprimé était actif, sélectionner le premier disponible
+  if (activeCharacter.value?.id === characterId) {
+    activeCharacter.value = allCharacters.value[0] || null
+  }
+
+  // Recharger les timecodes pour refléter les changements
+  loadTimecodes()
+}
+
+function closeCharacterModal() {
+  showCharacterModal.value = false
+  editingCharacter.value = null
 }
 
 // Nouvelle fonction onUpdateTimecode pour le nouveau format
@@ -505,6 +607,24 @@ async function onMoveTimecode({ timecode, newStart, newLineNumber }: { timecode:
   }
 }
 
+// Nouvelle fonction pour basculer l'affichage du personnage
+async function onUpdateTimecodeShowCharacter({ timecode, showCharacter }: { timecode: ApiTimecode | Timecode; showCharacter: boolean }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+
+  try {
+    await timecodeApi.update(project.value.id, tc.id, { show_character: showCharacter })
+
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].show_character = showCharacter
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'affichage du personnage:', error)
+  }
+}
+
 // Ajout d'un changement de plan au timecode courant
 async function addSceneChange() {
   if (!project.value) return
@@ -523,7 +643,7 @@ async function addSceneChange() {
 // Modal d'édition/ajout de timecode
 const showTimecodeModal = ref(false)
 const editTimecodeIdx = ref<number | null>(null)
-const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '', line_number: 1 })
+const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '', line_number: 1, character_id: null })
 
 function getVideoUrl(path?: string) {
   if (!path) return ''
@@ -613,7 +733,13 @@ function onEditTimecode(idx: number) {
 }
 function onAddTimecode() {
   editTimecodeIdx.value = null
-  Object.assign(modalTimecode, { start: currentTime.value, end: currentTime.value + 2, text: '', line_number: 1 })
+  Object.assign(modalTimecode, {
+    start: currentTime.value,
+    end: currentTime.value + 2,
+    text: '',
+    line_number: 1,
+    character_id: activeCharacter.value?.id || null
+  })
   showTimecodeModal.value = true
 }
 async function onDeleteTimecode(idx: number) {
@@ -691,6 +817,9 @@ onMounted(async () => {
 
     // Charge les timecodes multi-lignes
     await loadTimecodes()
+
+    // Charge les personnages
+    await loadCharacters()
   } catch {
     project.value = null
     sceneChanges.value = []

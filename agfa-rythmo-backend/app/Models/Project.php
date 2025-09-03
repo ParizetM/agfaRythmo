@@ -30,6 +30,11 @@ class Project extends Model
         return $this->hasMany(Timecode::class)->orderBy('line_number')->orderBy('start');
     }
 
+    public function characters()
+    {
+        return $this->hasMany(Character::class);
+    }
+
     public function timecodesForLine($lineNumber)
     {
         return $this->timecodes()->where('line_number', $lineNumber);

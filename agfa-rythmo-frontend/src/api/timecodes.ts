@@ -1,4 +1,5 @@
 import api from './axios'
+import type { Character } from './characters'
 
 export interface Timecode {
   id?: number
@@ -7,6 +8,9 @@ export interface Timecode {
   start: number
   end: number
   text: string
+  character_id?: number | null
+  character?: Character
+  show_character?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -16,6 +20,8 @@ export interface CreateTimecodeData {
   start: number
   end: number
   text: string
+  character_id?: number | null
+  show_character?: boolean
 }
 
 export interface UpdateTimecodeData {
@@ -23,6 +29,8 @@ export interface UpdateTimecodeData {
   start?: number
   end?: number
   text?: string
+  character_id?: number | null
+  show_character?: boolean
 }
 
 export const timecodeApi = {

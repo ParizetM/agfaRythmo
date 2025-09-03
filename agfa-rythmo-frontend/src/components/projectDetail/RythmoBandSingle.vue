@@ -69,7 +69,47 @@
                   />
                 </template>
                 <template v-else>
-                  <span class="distort-text" :style="getDistortStyle(el.tcIdx)">{{ el.text }}</span>
+                  <!-- Étiquette du personnage en haut à droite -->
+                  <div
+                    v-if="shouldShowCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 100"
+                    class="character-tag"
+                    :style="{
+                      backgroundColor: getTimecodeCharacter(el.tcIdx)?.color,
+                      color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6')
+                    }"
+                  >
+                    {{ getTimecodeCharacter(el.tcIdx)?.name }}
+                    <!-- Croix pour masquer le personnage -->
+                    <button
+                      class="character-toggle"
+                      @click.stop="toggleCharacterDisplay(el.tcIdx)"
+                      title="Masquer le personnage"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <!-- Bouton pour afficher le personnage quand il est masqué -->
+                  <button
+                    v-else-if="!shouldShowCharacter(el.tcIdx) && getTimecodeCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 50"
+                    class="character-show-btn"
+                    @click.stop="toggleCharacterDisplay(el.tcIdx)"
+                    :style="{ borderColor: getTimecodeCharacter(el.tcIdx)?.color }"
+                    title="Afficher le personnage"
+                  >
+                    👤
+                  </button>
+
+                  <!-- Texte du timecode coloré selon le personnage -->
+                  <span
+                    class="distort-text"
+                    :style="{
+                      ...getDistortStyle(el.tcIdx),
+                      color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit'
+                    }"
+                  >
+                    {{ el.text }}
+                  </span>
                 </template>
               </div>
 
@@ -125,7 +165,28 @@
         class="move-preview"
         :style="getMovePreviewStyle()"
       >
-        <span class="distort-text" :style="getPreviewDistortStyle()">{{ effectiveTimecodes[movingIdx]?.text || '' }}</span>
+        <!-- Étiquette du personnage en haut à droite de la preview -->
+        <div
+          v-if="movingIdx !== null && getTimecodeCharacter(movingIdx)"
+          class="character-tag"
+          :style="{
+            backgroundColor: getTimecodeCharacter(movingIdx)?.color,
+            color: getContrastColor(getTimecodeCharacter(movingIdx)?.color || '#8455F6')
+          }"
+        >
+          {{ getTimecodeCharacter(movingIdx)?.name }}
+        </div>
+
+        <!-- Texte du timecode coloré selon le personnage -->
+        <span
+          class="distort-text"
+          :style="{
+            ...getPreviewDistortStyle(),
+            color: getTimecodeCharacter(movingIdx || 0)?.color || 'inherit'
+          }"
+        >
+          {{ effectiveTimecodes[movingIdx]?.text || '' }}
+        </span>
         <div class="preview-line-indicator">Ligne {{ previewPosition.targetLine }}</div>
       </div>
 
@@ -194,12 +255,22 @@ import {
   type CSSProperties,
 } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
+
+interface Character {
+  id: number
+  name: string
+  color: string
+}
+
 interface Timecode {
   id?: number
   start: number
   end: number
   text: string
   line_number: number
+  character_id?: number | null
+  character?: Character
+  show_character?: boolean
 }
 
 const props = defineProps<{
@@ -321,6 +392,43 @@ function getBlockX(idx: number) {
   return tc.start * PX_PER_SEC + computedVisibleWidth.value / 2
 }
 
+function getTimecodeCharacter(idx: number): Character | null {
+  const tc = effectiveTimecodes.value[idx]
+  return tc?.character || null
+}
+
+function shouldShowCharacter(idx: number): boolean {
+  const tc = effectiveTimecodes.value[idx]
+  return !!(tc?.character && tc?.show_character !== false)
+}
+
+function toggleCharacterDisplay(idx: number) {
+  const tc = effectiveTimecodes.value[idx]
+  if (!tc || !tc.id) return
+
+  const newShowCharacter = !shouldShowCharacter(idx)
+
+  // Émettre l'événement pour mettre à jour le timecode
+  emit('update-timecode-show-character', {
+    timecode: tc,
+    showCharacter: newShowCharacter
+  })
+}
+
+function getContrastColor(backgroundColor: string): string {
+  // Convertir la couleur hex en RGB
+  const hex = backgroundColor.replace('#', '')
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+
+  // Calculer la luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+  // Retourner blanc ou noir selon la luminance
+  return luminance > 0.5 ? '#000000' : '#FFFFFF'
+}
+
 function getAbsoluteBlockStyle(el: BandBlock) {
   return {
     left: el.x + 'px',
@@ -329,7 +437,7 @@ function getAbsoluteBlockStyle(el: BandBlock) {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    overflow: 'visible',
     flexShrink: 0,
     borderRadius: '4px',
     margin: '0',
@@ -488,6 +596,7 @@ const emit = defineEmits<{
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
+  (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
   (e: 'add-timecode'): void
   (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
 }>()
@@ -651,7 +760,7 @@ function getMovePreviewStyle(): CSSProperties {
   const timecode = effectiveTimecodes.value[movingIdx.value]
   if (!timecode) return {}
 
-  const width = Math.max(MIN_BLOCK_WIDTH, (timecode.end - timecode.start) * PX_PER_SEC)
+  const width = getBlockWidth(movingIdx.value) + 30
 
   return {
     position: 'fixed',
@@ -825,7 +934,7 @@ function onMoveEnd() {
 }
 .rythmo-band {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   background: #1f2937;
   border-radius: 8px;
   /* margin-top: 0.75rem; */
@@ -838,7 +947,7 @@ function onMoveEnd() {
 .rythmo-track-container {
   position: relative;
   height: 3rem;
-  overflow: hidden;
+  overflow: visible;
 }
 .rythmo-text {
   /* plus de flex, tout est positionné en absolu */
@@ -873,13 +982,14 @@ function onMoveEnd() {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   height: 100%;
   flex-shrink: 0;
   border-radius: 4px;
   margin: 0;
 }
 .rythmo-block {
+  position: relative;
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
@@ -916,6 +1026,71 @@ function onMoveEnd() {
   color: #ffffff;
   /* font-weight: bold; */
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.character-tag {
+  position: absolute;
+  top: 2px;
+  right: 101%;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: none;
+  opacity: 0.9;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.character-toggle {
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+}
+
+.character-toggle:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+.character-show-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.character-show-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: scale(1.1);
 }
 .rythmo-cursor {
   position: absolute;

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\Character;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ProjectController extends Controller
 {
@@ -38,7 +40,19 @@ class ProjectController extends Controller
             $validated['timecodes'] = json_encode($validated['timecodes']);
         }
 
-        $project = Project::create($validated);
+        $project = DB::transaction(function () use ($validated) {
+            $project = Project::create($validated);
+
+            // Créer automatiquement un personnage par défaut
+            Character::create([
+                'project_id' => $project->id,
+                'name' => 'Personnage principal',
+                'color' => '#8455F6', // Couleur par défaut
+            ]);
+
+            return $project;
+        });
+
         return response()->json($project, 201);
     }
 

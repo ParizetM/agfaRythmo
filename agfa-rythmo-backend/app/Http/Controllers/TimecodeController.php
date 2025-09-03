@@ -11,7 +11,11 @@ class TimecodeController extends Controller
     public function index(Project $project)
     {
         return response()->json([
-            'timecodes' => $project->timecodes()->orderBy('line_number')->orderBy('start')->get()
+            'timecodes' => $project->timecodes()
+                ->with('character')
+                ->orderBy('line_number')
+                ->orderBy('start')
+                ->get()
         ]);
     }
 
@@ -22,12 +26,17 @@ class TimecodeController extends Controller
             'start' => 'required|numeric|min:0',
             'end' => 'required|numeric|min:0',
             'text' => 'required|string',
+            'character_id' => 'nullable|exists:characters,id',
+            'show_character' => 'nullable|boolean',
         ]);
+
+        // Si aucun character_id n'est fourni ou est null, ne pas forcer l'assignation
+        // La logique métier pour assigner un personnage par défaut doit être gérée côté frontend
 
         $timecode = $project->timecodes()->create($validated);
 
         return response()->json([
-            'timecode' => $timecode
+            'timecode' => $timecode->load('character')
         ], 201);
     }
 
@@ -55,12 +64,14 @@ class TimecodeController extends Controller
             'start' => 'sometimes|numeric|min:0',
             'end' => 'sometimes|numeric|min:0',
             'text' => 'sometimes|string',
+            'character_id' => 'sometimes|nullable|exists:characters,id',
+            'show_character' => 'sometimes|boolean',
         ]);
 
         $timecode->update($validated);
 
         return response()->json([
-            'timecode' => $timecode
+            'timecode' => $timecode->load('character')
         ]);
     }
 

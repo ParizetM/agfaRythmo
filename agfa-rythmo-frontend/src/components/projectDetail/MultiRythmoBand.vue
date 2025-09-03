@@ -35,6 +35,7 @@
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
+          @update-timecode-show-character="onUpdateTimecodeShowCharacter"
           @reload-lines="onReloadLines"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
         />
@@ -70,6 +71,7 @@ const emit = defineEmits<{
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
+  (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
 }>()
@@ -100,6 +102,10 @@ function onUpdateTimecodeBounds(payload: { timecode: Timecode; start: number; en
 
 function onMoveTimecode(payload: { timecode: Timecode; newStart: number; newLineNumber: number }) {
   emit('move-timecode', payload)
+}
+
+function onUpdateTimecodeShowCharacter(payload: { timecode: Timecode; showCharacter: boolean }) {
+  emit('update-timecode-show-character', payload)
 }
 
 function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: number }) {
