@@ -45,12 +45,16 @@
           :sceneChanges="sceneChanges"
           :lineNumber="Number(lineNumber)"
           :isLastLine="lineNumber === localRythmoLinesCount"
+          :dragState="dragState"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
           @reload-lines="onReloadLines"
+          @dragging-start="onDragStart"
+          @dragging-update="onDragUpdate"
+          @dragging-end="onDragEnd"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
         />
       </div>
@@ -70,6 +74,34 @@ interface Timecode {
   end: number
   text: string
   line_number: number
+  character_id?: number | null
+  character?: Character
+  show_character?: boolean
+}
+
+interface DragState {
+  active: boolean
+  timecode: Timecode
+  sourceLineNumber: number
+  targetLineNumber: number
+  newStart: number
+  duration: number
+  index: number
+}
+
+interface DragStartPayload {
+  timecode: Timecode
+  sourceLineNumber: number
+  index: number
+}
+
+interface DragUpdatePayload {
+  timecodeId?: number
+  index: number
+  newStart: number
+  targetLineNumber: number
+  pointerX: number
+  pointerY: number
 }
 
 const props = defineProps<{
@@ -103,6 +135,7 @@ const localRythmoLinesCount = ref(props.rythmoLinesCount || 1)
 
 // Clés pour forcer le reload individuel de chaque ligne
 const lineReloadKeys = ref<Record<number, number>>({})
+const dragState = ref<DragState | null>(null)
 
 // Synchronise avec les props
 watch(() => props.rythmoLinesCount, (newCount) => {
@@ -148,6 +181,35 @@ function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: nu
 
 function onLinesCountChange() {
   emit('update-lines-count', localRythmoLinesCount.value)
+}
+
+function onDragStart(payload: DragStartPayload) {
+  const duration = payload.timecode.end - payload.timecode.start
+  dragState.value = {
+    active: true,
+    timecode: payload.timecode,
+    sourceLineNumber: payload.sourceLineNumber,
+    targetLineNumber: payload.sourceLineNumber,
+    newStart: payload.timecode.start,
+    duration,
+    index: payload.index,
+  }
+}
+
+function onDragUpdate(payload: DragUpdatePayload) {
+  if (!dragState.value || !dragState.value.active) return
+  if (dragState.value.index !== payload.index) return
+  if (typeof payload.timecodeId !== 'undefined' && dragState.value.timecode.id !== payload.timecodeId) return
+
+  dragState.value = {
+    ...dragState.value,
+    newStart: payload.newStart,
+    targetLineNumber: payload.targetLineNumber,
+  }
+}
+
+function onDragEnd() {
+  dragState.value = null
 }
 </script>
 

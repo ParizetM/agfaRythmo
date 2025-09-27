@@ -13,7 +13,11 @@
               <div
                 v-if="el.type === 'block'"
                 class="rythmo-block"
-                :class="{ active: el.tcIdx === activeIdx }"
+                :class="{
+                  active: el.tcIdx === activeIdx,
+                  'is-dragged-block': isBlockBeingDragged(el.tcIdx),
+                  'is-dragged-away': isBlockMovingAway(el.tcIdx),
+                }"
                 :style="getAbsoluteBlockStyle(el)"
                 @click="onBlockClick(el.tcIdx)"
                 @dblclick="onBlockDblClick(el.tcIdx, el.text)"
@@ -139,6 +143,31 @@
             <span class="gap-label">0s - {{ totalDuration.toFixed(2) }}s</span>
           </div>
         </div>
+        <div
+          v-if="shouldRenderDragOverlay"
+          class="rythmo-block drag-overlay"
+          :style="dragOverlayStyle"
+        >
+          <div
+            v-if="dragOverlayCharacterVisible && dragOverlayCharacter"
+            class="character-tag"
+            :style="{
+              backgroundColor: dragOverlayCharacter.color,
+              color: getContrastColor(dragOverlayCharacter.color || '#8455F6')
+            }"
+          >
+            {{ dragOverlayCharacter.name }}
+          </div>
+          <span
+            class="distort-text"
+            :style="{
+              ...dragOverlayTextStyle,
+              color: dragOverlayCharacter?.color || 'inherit'
+            }"
+          >
+            {{ dragOverlayText }}
+          </span>
+        </div>
           <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
             <template v-for="tick in ticks" :key="'tick' + tick.x">
               <div
@@ -158,37 +187,6 @@
             </template>
       </div>
       <div class="rythmo-cursor"></div>
-
-      <!-- Preview de déplacement -->
-      <div
-        v-if="previewPosition.visible && movingIdx !== null"
-        class="move-preview"
-        :style="getMovePreviewStyle()"
-      >
-        <!-- Étiquette du personnage en haut à droite de la preview -->
-        <div
-          v-if="movingIdx !== null && getTimecodeCharacter(movingIdx)"
-          class="character-tag"
-          :style="{
-            backgroundColor: getTimecodeCharacter(movingIdx)?.color,
-            color: getContrastColor(getTimecodeCharacter(movingIdx)?.color || '#8455F6')
-          }"
-        >
-          {{ getTimecodeCharacter(movingIdx)?.name }}
-        </div>
-
-        <!-- Texte du timecode coloré selon le personnage -->
-        <span
-          class="distort-text"
-          :style="{
-            ...getPreviewDistortStyle(),
-            color: getTimecodeCharacter(movingIdx || 0)?.color || 'inherit'
-          }"
-        >
-          {{ effectiveTimecodes[movingIdx]?.text || '' }}
-        </span>
-        <div class="preview-line-indicator">Ligne {{ previewPosition.targetLine }}</div>
-      </div>
 
       <!-- Overlay avec informations de ligne -->
       <div v-if="isHovered" class="line-overlay">
@@ -273,6 +271,31 @@ interface Timecode {
   show_character?: boolean
 }
 
+interface DragState {
+  active: boolean
+  timecode: Timecode
+  sourceLineNumber: number
+  targetLineNumber: number
+  newStart: number
+  duration: number
+  index: number
+}
+
+interface DragStartPayload {
+  timecode: Timecode
+  sourceLineNumber: number
+  index: number
+}
+
+interface DragUpdatePayload {
+  timecodeId?: number
+  index: number
+  newStart: number
+  targetLineNumber: number
+  pointerX: number
+  pointerY: number
+}
+
 const props = defineProps<{
   timecodes: Timecode[]
   currentTime: number
@@ -282,6 +305,7 @@ const props = defineProps<{
   sceneChanges?: number[]
   lineNumber: number
   isLastLine: boolean
+  dragState?: DragState | null
 }>()
 
 const isHovered = ref(false)
@@ -354,23 +378,72 @@ const moveStartY = ref(0)
 const moveStartTime = ref(0)
 const moveCurrentTargetLine = ref<number | null>(null)
 
+const shouldRenderDragOverlay = computed(() => {
+  const dragState = props.dragState
+  if (!dragState || !dragState.active) return false
+  if (dragState.targetLineNumber !== props.lineNumber) return false
+  // Si on reste sur la ligne source, c'est le bloc réel qui se déplace
+  if (dragState.sourceLineNumber === props.lineNumber) return false
+  return true
+})
+
+const dragOverlayWidth = computed(() => {
+  if (!props.dragState || !props.dragState.active) return 0
+  return Math.max(MIN_BLOCK_WIDTH, props.dragState.duration * PX_PER_SEC)
+})
+
+const dragOverlayStyle = computed<CSSProperties>(() => {
+  if (!shouldRenderDragOverlay.value || !props.dragState) return {}
+
+  const x = props.dragState.newStart * PX_PER_SEC + computedVisibleWidth.value / 2
+  return {
+    left: `${x}px`,
+    width: `${dragOverlayWidth.value}px`,
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+    flexShrink: 0,
+    borderRadius: '4px',
+    margin: '0',
+    position: 'absolute',
+    pointerEvents: 'none',
+    zIndex: 5,
+  }
+})
+
+const dragOverlayText = computed(() => props.dragState?.timecode.text || '')
+const dragOverlayCharacter = computed(() => props.dragState?.timecode.character || null)
+const dragOverlayCharacterVisible = computed(() => {
+  if (!props.dragState || !dragOverlayCharacter.value) return false
+  if (props.dragState.timecode.show_character === false) return false
+  return dragOverlayWidth.value >= 100
+})
+
+const dragOverlayTextStyle = computed(() => {
+  if (!props.dragState) return {}
+  return computeDistortStyle(dragOverlayText.value, dragOverlayWidth.value)
+})
+
 // Variables pour la preview de déplacement
-const previewPosition = ref({ x: 0, y: 0, visible: false, targetLine: 1 })
-const trackContainerRect = ref<DOMRect | null>(null)
 
 // Données locales pour le redimensionnement en temps réel
 const localTimecodes = ref<Timecode[]>([])
 
 // Synchronise les timecodes locaux avec les props
 watch(() => props.timecodes, (newTimecodes) => {
-  if (resizingIdx.value === null) {
+  if (resizingIdx.value === null && movingIdx.value === null) {
     localTimecodes.value = [...newTimecodes]
   }
 }, { immediate: true, deep: true })
 
 // Utilise les timecodes locaux pendant le redimensionnement, sinon les props
 const effectiveTimecodes = computed(() => {
-  return resizingIdx.value !== null ? localTimecodes.value : props.timecodes
+  if (resizingIdx.value !== null || movingIdx.value !== null) {
+    return localTimecodes.value
+  }
+  return props.timecodes
 })
 
 const totalDuration = computed(() => {
@@ -415,6 +488,19 @@ function toggleCharacterDisplay(idx: number) {
   })
 }
 
+function cloneTimecode(tc: Timecode): Timecode {
+  const clonedCharacter = tc.character
+    ? { ...tc.character }
+    : tc.character === null
+      ? null
+      : undefined
+
+  return {
+    ...tc,
+    character: clonedCharacter,
+  }
+}
+
 function getContrastColor(backgroundColor: string): string {
   // Convertir la couleur hex en RGB
   const hex = backgroundColor.replace('#', '')
@@ -451,59 +537,39 @@ const activeIdx = computed(() => {
   return effectiveTimecodes.value.findIndex((tc) => t >= tc.start && t < tc.end)
 })
 
-function getDistortStyle(idx: number) {
-  const width = getBlockWidth(idx)
-  // Calcule le scaleX pour que le texte occupe exactement la largeur du bloc
-  // On mesure la longueur du texte (en px) pour ajuster le scale
-  const text = effectiveTimecodes.value[idx].text || ''
-  // Crée un span temporaire pour mesurer la largeur réelle du texte
+function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
   const span = document.createElement('span')
   span.style.visibility = 'hidden'
   span.style.position = 'absolute'
   span.style.whiteSpace = 'pre'
-  span.style.fontSize = '2.1rem'
+  span.style.fontSize = fontSize
   span.style.fontFamily = 'inherit'
   span.innerText = text
   document.body.appendChild(span)
-  const textWidth = span.offsetWidth || 1 // éviter division par zéro
+  const textWidth = span.offsetWidth || 1
   document.body.removeChild(span)
-  // Le scaleX est le ratio entre la largeur du bloc et celle du texte
   const scaleX = width / textWidth
+
   return {
     transform: `scaleX(${scaleX})`,
     width: '100%',
   }
 }
 
-function getPreviewDistortStyle() {
-  if (movingIdx.value === null) return {}
+function getDistortStyle(idx: number) {
+  const width = getBlockWidth(idx)
+  const text = effectiveTimecodes.value[idx].text || ''
+  return computeDistortStyle(text, width)
+}
 
-  const timecode = effectiveTimecodes.value[movingIdx.value]
-  if (!timecode) return {}
+function isBlockBeingDragged(idx: number) {
+  return movingIdx.value === idx
+}
 
-  // Largeur de la preview basée sur la durée du timecode
-  const duration = timecode.end - timecode.start
-  const previewWidth = duration * PX_PER_SEC
-
-  const text = timecode.text || ''
-  // Crée un span temporaire pour mesurer la largeur réelle du texte
-  const span = document.createElement('span')
-  span.style.visibility = 'hidden'
-  span.style.position = 'absolute'
-  span.style.whiteSpace = 'pre'
-  span.style.fontSize = '1.8rem'
-  span.style.fontFamily = 'inherit'
-  span.innerText = text
-  document.body.appendChild(span)
-  const textWidth = span.offsetWidth || 1 // éviter division par zéro
-  document.body.removeChild(span)
-
-  // Le scaleX est le ratio entre la largeur de la preview et celle du texte
-  const scaleX = previewWidth / textWidth
-  return {
-    transform: `scaleX(${scaleX})`,
-    width: '100%',
-  } as const
+function isBlockMovingAway(idx: number) {
+  if (!props.dragState || !props.dragState.active) return false
+  if (movingIdx.value !== idx) return false
+  return props.dragState.targetLineNumber !== props.dragState.sourceLineNumber
 }
 
 function getGapWidth(start: number, end: number) {
@@ -599,6 +665,9 @@ const emit = defineEmits<{
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
   (e: 'add-timecode'): void
   (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
+  (e: 'dragging-start', payload: DragStartPayload): void
+  (e: 'dragging-update', payload: DragUpdatePayload): void
+  (e: 'dragging-end'): void
 }>()
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
@@ -754,26 +823,6 @@ onBeforeUnmount(() => {
 })
 
 // --- Fonctions de déplacement ---
-function getMovePreviewStyle(): CSSProperties {
-  if (!previewPosition.value.visible || movingIdx.value === null) return {}
-
-  const timecode = effectiveTimecodes.value[movingIdx.value]
-  if (!timecode) return {}
-
-  const width = getBlockWidth(movingIdx.value) + 30
-
-  return {
-    position: 'fixed',
-    left: previewPosition.value.x + 'px',
-    top: previewPosition.value.y + 'px',
-    width: width + 'px',
-    height: '3rem',
-    zIndex: 1000,
-    pointerEvents: 'none' as const,
-    transform: 'translate(-50%, -50%)'
-  }
-}
-
 function onMoveStart(idx: number, event: MouseEvent) {
   event.stopPropagation()
   event.preventDefault()
@@ -786,16 +835,14 @@ function onMoveStart(idx: number, event: MouseEvent) {
   moveStartTime.value = timecode.start
   moveCurrentTargetLine.value = props.lineNumber
 
-  // Initialiser la preview
-  if (trackContainer.value) {
-    trackContainerRect.value = trackContainer.value.getBoundingClientRect()
-  }
-  previewPosition.value = {
-    x: event.clientX,
-    y: event.clientY,
-    visible: true,
-    targetLine: props.lineNumber
-  }
+  // Crée une copie locale pour les déplacements
+  localTimecodes.value = [...props.timecodes]
+
+  emit('dragging-start', {
+    timecode: cloneTimecode(timecode),
+    sourceLineNumber: props.lineNumber,
+    index: idx
+  } satisfies DragStartPayload)
 
   document.addEventListener('mousemove', onMoveMove)
   document.addEventListener('mouseup', onMoveEnd)
@@ -819,25 +866,28 @@ function onMoveMove(event: MouseEvent) {
 
   moveCurrentTargetLine.value = targetLine
 
-  // Mise à jour de la preview
-  previewPosition.value = {
-    x: event.clientX,
-    y: event.clientY,
-    visible: true,
-    targetLine: targetLine
-  }
-
   // Mise à jour locale pour feedback visuel
   const newTimecodes = [...localTimecodes.value]
   if (newTimecodes[movingIdx.value]) {
+    const current = newTimecodes[movingIdx.value]
+    const duration = current.end - current.start
     newTimecodes[movingIdx.value] = {
-      ...newTimecodes[movingIdx.value],
+      ...current,
       start: newStart,
-      end: newStart + (newTimecodes[movingIdx.value].end - newTimecodes[movingIdx.value].start),
-      line_number: targetLine
+      end: newStart + duration,
     }
     localTimecodes.value = newTimecodes
   }
+
+  const movingTimecode = props.timecodes[movingIdx.value]
+  emit('dragging-update', {
+    timecodeId: movingTimecode?.id,
+    index: movingIdx.value,
+    newStart,
+    targetLineNumber: targetLine,
+    pointerX: event.clientX,
+    pointerY: event.clientY
+  } satisfies DragUpdatePayload)
 }
 
 function onMoveEnd() {
@@ -866,15 +916,14 @@ function onMoveEnd() {
   movingIdx.value = null
   moveCurrentTargetLine.value = null
 
-  // Cacher la preview
-  previewPosition.value = { x: 0, y: 0, visible: false, targetLine: 1 }
-
   document.removeEventListener('mousemove', onMoveMove)
   document.removeEventListener('mouseup', onMoveEnd)
   document.body.style.cursor = ''
 
   // Resynchronise avec les props après le déplacement
   localTimecodes.value = [...props.timecodes]
+
+  emit('dragging-end')
 }
 </script>
 
@@ -1221,39 +1270,21 @@ function onMoveEnd() {
   transform: scale(1.1);
 }
 
-/* Preview de déplacement */
-.move-preview {
-  position: fixed;
-  height: 3rem;
-  background: linear-gradient(135deg, #8455F6, #7c3aed);
-  color: white;
-  border-radius: 4px;
-  padding: 8px;
-  box-sizing: border-box;
-  font-size: 1.8rem;
-  font-weight: 600;
-  z-index: 1000;
-  opacity: 0.8;
+.drag-overlay {
   pointer-events: none;
-  border: 2px solid #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  opacity: 0.95;
 }
 
-.preview-line-indicator {
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 8px;
-  background-color: #ffffff;
-  color: #121827;
-  font-size: 10px;
-  font-weight: bold;
-  border-radius: 4px;
-  white-space: nowrap;
+.rythmo-block.is-dragged-block {
+  cursor: grabbing;
+  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.35);
+  transition: none;
+}
+
+.rythmo-block.is-dragged-away {
+  opacity: 0.2;
 }
 </style>
