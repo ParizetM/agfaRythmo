@@ -29,9 +29,10 @@
         <label class="block">
           <span class="text-white mb-2 block">Début (s):</span>
           <input
-            v-model.number="formData.start"
+            :value="formatNumber(formData.start)"
+            @input="onInputNumber($event, 'start')"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
             required
             class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
@@ -41,9 +42,10 @@
         <label class="block">
           <span class="text-white mb-2 block">Fin (s):</span>
           <input
-            v-model.number="formData.end"
+            :value="formatNumber(formData.end)"
+            @input="onInputNumber($event, 'end')"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
             required
             class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
@@ -81,6 +83,20 @@
 </template>
 
 <script setup lang="ts">
+// Formate un nombre à 3 décimales max
+function formatNumber(val: number) {
+  return val.toFixed(3);
+}
+
+// Gère l'input pour start/end et limite à 3 décimales
+function onInputNumber(e: Event, field: 'start' | 'end') {
+  const value = parseFloat((e.target as HTMLInputElement).value);
+  if (!isNaN(value)) {
+    formData.value[field] = Math.round(value * 1000) / 1000;
+  } else {
+    formData.value[field] = 0;
+  }
+}
 import { ref, watch } from 'vue'
 interface TimecodeFormData {
   line_number: number
@@ -118,29 +134,34 @@ const formData = ref<TimecodeFormData>({
   text: ''
 })
 
-// Réinitialise le formulaire quand le modal s'ouvre
-watch(() => props.show, (show) => {
-  if (show) {
+// Réinitialise le formulaire dès que le modal doit s'afficher
+watch(
+  [() => props.show, () => props.timecode, () => props.defaultLineNumber, () => props.currentTime],
+  ([show]) => {
+    if (!show) return
+
     if (props.timecode) {
       // Mode édition
       formData.value = {
         line_number: props.timecode.line_number,
-        start: props.timecode.start,
-        end: props.timecode.end,
+        start: Math.round(props.timecode.start * 1000) / 1000,
+        end: Math.round(props.timecode.end * 1000) / 1000,
         text: props.timecode.text
       }
-    } else {
-      // Mode création
-      const currentTime = props.currentTime || 0
-      formData.value = {
-        line_number: props.defaultLineNumber || 1,
-        start: currentTime,
-        end: currentTime + 3, // 3 secondes par défaut
-        text: ''
-      }
+      return
     }
-  }
-})
+
+    // Mode création
+    const currentTime = Math.round((props.currentTime || 0) * 1000) / 1000
+    formData.value = {
+      line_number: props.defaultLineNumber || 1,
+      start: currentTime,
+      end: Math.round((currentTime + 3) * 1000) / 1000, // 3 secondes par défaut
+      text: ''
+    }
+  },
+  { immediate: true }
+)
 
 function handleSubmit() {
   emit('submit', { ...formData.value })

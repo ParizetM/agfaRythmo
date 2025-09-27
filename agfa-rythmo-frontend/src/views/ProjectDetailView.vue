@@ -104,24 +104,25 @@
           Aucune vidéo
         </div>
 
-        <!-- Bouton ajout changement de plan -->
-        <button
-          class="mt-4 mb-2 bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
-          @click="addSceneChange"
-        >
-          Ajouter un changement de plan
-        </button>
 
-        <!-- Gestion des personnages -->
-        <CharactersList
-          v-if="project"
-          :characters="allCharacters"
-          :activeCharacter="activeCharacter"
-          @character-selected="onCharacterSelected"
-          @add-character="onAddCharacter"
-          @edit-character="onEditCharacter"
-          @character-deleted="onCharacterDeleted"
-        />
+        <!-- Boutons ajout changement de plan et ajout timecode -->
+        <div class="flex flex-row gap-2 mt-4 mb-2">
+          <button
+            class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+            @click="addSceneChange"
+          >
+            Ajouter un changement de plan
+          </button>
+          <button
+            class="bg-agfa-strong hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+            @click="onAddTimecode"
+            title="Ajouter un timecode"
+          >
+            + Timecode
+          </button>
+        </div>
+
+  <!-- CharactersList moved inside MultiRythmoBand (forwarded props/events) -->
 
         <!-- Configuration multi-lignes et bandes rythmo -->
         <MultiRythmoBand
@@ -133,6 +134,12 @@
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
           :rythmoLinesCount="Number(project.rythmo_lines_count || 1)"
+          :characters="allCharacters"
+          :activeCharacter="activeCharacter"
+          @character-selected="onCharacterSelected"
+          @add-character="onAddCharacter"
+          @edit-character="onEditCharacter"
+          @character-deleted="onCharacterDeleted"
           @seek="onRythmoSeek"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
@@ -153,83 +160,17 @@
       </div>
     </div>
 
-    <!-- Modal d'édition/ajout de timecode -->
-    <div v-if="showTimecodeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-agfa-dark text-white rounded-xl p-8 min-w-80 shadow-2xl">
-        <h4 class="text-xl font-bold mb-6">
-          {{ editTimecodeIdx !== null ? 'Éditer' : 'Ajouter' }} un timecode
-        </h4>
-
-        <form @submit.prevent="saveTimecode" class="space-y-4">
-          <label class="block">
-            <span class="text-white mb-2 block">Ligne rythmo:</span>
-            <select
-              v-model.number="modalTimecode.line_number"
-              :disabled="(project?.rythmo_lines_count || 1) === 1"
-              required
-              :class="[
-                'w-full p-3 rounded-lg border border-gray-600 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300',
-                (project?.rythmo_lines_count || 1) === 1 ? 'bg-gray-700 cursor-not-allowed opacity-75' : 'bg-gray-800'
-              ]"
-            >
-              <option v-for="n in (project?.rythmo_lines_count || 1)" :key="n" :value="n">
-                {{ (project?.rythmo_lines_count || 1) === 1 ? 'Ligne unique' : `Ligne ${n}` }}
-              </option>
-            </select>
-          </label>
-
-          <label class="block">
-            <span class="text-white mb-2 block">Début (s):</span>
-            <input
-              v-model.number="modalTimecode.start"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
-            />
-          </label>
-
-          <label class="block">
-            <span class="text-white mb-2 block">Fin (s):</span>
-            <input
-              v-model.number="modalTimecode.end"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
-            />
-          </label>
-
-          <label class="block">
-            <span class="text-white mb-2 block">Texte:</span>
-            <input
-              v-model="modalTimecode.text"
-              type="text"
-              required
-              class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
-            />
-          </label>
-
-          <div class="flex gap-4 pt-4">
-            <button
-              type="submit"
-              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg py-3 px-5 cursor-pointer text-base font-medium transition-colors duration-300"
-            >
-              Valider
-            </button>
-            <button
-              type="button"
-              @click="closeTimecodeModal"
-              class="flex-1 bg-gray-600 hover:bg-gray-700 text-white border-none rounded-lg py-3 px-5 cursor-pointer text-base font-medium transition-colors duration-300"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Modal d'édition/ajout de timecode (utilise le composant dédié) -->
+    <TimecodeModal
+      v-if="showTimecodeModal"
+      :show="showTimecodeModal"
+      :timecode="editTimecodeIdx !== null ? compatibleTimecodes[editTimecodeIdx] : null"
+      :maxLines="project?.rythmo_lines_count || 1"
+      :defaultLineNumber="modalTimecode.line_number"
+      :currentTime="currentTime"
+      @submit="onTimecodeModalSubmit"
+      @close="closeTimecodeModal"
+    />
 
     <!-- Modal de gestion des personnages -->
     <CharacterModal
@@ -244,6 +185,7 @@
 </template>
 
 <script setup lang="ts">
+import TimecodeModal from '../components/projectDetail/TimecodeModal.vue'
 // Contrôle du scroll instantané pour la bande rythmo
 
 const instantRythmoScroll = ref(true) // true = instantané, false = smooth
@@ -264,7 +206,6 @@ import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
-import CharactersList from '../components/projectDetail/CharactersList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
@@ -755,6 +696,28 @@ async function onDeleteTimecode(idx: number) {
   } catch (error) {
     console.error('Erreur lors de la suppression du timecode:', error)
   }
+}
+// Callback pour la soumission du modal de timecode
+function onTimecodeModalSubmit(data: { line_number: number; start: number; end: number; text: string }) {
+  if (!project.value) return
+
+  // Si editTimecodeIdx !== null, on met à jour le timecode existant
+  if (editTimecodeIdx.value !== null) {
+    const tc = compatibleTimecodes.value[editTimecodeIdx.value]
+    if (tc?.id) {
+      timecodeApi.update(project.value.id, tc.id, data).then(() => {
+        loadTimecodes()
+        closeTimecodeModal()
+      })
+    }
+    return
+  }
+
+  // Sinon on crée un nouveau timecode
+  timecodeApi.create(project.value.id, data).then(() => {
+    loadTimecodes()
+    closeTimecodeModal()
+  })
 }
 function closeTimecodeModal() {
   showTimecodeModal.value = false

@@ -2,21 +2,35 @@
   <div class="multi-rythmo-container">
     <!-- Configuration du nombre de lignes -->
     <div v-if="!hideConfig" class="rythmo-config mb-3">
-      <label class="text-white text-sm font-medium">
-        Nombre de lignes rythmo:
-        <select
-          v-model.number="localRythmoLinesCount"
-          @change="onLinesCountChange"
-          class="ml-2 bg-agfa-button text-white border border-gray-600 rounded px-2 py-1 text-sm"
-        >
-          <option :value="1">1 ligne</option>
-          <option :value="2">2 lignes</option>
-          <option :value="3">3 lignes</option>
-          <option :value="4">4 lignes</option>
-          <option :value="5">5 lignes</option>
-          <option :value="6">6 lignes</option>
-        </select>
-      </label>
+      <div class="flex items-center space-x-4 w-full">
+        <!-- Characters list placé à gauche du select -->
+        <div class="flex-shrink-0">
+          <CharactersList
+            :characters="props.characters || []"
+            :activeCharacter="props.activeCharacter || null"
+            @character-selected="(c: any) => emit('character-selected', c)"
+            @add-character="() => emit('add-character')"
+            @edit-character="(c: any) => emit('edit-character', c)"
+            @character-deleted="(id: any) => emit('character-deleted', id)"
+          />
+        </div>
+
+        <label class="text-white text-sm font-medium ml-auto">
+          Nombre de lignes rythmo:
+          <select
+            v-model.number="localRythmoLinesCount"
+            @change="onLinesCountChange"
+            class="ml-2 bg-agfa-button text-white border border-gray-600 rounded px-2 py-1 text-sm"
+          >
+            <option :value="1">1 ligne</option>
+            <option :value="2">2 lignes</option>
+            <option :value="3">3 lignes</option>
+            <option :value="4">4 lignes</option>
+            <option :value="5">5 lignes</option>
+            <option :value="6">6 lignes</option>
+          </select>
+        </label>
+      </div>
     </div>
 
     <!-- Bandes rythmo multiples - collées -->
@@ -47,6 +61,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import RythmoBandSingle from './RythmoBandSingle.vue'
+import CharactersList from './CharactersList.vue'
+import { type Character } from '../../api/characters'
 
 interface Timecode {
   id?: number
@@ -64,6 +80,8 @@ const props = defineProps<{
   sceneChanges?: number[]
   rythmoLinesCount: number
   hideConfig?: boolean
+  characters?: Character[]
+  activeCharacter?: Character | null
 }>()
 
 const emit = defineEmits<{
@@ -74,6 +92,11 @@ const emit = defineEmits<{
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
+  // Character related events forwarded from CharactersList
+  (e: 'character-selected', character: Character): void
+  (e: 'add-character'): void
+  (e: 'edit-character', character: Character): void
+  (e: 'character-deleted', characterId: number): void
 }>()
 
 const localRythmoLinesCount = ref(props.rythmoLinesCount || 1)
