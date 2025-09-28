@@ -51,6 +51,7 @@
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
+          @delete-timecode="onDeleteTimecode"
           @reload-lines="onReloadLines"
           @dragging-start="onDragStart"
           @dragging-update="onDragUpdate"
@@ -59,6 +60,14 @@
         />
       </div>
     </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <ConfirmDeleteModal
+      :show="showDeleteModal"
+      :timecode="timecodeToDelete"
+      @confirm="onConfirmDelete"
+      @cancel="onCancelDelete"
+    />
   </div>
 </template>
 
@@ -66,6 +75,7 @@
 import { ref, watch } from 'vue'
 import RythmoBandSingle from './RythmoBandSingle.vue'
 import CharactersList from './CharactersList.vue'
+import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import { type Character } from '../../api/characters'
 
 interface Timecode {
@@ -122,6 +132,7 @@ const emit = defineEmits<{
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
+  (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
   // Character related events forwarded from CharactersList
@@ -132,6 +143,10 @@ const emit = defineEmits<{
 }>()
 
 const localRythmoLinesCount = ref(props.rythmoLinesCount || 1)
+
+// Variables pour la suppression de timecodes
+const showDeleteModal = ref(false)
+const timecodeToDelete = ref<Timecode | null>(null)
 
 // Clés pour forcer le reload individuel de chaque ligne
 const lineReloadKeys = ref<Record<number, number>>({})
@@ -210,6 +225,25 @@ function onDragUpdate(payload: DragUpdatePayload) {
 
 function onDragEnd() {
   dragState.value = null
+}
+
+// Gestion de la suppression de timecodes
+function onDeleteTimecode(payload: { timecode: Timecode }) {
+  timecodeToDelete.value = payload.timecode
+  showDeleteModal.value = true
+}
+
+function onConfirmDelete() {
+  if (timecodeToDelete.value) {
+    emit('delete-timecode', { timecode: timecodeToDelete.value })
+  }
+  showDeleteModal.value = false
+  timecodeToDelete.value = null
+}
+
+function onCancelDelete() {
+  showDeleteModal.value = false
+  timecodeToDelete.value = null
 }
 </script>
 

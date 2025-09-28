@@ -145,6 +145,7 @@
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
+          @delete-timecode="onDeleteTimecode"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
         />
@@ -398,13 +399,7 @@ function editTimecode(timecode: Timecode) {
 }
 
 function deleteTimecode(timecode: Timecode) {
-  const idx = compatibleTimecodes.value.findIndex(tc =>
-    tc.id === timecode.id ||
-    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
-  )
-  if (idx >= 0) {
-    onDeleteTimecode(idx)
-  }
+  onDeleteTimecode({ timecode })
 }
 
 function addTimecodeToLine(lineNumber: number) {
@@ -672,21 +667,35 @@ function onEditTimecode(idx: number) {
   }
   showTimecodeModal.value = true
 }
-function onAddTimecode() {
-  editTimecodeIdx.value = null
-  Object.assign(modalTimecode, {
-    start: currentTime.value,
-    end: currentTime.value + 2,
-    text: '',
-    line_number: 1,
-    character_id: activeCharacter.value?.id || null
-  })
-  showTimecodeModal.value = true
-}
-async function onDeleteTimecode(idx: number) {
+async function onAddTimecode() {
   if (!project.value) return
 
-  const timecodeToDelete = compatibleTimecodes.value[idx]
+  try {
+    // Créer un nouveau timecode de 6 secondes directement dans la base
+    const newTimecodeData = {
+      start: currentTime.value,
+      end: currentTime.value + 6,
+      text: 'Insérer du texte ici',
+      line_number: 1,
+      character_id: activeCharacter.value?.id || null,
+      show_character: !!activeCharacter.value
+    }
+
+    await timecodeApi.create(project.value.id, newTimecodeData)
+
+    // Recharger les timecodes pour récupérer le nouveau
+    await loadTimecodes()
+
+    // Le timecode est créé avec le texte "Insérer du texte ici"
+    // L'utilisateur peut double-cliquer dessus pour l'éditer
+  } catch (error) {
+    console.error('Erreur lors de la création du timecode:', error)
+  }
+}
+async function onDeleteTimecode(payload: { timecode: Timecode }) {
+  if (!project.value) return
+
+  const timecodeToDelete = payload.timecode
   if (!timecodeToDelete?.id) return
 
   try {

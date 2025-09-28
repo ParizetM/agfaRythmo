@@ -44,6 +44,16 @@
                   title="Déplacer le timecode"
                 ></div>
 
+                <!-- Bouton de suppression -->
+                <div
+                  v-if="isHovered"
+                  class="delete-handle"
+                  @click.stop="onDeleteClick(el.tcIdx)"
+                  title="Supprimer ce timecode"
+                >
+                  ×
+                </div>
+
                 <template v-if="editingIdx === el.tcIdx">
                   <input
                     :ref="setEditInputRef"
@@ -102,6 +112,15 @@
                     title="Afficher le personnage"
                   >
                     👤
+                  </button>
+
+                  <!-- Bouton de suppression au hover -->
+                  <button
+                    class="delete-timecode-btn"
+                    @click.stop="onDeleteClick(el.tcIdx)"
+                    title="Supprimer ce timecode"
+                  >
+                    🗑️
                   </button>
 
                   <!-- Texte du timecode coloré selon le personnage -->
@@ -197,6 +216,9 @@
 
     </div>
   </div>
+
+
+
   <!-- Debug infos -->
   <!-- <div class="rythmo-debug">
     <div><b>videoDuration</b> : {{ videoDuration }}</div>
@@ -253,12 +275,7 @@ import {
   type CSSProperties,
 } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
-
-interface Character {
-  id: number
-  name: string
-  color: string
-}
+import { type Character } from '../../api/characters'
 
 interface Timecode {
   id?: number
@@ -489,15 +506,9 @@ function toggleCharacterDisplay(idx: number) {
 }
 
 function cloneTimecode(tc: Timecode): Timecode {
-  const clonedCharacter = tc.character
-    ? { ...tc.character }
-    : tc.character === null
-      ? null
-      : undefined
-
   return {
     ...tc,
-    character: clonedCharacter,
+    character: tc.character ? { ...tc.character } : tc.character,
   }
 }
 
@@ -663,6 +674,7 @@ const emit = defineEmits<{
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
+  (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode'): void
   (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
   (e: 'dragging-start', payload: DragStartPayload): void
@@ -674,6 +686,14 @@ const onBlockClick = (idx: number) => {
     emit('seek', effectiveTimecodes.value[idx].start)
   }
 }
+
+const onDeleteClick = (idx: number) => {
+  const timecode = effectiveTimecodes.value[idx]
+  if (timecode) {
+    emit('delete-timecode', { timecode })
+  }
+}
+
 watch(smoothScroll, (val, oldVal) => {
   if (Math.abs(val - oldVal) > 40) {
     noTransition.value = true
@@ -741,6 +761,8 @@ function cancelEdit() {
   editingIdx.value = null
   editingText.value = ''
 }
+
+
 
 // --- Fonctions de redimensionnement ---
 function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
@@ -1141,6 +1163,35 @@ function onMoveEnd() {
   background: rgba(0, 0, 0, 0.6);
   transform: scale(1.1);
 }
+
+.delete-timecode-btn {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: transparent;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  display: none; /* Caché par défaut */
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 15;
+}
+
+.rythmo-block:hover .delete-timecode-btn {
+  display: flex; /* Affiché au hover du bloc */
+}
+
+.delete-timecode-btn:hover {
+  color: #fca5a5;
+  background: rgba(107, 114, 128, 0.6);
+  transform: scale(1.1);
+}
 .rythmo-cursor {
   position: absolute;
   top: 0;
@@ -1214,6 +1265,32 @@ function onMoveEnd() {
 
 .move-handle:hover {
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* Bouton de suppression */
+.delete-handle {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.delete-handle:hover {
+  background: #dc2626;
+  transform: scale(1.1);
 }
 
 /* Overlay avec informations de ligne */
