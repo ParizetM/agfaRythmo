@@ -44,15 +44,7 @@
                   title="Déplacer le timecode"
                 ></div>
 
-                <!-- Bouton de suppression -->
-                <div
-                  v-if="isHovered"
-                  class="delete-handle"
-                  @click.stop="onDeleteClick(el.tcIdx)"
-                  title="Supprimer ce timecode"
-                >
-                  ×
-                </div>
+
 
                 <template v-if="editingIdx === el.tcIdx">
                   <input
@@ -1267,31 +1259,7 @@ function onMoveEnd() {
   background: rgba(255, 255, 255, 0.6);
 }
 
-/* Bouton de suppression */
-.delete-handle {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 20px;
-  height: 20px;
-  background: #ef4444;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s;
-}
 
-.delete-handle:hover {
-  background: #dc2626;
-  transform: scale(1.1);
-}
 
 /* Overlay avec informations de ligne */
 .line-overlay {
