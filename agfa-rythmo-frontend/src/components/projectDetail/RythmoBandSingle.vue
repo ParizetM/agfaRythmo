@@ -1270,10 +1270,10 @@ function onMoveEnd() {
 }
 .rythmo-cursor {
   position: absolute;
-  top: 0;
+  top: -5%;
   left: 50%;
   width: 4px;
-  height: 100%;
+  height: 110%;
   background: linear-gradient(to bottom, #ffffff, #e5e7eb);
   border-radius: 2px;
   box-shadow:
