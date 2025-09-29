@@ -65,6 +65,7 @@
       <!-- Curseur de position actuelle -->
       <div
         class="progress-cursor"
+        :class="{ 'keyboard-active': pressedKey && ['seek-left', 'seek-right', 'frame-left', 'frame-right'].includes(pressedKey) }"
         :style="{ left: progressPercentage + '%' }"
       >
         <div class="cursor-handle"></div>
@@ -90,6 +91,7 @@
           @click="emit('seekDelta', -1)"
           title="← 1s (Flèche gauche)"
           class="control-button"
+          :class="{ 'pressed': pressedKey === 'seek-left' }"
         >
           -1s
         </button>
@@ -98,6 +100,7 @@
           @click="emit('seekFrame', -1)"
           title="← 1 frame (A)"
           class="control-button"
+          :class="{ 'pressed': pressedKey === 'frame-left' }"
         >
           -1f
         </button>
@@ -106,6 +109,7 @@
           @click="emit('seekDelta', 0)"
           title="Lecture/Pause (Espace)"
           class="control-button play-pause"
+          :class="{ 'pressed': pressedKey === 'play-pause' }"
         >
           <svg
             v-if="props.isVideoPaused"
@@ -134,6 +138,7 @@
           @click="emit('seekFrame', 1)"
           title="→ 1 frame (E)"
           class="control-button"
+          :class="{ 'pressed': pressedKey === 'frame-right' }"
         >
           +1f
         </button>
@@ -142,6 +147,7 @@
           @click="emit('seekDelta', 1)"
           title="→ 1s (Flèche droite)"
           class="control-button"
+          :class="{ 'pressed': pressedKey === 'seek-right' }"
         >
           +1s
         </button>
@@ -153,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // Interfaces
 interface Character {
@@ -188,12 +194,14 @@ const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'seekFrame', delta: number): void
   (e: 'seekDelta', delta: number): void
+  (e: 'togglePlayPause'): void
 }>()
 
 // Refs
 const progressBarContainer = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const hoverTime = ref<number | null>(null)
+const pressedKey = ref<string | null>(null)
 
 // Computed
 const linesCount = computed(() => {
@@ -451,6 +459,70 @@ function onTouchEnd() {
   isDragging.value = false
   hoverTime.value = null
 }
+
+// Gestion des événements clavier avec animations
+function onKeyDown(event: KeyboardEvent) {
+  // Ignore si focus dans un champ de saisie (input, textarea, ou contenteditable)
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const tag = target.tagName.toLowerCase()
+  const isEditable = tag === 'input' || tag === 'textarea' || target.isContentEditable
+  if (isEditable) return
+
+  let keyPressed = ''
+
+  switch (event.code) {
+    case 'KeyQ': // Touche Q (position A sur AZERTY)
+      keyPressed = 'frame-left'
+      emit('seekFrame', -1)
+      event.preventDefault()
+      break
+    case 'KeyE': // Touche E (même position sur AZERTY et QWERTY)
+      keyPressed = 'frame-right'
+      emit('seekFrame', 1)
+      event.preventDefault()
+      break
+    case 'ArrowLeft':
+      keyPressed = 'seek-left'
+      emit('seekDelta', -1)
+      event.preventDefault()
+      break
+    case 'ArrowRight':
+      keyPressed = 'seek-right'
+      emit('seekDelta', 1)
+      event.preventDefault()
+      break
+    case 'Space':
+      keyPressed = 'play-pause'
+
+      const video = document.querySelector('video')
+      if (video) {
+        if (video.paused) {
+          video.play()
+        } else {
+          video.pause()
+        }
+        emit('togglePlayPause')
+      }
+      event.preventDefault()
+      break
+    default:
+      return
+  }
+
+  // Animation visuelle
+  pressedKey.value = keyPressed
+  setTimeout(() => {
+    pressedKey.value = null
+  }, 150) // Animation de 150ms
+}// Écouteurs d'événements clavier
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+})
 </script>
 
 <style scoped>
@@ -611,6 +683,7 @@ function onTouchEnd() {
   bottom: 0;
   pointer-events: none;
   z-index: 4;
+  transition: left 0.1s ease-out;
 }
 
 .cursor-handle {
@@ -635,6 +708,24 @@ function onTouchEnd() {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.15s ease-out;
+}
+
+.progress-cursor.keyboard-active .cursor-handle::before {
+  animation: cursor-bounce 0.2s ease-out;
+}
+
+@keyframes cursor-bounce {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(132, 85, 246, 0.3);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* Zone tactile agrandie pour mobile */
@@ -721,6 +812,25 @@ function onTouchEnd() {
 
 .control-button:hover {
   background: #8455F6;
+}
+
+.control-button.pressed {
+  background: #8455F6 !important;
+  transform: scale(0.95);
+  box-shadow: 0 0 0 3px rgba(132, 85, 246, 0.3);
+  animation: keypress-pulse 0.15s ease-out;
+}
+
+@keyframes keypress-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(132, 85, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(132, 85, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(132, 85, 246, 0);
+  }
 }
 
 .control-button.play-pause {

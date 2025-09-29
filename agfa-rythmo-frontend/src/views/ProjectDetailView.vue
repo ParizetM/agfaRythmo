@@ -136,6 +136,7 @@
           @seek="onNavigationSeek"
           @seekDelta="seek"
           @seekFrame="seekFrame"
+          @togglePlayPause="updatePlayPauseState"
         />
 
         <!-- Configuration multi-lignes et bandes rythmo -->
@@ -658,6 +659,15 @@ function seekFrame(delta: number) {
   if (videoEl) videoEl.currentTime = t
   instantRythmoScroll.value = true // instantané
 }
+
+function updatePlayPauseState() {
+  // Met à jour l'état isVideoPaused pour synchroniser l'interface
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (videoEl) {
+    isVideoPaused.value = videoEl.paused
+    instantRythmoScroll.value = videoEl.paused
+  }
+}
 function onSelectTimecode(idx: number) {
   selectedTimecodeIdx.value = idx
   // Seek vidéo si possible
@@ -781,44 +791,9 @@ onMounted(async () => {
     loading.value = false
   }
 
-  // Gestion des raccourcis clavier
-  window.addEventListener('keydown', handleKeydown)
+  // Gestion des raccourcis clavier désactivée - maintenant gérée par VideoNavigationBar
+  // window.addEventListener('keydown', handleKeydown)
 })
-
-function handleKeydown(e: KeyboardEvent) {
-  // Ignore si focus dans un champ de saisie (input, textarea, ou contenteditable)
-  const target = e.target as HTMLElement | null
-  if (!target) return
-  const tag = target.tagName.toLowerCase()
-  const isEditable = tag === 'input' || tag === 'textarea' || target.isContentEditable
-  if (isEditable) return
-
-  // Espace = play/pause
-  if (e.code === 'Space') {
-    e.preventDefault()
-    seek(0)
-  }
-  // Flèche gauche = -1s
-  else if (e.code === 'ArrowLeft') {
-    e.preventDefault()
-    seek(-1)
-  }
-  // Flèche droite = +1s
-  else if (e.code === 'ArrowRight') {
-    e.preventDefault()
-    seek(1)
-  }
-  // A = -1 frame
-  else if (e.key === 'a' || e.key === 'A') {
-    e.preventDefault()
-    seekFrame(-1)
-  }
-  // E = +1 frame
-  else if (e.key === 'e' || e.key === 'E') {
-    e.preventDefault()
-    seekFrame(1)
-  }
-}
 
 
 // Seek déclenché par clic sur un bloc de la bande rythmo
