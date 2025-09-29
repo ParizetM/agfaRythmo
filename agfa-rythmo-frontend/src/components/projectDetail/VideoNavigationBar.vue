@@ -69,7 +69,6 @@
         :style="{ left: progressPercentage + '%' }"
       >
         <div class="cursor-handle"></div>
-        <div class="cursor-time">{{ formatTime(currentTime) }}</div>
       </div>
 
       <!-- Indicateur de survol -->
@@ -85,6 +84,11 @@
 
     <!-- Contrôles vidéo -->
     <div class="controls-container">
+      <!-- Indicateur de durée vidéo -->
+      <div class="duration-indicator">
+        {{ formatTime(props.currentTime) }} / {{ formatTime(props.videoDuration) }}
+      </div>
+
       <!-- Contrôles vidéo -->
       <div class="video-controls">
         <button
@@ -736,18 +740,7 @@ onUnmounted(() => {
   }
 }
 
-.cursor-time {
-  position: absolute;
-  top: -2rem;
-  left: 0;
-  padding: 0.25rem 0.5rem;
-  background: #111827;
-  color: white;
-  font-size: 0.75rem;
-  border-radius: 0.25rem;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  transform: translateX(-50%);
-}
+
 
 .hover-indicator {
   position: absolute;
@@ -786,6 +779,23 @@ onUnmounted(() => {
   justify-content: center;
   gap: 1rem;
   margin-top: 0.75rem;
+  position: relative;
+}
+
+.duration-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  background: rgba(31, 41, 55, 0.8);
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  backdrop-filter: blur(4px);
 }
 
 .video-controls {

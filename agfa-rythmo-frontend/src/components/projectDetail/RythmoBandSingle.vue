@@ -6,7 +6,6 @@
         :class="{ 'no-transition': noTransition }"
         :style="rythmoTextStyle"
       >
-
         <div class="rythmo-text">
           <template v-if="bandElements.length">
             <template v-for="(el, idx) in bandElements" :key="'el' + idx">
@@ -44,8 +43,6 @@
                   title="Déplacer le timecode"
                 ></div>
 
-
-
                 <template v-if="editingIdx === el.tcIdx">
                   <input
                     :ref="setEditInputRef"
@@ -82,7 +79,7 @@
                     :class="{ 'character-tag-hovered': characterDropdownIdx === el.tcIdx }"
                     :style="{
                       backgroundColor: getTimecodeCharacter(el.tcIdx)?.color,
-                      color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6')
+                      color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6'),
                     }"
                     @mouseenter="hoveredCharacterIdx = el.tcIdx"
                     @mouseleave="hoveredCharacterIdx = null"
@@ -125,7 +122,7 @@
                         class="character-option"
                         :style="{
                           backgroundColor: character.color,
-                          color: getContrastColor(character.color)
+                          color: getContrastColor(character.color),
                         }"
                         @click="changeTimecodeCharacter(el.tcIdx, character.id)"
                       >
@@ -136,7 +133,12 @@
 
                   <!-- Bouton pour afficher le personnage quand il est masqué -->
                   <button
-                    v-else-if="!shouldShowCharacter(el.tcIdx) && getTimecodeCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 50 && isHovered"
+                    v-else-if="
+                      !shouldShowCharacter(el.tcIdx) &&
+                      getTimecodeCharacter(el.tcIdx) &&
+                      getBlockWidth(el.tcIdx) >= 50 &&
+                      isHovered
+                    "
                     class="character-show-btn"
                     @click.stop="toggleCharacterDisplay(el.tcIdx)"
                     :style="{ borderColor: getTimecodeCharacter(el.tcIdx)?.color }"
@@ -159,7 +161,7 @@
                     class="distort-text"
                     :style="{
                       ...getDistortStyle(el.tcIdx),
-                      color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit'
+                      color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit',
                     }"
                   >
                     {{ el.text }}
@@ -203,7 +205,7 @@
             class="character-tag"
             :style="{
               backgroundColor: dragOverlayCharacter.color,
-              color: getContrastColor(dragOverlayCharacter.color || '#8455F6')
+              color: getContrastColor(dragOverlayCharacter.color || '#8455F6'),
             }"
           >
             {{ dragOverlayCharacter.name }}
@@ -212,38 +214,30 @@
             class="distort-text"
             :style="{
               ...dragOverlayTextStyle,
-              color: dragOverlayCharacter?.color || 'inherit'
+              color: dragOverlayCharacter?.color || 'inherit',
             }"
           >
             {{ dragOverlayText }}
           </span>
         </div>
-          <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
-            <template v-for="tick in ticks" :key="'tick' + tick.x">
-              <div
-                class="rythmo-tick"
-                :class="{ 'tick-second': tick.isSecond }"
-                :style="getTickStyle(tick)"
-              ></div>
-            </template>
-            <!-- Barres verticales de changement de plan -->
-
-          </div>
-          <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
-              <div
-                class="scene-change-bar"
-                :style="{ left: x + 'px' }"
-              ></div>
-            </template>
+        <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
+          <template v-for="tick in ticks" :key="'tick' + tick.x">
+            <div
+              class="rythmo-tick"
+              :class="{ 'tick-second': tick.isSecond }"
+              :style="getTickStyle(tick)"
+            ></div>
+          </template>
+          <!-- Barres verticales de changement de plan -->
+        </div>
+        <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
+          <div class="scene-change-bar" :style="{ left: x + 'px' }"></div>
+        </template>
       </div>
       <div class="rythmo-cursor"></div>
 
       <!-- Tooltip de redimensionnement - compacte -->
-      <div
-        v-if="resizingIdx !== null"
-        class="resize-tooltip"
-        :style="getResizeTooltipStyle()"
-      >
+      <div v-if="resizingIdx !== null" class="resize-tooltip" :style="getResizeTooltipStyle()">
         <div class="resize-tooltip-content">
           <span v-if="resizeMode === 'left'" class="resize-time">
             {{ formatTime(localTimecodes[resizingIdx]?.start || 0) }}
@@ -255,18 +249,12 @@
       </div>
 
       <!-- Tooltip de déplacement -->
-      <div
-        v-if="movingIdx !== null"
-        class="move-tooltip"
-        :style="getMoveTooltipStyle()"
-      >
+      <div v-if="movingIdx !== null" class="move-tooltip" :style="getMoveTooltipStyle()">
         <div class="move-tooltip-content">
           <div class="move-time">
             {{ formatTime(localTimecodes[movingIdx]?.start || 0) }}
           </div>
-          <div class="move-line">
-            → Ligne {{ moveCurrentTargetLine }}
-          </div>
+          <div class="move-line">→ Ligne {{ moveCurrentTargetLine }}</div>
         </div>
       </div>
 
@@ -276,11 +264,8 @@
           <span class="line-number-badge">Ligne {{ lineNumber }}</span>
         </div>
       </div>
-
     </div>
   </div>
-
-
 
   <!-- Debug infos -->
   <!-- <div class="rythmo-debug">
@@ -394,7 +379,7 @@ const isHovered = ref(false)
 // Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
   if (!props.sceneChanges || !props.sceneChanges.length) return []
-  return props.sceneChanges.map(t => t * PX_PER_SEC + computedVisibleWidth.value / 2)
+  return props.sceneChanges.map((t) => t * PX_PER_SEC + computedVisibleWidth.value / 2)
 })
 // Types pour la bande rythmo
 type BandBlock = { type: 'block'; x: number; width: number; text: string; tcIdx: number }
@@ -518,11 +503,15 @@ const dragOverlayTextStyle = computed(() => {
 const localTimecodes = ref<Timecode[]>([])
 
 // Synchronise les timecodes locaux avec les props
-watch(() => props.timecodes, (newTimecodes) => {
-  if (resizingIdx.value === null && movingIdx.value === null) {
-    localTimecodes.value = [...newTimecodes]
-  }
-}, { immediate: true, deep: true })
+watch(
+  () => props.timecodes,
+  (newTimecodes) => {
+    if (resizingIdx.value === null && movingIdx.value === null) {
+      localTimecodes.value = [...newTimecodes]
+    }
+  },
+  { immediate: true, deep: true },
+)
 
 // Utilise les timecodes locaux pendant le redimensionnement, sinon les props
 const effectiveTimecodes = computed(() => {
@@ -568,7 +557,7 @@ function toggleCharacterDropdown(idx: number) {
   } else {
     characterDropdownIdx.value = idx
   }
-}// Fonction pour changer le personnage d'un timecode
+} // Fonction pour changer le personnage d'un timecode
 function changeTimecodeCharacter(idx: number, characterId: number | null) {
   const tc = effectiveTimecodes.value[idx]
   if (!tc || !tc.id) return
@@ -576,7 +565,7 @@ function changeTimecodeCharacter(idx: number, characterId: number | null) {
   // Émettre l'événement pour mettre à jour le personnage du timecode
   emit('update-timecode-character', {
     timecode: tc,
-    characterId: characterId
+    characterId: characterId,
   })
 
   // Fermer le dropdown
@@ -592,7 +581,7 @@ function toggleCharacterDisplay(idx: number) {
   // Émettre l'événement pour mettre à jour le timecode
   emit('update-timecode-show-character', {
     timecode: tc,
-    showCharacter: newShowCharacter
+    showCharacter: newShowCharacter,
   })
 }
 
@@ -610,8 +599,6 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.padStart(5, '0')}s`
 }
 
-
-
 function getResizeTooltipStyle(): CSSProperties {
   if (resizingIdx.value === null || !resizeMode.value) return { display: 'none' }
 
@@ -624,7 +611,7 @@ function getResizeTooltipStyle(): CSSProperties {
   return {
     position: 'absolute',
     left: `${relativeX - 30}px`, // Suit la souris en X (largeur tooltip ~60px)
-    top: `${resizeFixedY.value}px`,  // Y fixe défini à l'apparition
+    top: `${resizeFixedY.value}px`, // Y fixe défini à l'apparition
     zIndex: 9999,
     pointerEvents: 'none',
   }
@@ -643,11 +630,12 @@ function getMoveTooltipStyle(): CSSProperties {
   return {
     position: 'absolute',
     left: `${relativeX - 30}px`, // Suit la souris en X (largeur tooltip ~60px)
-    top: `${relativeY - 40}px`,  // 40px au-dessus de la souris
+    top: `${relativeY - 40}px`, // 40px au-dessus de la souris
     zIndex: 9999,
     pointerEvents: 'none',
   }
-}function getContrastColor(backgroundColor: string): string {
+}
+function getContrastColor(backgroundColor: string): string {
   // Convertir la couleur hex en RGB
   const hex = backgroundColor.replace('#', '')
   const r = parseInt(hex.substr(0, 2), 16)
@@ -807,9 +795,18 @@ const emit = defineEmits<{
   (e: 'seek', time: number): void
   (e: 'update-timecode', payload: { timecode: Timecode; text: string }): void
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
-  (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
-  (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
-  (e: 'update-timecode-character', payload: { timecode: Timecode; characterId: number | null }): void
+  (
+    e: 'move-timecode',
+    payload: { timecode: Timecode; newStart: number; newLineNumber: number },
+  ): void
+  (
+    e: 'update-timecode-show-character',
+    payload: { timecode: Timecode; showCharacter: boolean },
+  ): void
+  (
+    e: 'update-timecode-character',
+    payload: { timecode: Timecode; characterId: number | null },
+  ): void
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode'): void
   (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
@@ -846,8 +843,6 @@ const editingText = ref('')
 // Variables pour la gestion du dropdown de personnages
 const hoveredCharacterIdx = ref<number | null>(null)
 const characterDropdownIdx = ref<number | null>(null)
-
-
 
 const editInput = ref<HTMLInputElement | null>(null)
 function setEditInputRef(el: Element | ComponentPublicInstance | null) {
@@ -904,8 +899,6 @@ function cancelEdit() {
   editingText.value = ''
 }
 
-
-
 // --- Fonctions de redimensionnement ---
 function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
   event.stopPropagation()
@@ -959,7 +952,7 @@ function onResizeMove(event: MouseEvent) {
   newTimecodes[resizingIdx.value] = {
     ...newTimecodes[resizingIdx.value],
     start: newStart,
-    end: newEnd
+    end: newEnd,
   }
   localTimecodes.value = newTimecodes
 }
@@ -975,7 +968,7 @@ function onResizeEnd() {
   emit('update-timecode-bounds', {
     timecode: originalTimecode,
     start: finalTimecode.start,
-    end: finalTimecode.end
+    end: finalTimecode.end,
   })
 
   resizingIdx.value = null
@@ -1030,7 +1023,7 @@ function onMoveStart(idx: number, event: MouseEvent) {
   emit('dragging-start', {
     timecode: cloneTimecode(timecode),
     sourceLineNumber: props.lineNumber,
-    index: idx
+    index: idx,
   } satisfies DragStartPayload)
 
   document.addEventListener('mousemove', onMoveMove)
@@ -1079,7 +1072,7 @@ function onMoveMove(event: MouseEvent) {
     newStart,
     targetLineNumber: targetLine,
     pointerX: event.clientX,
-    pointerY: event.clientY
+    pointerY: event.clientY,
   } satisfies DragUpdatePayload)
 }
 
@@ -1096,13 +1089,13 @@ function onMoveEnd() {
     emit('move-timecode', {
       timecode: originalTimecode,
       newStart: finalTimecode.start,
-      newLineNumber: targetLineNumber
+      newLineNumber: targetLineNumber,
     })
 
     // Demander le rechargement des lignes concernées pour éviter les bugs visuels
     emit('reload-lines', {
       sourceLineNumber: sourceLineNumber,
-      targetLineNumber: targetLineNumber
+      targetLineNumber: targetLineNumber,
     })
   }
 
@@ -1129,7 +1122,6 @@ function onMoveEnd() {
   height: 2rem;
   pointer-events: none;
   z-index: 1;
-
 }
 .rythmo-tick {
   position: absolute;
@@ -1441,8 +1433,6 @@ function onMoveEnd() {
   background: rgba(255, 255, 255, 0.6);
 }
 
-
-
 /* Overlay avec informations de ligne */
 .line-overlay {
   position: absolute;
@@ -1564,12 +1554,19 @@ function onMoveEnd() {
 .character-dropdown-content {
   background: linear-gradient(135deg, rgba(30, 35, 45, 0.95), rgba(42, 48, 60, 0.95));
   min-width: 120px;
-  max-width: 180px;
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  gap: 4px;
 }
 
 .character-option {
-  padding: 10px 14px;
   cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 2px 6px;
+
   font-size: 0.8rem;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -1632,7 +1629,7 @@ function onMoveEnd() {
 }
 
 .resize-time {
-  color: #8455F6;
+  color: #8455f6;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 0.7rem;
   font-weight: 600;
