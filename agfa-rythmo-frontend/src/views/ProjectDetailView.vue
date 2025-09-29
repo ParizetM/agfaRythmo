@@ -20,14 +20,28 @@
         </p>
       </div>
 
-      <button
-        v-if="project && project.video_path && compatibleTimecodes.length > 0"
-        class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
-        @click="goToFinalPreview"
-        title="Aperçu final plein écran"
-      >
-        Aperçu final
-      </button>
+      <div class="flex items-center gap-3">
+        <!-- Bouton raccourcis clavier -->
+        <button
+          class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
+          @click="showKeyboardShortcuts = true"
+          title="Raccourcis clavier (Cmd + ?)"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+
+        <!-- Bouton aperçu final -->
+        <button
+          v-if="project && project.video_path && compatibleTimecodes.length > 0"
+          class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+          @click="goToFinalPreview"
+          title="Aperçu final plein écran"
+        >
+          Aperçu final
+        </button>
+      </div>
     </header>
 
     <!-- Main Grid -->
@@ -198,12 +212,19 @@
       @close="closeCharacterModal"
       @saved="onCharacterSaved"
     />
+
+    <!-- Modal des raccourcis clavier -->
+    <KeyboardShortcutsModal
+      :show="showKeyboardShortcuts"
+      @close="showKeyboardShortcuts = false"
+    />
   </div>
 
 </template>
 
 <script setup lang="ts">
 import TimecodeModal from '../components/projectDetail/TimecodeModal.vue'
+import KeyboardShortcutsModal from '../components/projectDetail/KeyboardShortcutsModal.vue'
 // Contrôle du scroll instantané pour la bande rythmo
 
 const instantRythmoScroll = ref(true) // true = instantané, false = smooth
@@ -321,6 +342,9 @@ const allCharacters = ref<Character[]>([])
 const activeCharacter = ref<Character | null>(null)
 const showCharacterModal = ref(false)
 const editingCharacter = ref<Character | null>(null)
+
+// Gestion du modal des raccourcis clavier
+const showKeyboardShortcuts = ref(false)
 
 // Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
 const selectedLineNumber = ref<number>(1)
@@ -789,6 +813,61 @@ function closeTimecodeModal() {
   showTimecodeModal.value = false
 }
 
+// Gestion des raccourcis clavier globaux
+function handleGlobalKeydown(event: KeyboardEvent) {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const cmdKey = isMac ? event.metaKey : event.ctrlKey
+
+  // Si le modal des raccourcis est ouvert, Échap le ferme
+  if (event.key === 'Escape' && showKeyboardShortcuts.value) {
+    event.preventDefault()
+    showKeyboardShortcuts.value = false
+    return
+  }
+
+  // , pour toggle les raccourcis (sans Cmd/Ctrl) - AZERTY friendly
+  if (event.key === ',' && !cmdKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    showKeyboardShortcuts.value = !showKeyboardShortcuts.value
+    return
+  }
+
+  // Cmd/Ctrl + ? pour ouvrir les raccourcis (garde l'ancien raccourci aussi)
+  if (cmdKey && event.key === '/') {
+    event.preventDefault()
+    showKeyboardShortcuts.value = true
+    return
+  }
+
+  // T pour ajouter un timecode
+  if (event.key === 't' && !cmdKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    onAddTimecode()
+    return
+  }
+
+  // S pour ajouter un changement de scène
+  if (event.key === 's' && !cmdKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    addSceneChange()
+    return
+  }  // Échap pour retour aux projets (uniquement si le modal n'est pas ouvert)
+  if (event.key === 'Escape' && !showKeyboardShortcuts.value) {
+    event.preventDefault()
+    goBack()
+    return
+  }
+
+  // F pour aperçu final
+  if (event.key === 'f' || event.key === 'F') {
+    if (project.value && project.value.video_path && compatibleTimecodes.value.length > 0) {
+      event.preventDefault()
+      goToFinalPreview()
+    }
+    return
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -823,8 +902,15 @@ onMounted(async () => {
     loading.value = false
   }
 
-  // Gestion des raccourcis clavier désactivée - maintenant gérée par VideoNavigationBar
-  // window.addEventListener('keydown', handleKeydown)
+  // Ajouter les gestionnaires de raccourcis clavier
+  window.addEventListener('keydown', handleGlobalKeydown)
+})
+
+// Nettoyage des événements
+import { onUnmounted } from 'vue'
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 
