@@ -46,11 +46,13 @@
           :lineNumber="Number(lineNumber)"
           :isLastLine="lineNumber === localRythmoLinesCount"
           :dragState="dragState"
+          :characters="characters"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
+          @update-timecode-character="onUpdateTimecodeCharacter"
           @delete-timecode="onDeleteTimecode"
           @reload-lines="onReloadLines"
           @dragging-start="onDragStart"
@@ -132,6 +134,7 @@ const emit = defineEmits<{
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
+  (e: 'update-timecode-character', payload: { timecode: Timecode; characterId: number | null }): void
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
@@ -177,6 +180,10 @@ function onMoveTimecode(payload: { timecode: Timecode; newStart: number; newLine
 
 function onUpdateTimecodeShowCharacter(payload: { timecode: Timecode; showCharacter: boolean }) {
   emit('update-timecode-show-character', payload)
+}
+
+function onUpdateTimecodeCharacter(payload: { timecode: Timecode; characterId: number | null }) {
+  emit('update-timecode-character', payload)
 }
 
 function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: number }) {
@@ -267,7 +274,8 @@ function onCancelDelete() {
   flex-direction: column;
   gap: 0; /* Aucun espacement entre les lignes */
   border-radius: 8px;
-  overflow: hidden;
+  overflow-y: visible;
+  overflow-x: visible;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 

@@ -79,25 +79,64 @@
                   <div
                     v-if="shouldShowCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 100"
                     class="character-tag"
+                    :class="{ 'character-tag-hovered': characterDropdownIdx === el.tcIdx }"
                     :style="{
                       backgroundColor: getTimecodeCharacter(el.tcIdx)?.color,
                       color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6')
                     }"
+                    @mouseenter="hoveredCharacterIdx = el.tcIdx"
+                    @mouseleave="hoveredCharacterIdx = null"
                   >
                     {{ getTimecodeCharacter(el.tcIdx)?.name }}
-                    <!-- Croix pour masquer le personnage -->
-                    <button
-                      class="character-toggle"
-                      @click.stop="toggleCharacterDisplay(el.tcIdx)"
-                      title="Masquer le personnage"
-                    >
-                      ×
-                    </button>
+
+                    <!-- Boutons d'action (visibles seulement en hover) -->
+                    <div v-if="hoveredCharacterIdx === el.tcIdx" class="character-actions">
+                      <!-- Triangle pour ouvrir le dropdown -->
+                      <button
+                        class="character-dropdown-btn"
+                        @click.stop="toggleCharacterDropdown(el.tcIdx)"
+                        title="Changer de personnage"
+                      >
+                        ▼
+                      </button>
+
+                      <!-- Croix pour masquer le personnage -->
+                      <button
+                        class="character-toggle"
+                        @click.stop="toggleCharacterDisplay(el.tcIdx)"
+                        title="Masquer le personnage"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Dropdown de sélection de personnage (en dehors du character-tag) -->
+                  <div
+                    v-if="characterDropdownIdx === el.tcIdx"
+                    class="character-dropdown"
+                    @click.stop
+                    ref="dropdownRef"
+                  >
+                    <div class="character-dropdown-content">
+                      <div
+                        v-for="character in props.characters"
+                        :key="character.id"
+                        class="character-option"
+                        :style="{
+                          backgroundColor: character.color,
+                          color: getContrastColor(character.color)
+                        }"
+                        @click="changeTimecodeCharacter(el.tcIdx, character.id)"
+                      >
+                        {{ character.name }}
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Bouton pour afficher le personnage quand il est masqué -->
                   <button
-                    v-else-if="!shouldShowCharacter(el.tcIdx) && getTimecodeCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 50"
+                    v-else-if="!shouldShowCharacter(el.tcIdx) && getTimecodeCharacter(el.tcIdx) && getBlockWidth(el.tcIdx) >= 50 && isHovered"
                     class="character-show-btn"
                     @click.stop="toggleCharacterDisplay(el.tcIdx)"
                     :style="{ borderColor: getTimecodeCharacter(el.tcIdx)?.color }"
@@ -315,6 +354,7 @@ const props = defineProps<{
   lineNumber: number
   isLastLine: boolean
   dragState?: DragState | null
+  characters?: Character[]
 }>()
 
 const isHovered = ref(false)
@@ -482,6 +522,28 @@ function getTimecodeCharacter(idx: number): Character | null {
 function shouldShowCharacter(idx: number): boolean {
   const tc = effectiveTimecodes.value[idx]
   return !!(tc?.character && tc?.show_character !== false)
+}
+
+// Fonction pour ouvrir/fermer le dropdown de personnages
+function toggleCharacterDropdown(idx: number) {
+  if (characterDropdownIdx.value === idx) {
+    characterDropdownIdx.value = null
+  } else {
+    characterDropdownIdx.value = idx
+  }
+}// Fonction pour changer le personnage d'un timecode
+function changeTimecodeCharacter(idx: number, characterId: number | null) {
+  const tc = effectiveTimecodes.value[idx]
+  if (!tc || !tc.id) return
+
+  // Émettre l'événement pour mettre à jour le personnage du timecode
+  emit('update-timecode-character', {
+    timecode: tc,
+    characterId: characterId
+  })
+
+  // Fermer le dropdown
+  characterDropdownIdx.value = null
 }
 
 function toggleCharacterDisplay(idx: number) {
@@ -666,6 +728,7 @@ const emit = defineEmits<{
   (e: 'update-timecode-bounds', payload: { timecode: Timecode; start: number; end: number }): void
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
+  (e: 'update-timecode-character', payload: { timecode: Timecode; characterId: number | null }): void
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode'): void
   (e: 'reload-lines', payload: { sourceLineNumber: number; targetLineNumber: number }): void
@@ -698,6 +761,12 @@ watch(smoothScroll, (val, oldVal) => {
 // --- Edition du texte d'un bloc ---
 const editingIdx = ref<number | null>(null)
 const editingText = ref('')
+
+// Variables pour la gestion du dropdown de personnages
+const hoveredCharacterIdx = ref<number | null>(null)
+const characterDropdownIdx = ref<number | null>(null)
+
+
 
 const editInput = ref<HTMLInputElement | null>(null)
 function setEditInputRef(el: Element | ComponentPublicInstance | null) {
@@ -827,12 +896,24 @@ function onResizeEnd() {
   localTimecodes.value = [...props.timecodes]
 }
 
+// Gestionnaire pour fermer le dropdown quand on clique ailleurs
+function handleGlobalClick() {
+  if (characterDropdownIdx.value !== null) {
+    characterDropdownIdx.value = null
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleGlobalClick)
+})
+
 // Nettoyer les événements en cas de démontage du composant
 onBeforeUnmount(() => {
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
   document.removeEventListener('mousemove', onMoveMove)
   document.removeEventListener('mouseup', onMoveEnd)
+  document.removeEventListener('click', handleGlobalClick)
   document.body.style.cursor = ''
 })
 
@@ -973,9 +1054,9 @@ function onMoveEnd() {
 }
 .scene-change-bar {
   position: absolute;
-  bottom: 0;
+  bottom: -5%;
   width: 5px;
-  height: 200%;
+  height: 110%;
   background: #657390;
   opacity: 0.95;
   border-radius: 2px;
@@ -1331,5 +1412,101 @@ function onMoveEnd() {
 
 .rythmo-block.is-dragged-away {
   opacity: 0.2;
+}
+
+/* Nouveaux styles pour le dropdown de personnages */
+.character-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  z-index: 20;
+  position: relative;
+}
+
+.character-dropdown-btn {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+  font-weight: bold;
+}
+
+.character-dropdown-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.character-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 100%;
+  z-index: 1000;
+  margin-bottom: 6px;
+  margin-right: -8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(132, 85, 246, 0.2);
+  animation: fadeInUp 0.2s ease-out;
+}
+
+.character-dropdown-content {
+  background: linear-gradient(135deg, rgba(30, 35, 45, 0.95), rgba(42, 48, 60, 0.95));
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.character-option {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin: 2px 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.character-option:hover {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation pour les actions de personnage */
+.character-tag {
+  transition: all 0.2s ease;
+}
+
+.character-tag:hover {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.character-tag-hovered {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation pour le dropdown */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>

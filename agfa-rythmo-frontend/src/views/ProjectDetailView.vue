@@ -31,7 +31,7 @@
     </header>
 
     <!-- Main Grid -->
-  <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2">
+  <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2 overflow-x-hidden">
   <!-- Overlay Left Panel - Timecodes -->
       <!-- Overlay Right Panel - Scene Changes -->
       <div>
@@ -160,6 +160,7 @@
           @update-timecode-bounds="onUpdateTimecodeBounds"
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
+          @update-timecode-character="onUpdateTimecodeCharacter"
           @delete-timecode="onDeleteTimecode"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
@@ -574,6 +575,30 @@ async function onUpdateTimecodeShowCharacter({ timecode, showCharacter }: { time
     }
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'affichage du personnage:', error)
+  }
+}
+
+// Nouvelle fonction pour changer le personnage d'un timecode
+async function onUpdateTimecodeCharacter({ timecode, characterId }: { timecode: ApiTimecode | Timecode; characterId: number | null }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+
+  try {
+    await timecodeApi.update(project.value.id, tc.id, { character_id: characterId })
+
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].character_id = characterId
+      // Trouve et assigne l'objet character complet
+      if (characterId) {
+        allTimecodes.value[index].character = allCharacters.value.find(c => c.id === characterId)
+      } else {
+        allTimecodes.value[index].character = undefined
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du personnage du timecode:', error)
   }
 }
 
