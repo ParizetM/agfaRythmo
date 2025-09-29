@@ -1136,16 +1136,19 @@ function onMoveEnd() {
   position: relative;
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border: 1px solid rgba(59, 130, 246, 0.3);
+  z-index: 4; /* Blocs de texte toujours devant les gaps */
 }
 .rythmo-block.active {
   background: linear-gradient(135deg, #10b981, #059669);
   border: 1px solid #10b981;
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  z-index: 5; /* Bloc actif encore plus devant */
 }
 .rythmo-block-gap {
   background: var(--agfa-gray) !important;
   opacity: 0.3;
   border: 1px solid rgba(75, 85, 99, 0.3);
+  z-index: 1; /* Gaps toujours derrière les blocs de texte */
 }
 .rythmo-text span,
 .distort-text {
