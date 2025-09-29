@@ -164,6 +164,7 @@
           @delete-timecode="onDeleteTimecode"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
+          @selected-line-changed="onSelectedLineChanged"
         />
 
 
@@ -244,7 +245,6 @@ function onSelectSceneChange(idx: number) {
 function onEditSceneChange(idx: number) {
   selectedSceneChangeIdx.value = idx
   // TODO: Implémenter l'édition de scene change si nécessaire
-  console.log('Éditer scene change', idx)
 }
 function onAddSceneChange() {
   addSceneChange()
@@ -321,6 +321,9 @@ const allCharacters = ref<Character[]>([])
 const activeCharacter = ref<Character | null>(null)
 const showCharacterModal = ref(false)
 const editingCharacter = ref<Character | null>(null)
+
+// Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
+const selectedLineNumber = ref<number>(1)
 
 // Conversion temporaire des anciens timecodes en format compatible
 const compatibleTimecodes = computed(() => {
@@ -432,9 +435,8 @@ function addTimecodeToLine(lineNumber: number) {
   showTimecodeModal.value = true
 }
 
-function onAddTimecodeToLine(lineNumber: number) {
+function onAddTimecodeToLine() {
   // TODO: Ouvrir modal pour ajouter timecode sur cette ligne
-  console.log('Ajouter timecode sur ligne', lineNumber)
 }
 
 async function onUpdateLinesCount(count: number) {
@@ -496,6 +498,11 @@ function onCharacterDeleted(characterId: number) {
 function closeCharacterModal() {
   showCharacterModal.value = false
   editingCharacter.value = null
+}
+
+// Gestionnaire pour les changements de ligne sélectionnée
+function onSelectedLineChanged(lineNumber: number) {
+  selectedLineNumber.value = lineNumber
 }
 
 // Nouvelle fonction onUpdateTimecode pour le nouveau format
@@ -726,7 +733,7 @@ async function onAddTimecode() {
       start: currentTime.value,
       end: currentTime.value + 6,
       text: 'Insérer du texte ici',
-      line_number: 1,
+      line_number: selectedLineNumber.value, // Utilise la ligne actuellement sélectionnée
       character_id: activeCharacter.value?.id || null,
       show_character: !!activeCharacter.value
     }

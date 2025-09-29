@@ -20,10 +20,18 @@
           :style="{ backgroundColor: character.color }"
         ></div>
 
-        <!-- Nom du personnage -->
-        <span class="text-white font-medium text-sm truncate" :style="{ color: character.color }">
-          {{ character.name }}
-        </span>
+        <!-- Nom du personnage avec raccourci clavier -->
+        <div class="flex items-center gap-1 min-w-0 flex-1">
+          <span class="text-white font-medium text-sm truncate" :style="{ color: character.color }">
+            {{ character.name }}
+          </span>
+          <span
+            v-if="getCharacterKeyIndex(character) !== -1"
+            class="text-xs px-1 rounded bg-gray-700/50 text-gray-300 font-mono flex-shrink-0"
+          >
+            {{ getCharacterKeyIndex(character) === 9 ? '0' : (getCharacterKeyIndex(character) + 1).toString() }}
+          </span>
+        </div>
 
         <!-- Menu contextuel au hover -->
         <div
@@ -124,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
 
 const props = defineProps<{
@@ -144,6 +152,46 @@ const showDeleteModal = ref(false)
 const characterToDelete = ref<Character | null>(null)
 const deleteTimecodes = ref(false)
 const isDeleting = ref(false)
+
+// Fonction pour obtenir l'index du personnage dans la liste (pour les raccourcis clavier)
+function getCharacterKeyIndex(character: Character): number {
+  const index = props.characters.findIndex(c => c.id === character.id)
+  return index < 10 ? index : -1 // Seulement les 10 premiers (1-0)
+}
+
+// Gestion des événements clavier
+function onKeyDown(event: KeyboardEvent) {
+  // Ignore si focus dans un champ de saisie
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const tag = target.tagName.toLowerCase()
+  const isEditable = tag === 'input' || tag === 'textarea' || target.isContentEditable
+  if (isEditable) return
+
+  // Ignore si des modificateurs sont pressés (pour éviter les conflits avec Shift+1-6 pour les lignes)
+  if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return
+
+  // Gestion des touches 1-9 et 0
+  const keyMap = {
+    'Digit1': 0, 'Numpad1': 0,
+    'Digit2': 1, 'Numpad2': 1,
+    'Digit3': 2, 'Numpad3': 2,
+    'Digit4': 3, 'Numpad4': 3,
+    'Digit5': 4, 'Numpad5': 4,
+    'Digit6': 5, 'Numpad6': 5,
+    'Digit7': 6, 'Numpad7': 6,
+    'Digit8': 7, 'Numpad8': 7,
+    'Digit9': 8, 'Numpad9': 8,
+    'Digit0': 9, 'Numpad0': 9
+  } as const
+
+  const characterIndex = keyMap[event.code as keyof typeof keyMap]
+
+  if (characterIndex !== undefined && props.characters[characterIndex]) {
+    event.preventDefault()
+    selectCharacter(props.characters[characterIndex])
+  }
+}
 
 function selectCharacter(character: Character) {
   emit('character-selected', character)
@@ -177,6 +225,15 @@ async function confirmDelete() {
     isDeleting.value = false
   }
 }
+
+// Écouteurs d'événements clavier
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+})
 </script>
 
 <style scoped>

@@ -1,5 +1,14 @@
 <template>
-  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick">
+    <!-- Triangle de sélection de ligne -->
+    <div
+      v-if="props.selectedLine === props.lineNumber"
+      class="line-selector-triangle"
+      :title="`Ligne ${props.lineNumber} sélectionnée`"
+    >
+      ▶
+    </div>
+
     <div class="rythmo-track-container" ref="trackContainer" :style="{ width: `${bandWidth}px` }">
       <div
         class="rythmo-content"
@@ -372,9 +381,12 @@ const props = defineProps<{
   isLastLine: boolean
   dragState?: DragState | null
   characters?: Character[]
+  selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
 }>()
 
 const isHovered = ref(false)
+
+
 
 // Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
@@ -813,6 +825,7 @@ const emit = defineEmits<{
   (e: 'dragging-start', payload: DragStartPayload): void
   (e: 'dragging-update', payload: DragUpdatePayload): void
   (e: 'dragging-end'): void
+  (e: 'line-selected', lineNumber: number): void
 }>()
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
@@ -825,6 +838,12 @@ const onDeleteClick = (idx: number) => {
   if (timecode) {
     emit('delete-timecode', { timecode })
   }
+}
+
+// Gestionnaire de clic sur la bande pour sélectionner la ligne
+const onBandClick = () => {
+  // Toujours sélectionner la ligne, peu importe où on clique
+  emit('line-selected', props.lineNumber)
 }
 
 watch(smoothScroll, (val, oldVal) => {
@@ -843,6 +862,8 @@ const editingText = ref('')
 // Variables pour la gestion du dropdown de personnages
 const hoveredCharacterIdx = ref<number | null>(null)
 const characterDropdownIdx = ref<number | null>(null)
+
+
 
 const editInput = ref<HTMLInputElement | null>(null)
 function setEditInputRef(el: Element | ComponentPublicInstance | null) {
@@ -1668,5 +1689,36 @@ function onMoveEnd() {
   font-size: 0.6rem;
   font-weight: 500;
   opacity: 0.9;
+}
+
+/* Styles pour le triangle de sélection de ligne */
+.line-selector-triangle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #8455f6;
+  z-index: 100;
+  transition: all 0.3s ease;
+  animation: fadeInLeft 0.3s ease-out;
+  pointer-events: none;
+  text-shadow:
+    0 0 6px rgba(132, 85, 246, 0.8),
+    0 0 12px rgba(132, 85, 246, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.8);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  font-weight: bold;
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 </style>

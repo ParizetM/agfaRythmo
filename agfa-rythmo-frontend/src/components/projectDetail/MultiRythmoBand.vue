@@ -47,6 +47,7 @@
           :isLastLine="lineNumber === localRythmoLinesCount"
           :dragState="dragState"
           :characters="characters"
+          :selectedLine="selectedLine"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
@@ -59,6 +60,7 @@
           @dragging-update="onDragUpdate"
           @dragging-end="onDragEnd"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
+          @line-selected="onLineSelected"
         />
       </div>
     </div>
@@ -74,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import RythmoBandSingle from './RythmoBandSingle.vue'
 import CharactersList from './CharactersList.vue'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
@@ -138,6 +140,7 @@ const emit = defineEmits<{
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
+  (e: 'selected-line-changed', lineNumber: number): void
   // Character related events forwarded from CharactersList
   (e: 'character-selected', character: Character): void
   (e: 'add-character'): void
@@ -154,6 +157,9 @@ const timecodeToDelete = ref<Timecode | null>(null)
 // Clés pour forcer le reload individuel de chaque ligne
 const lineReloadKeys = ref<Record<number, number>>({})
 const dragState = ref<DragState | null>(null)
+
+// État de la ligne sélectionnée
+const selectedLine = ref<number | null>(1)
 
 // Synchronise avec les props
 watch(() => props.rythmoLinesCount, (newCount) => {
@@ -189,8 +195,6 @@ function onUpdateTimecodeCharacter(payload: { timecode: Timecode; characterId: n
 function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: number }) {
   // Recharge seulement les lignes concernées après un court délai
   setTimeout(() => {
-    console.log(`Reload lignes ${payload.sourceLineNumber} et ${payload.targetLineNumber}`)
-
     // Force le reload de la ligne source
     lineReloadKeys.value[payload.sourceLineNumber] = (lineReloadKeys.value[payload.sourceLineNumber] || 0) + 1
 
@@ -252,6 +256,60 @@ function onCancelDelete() {
   showDeleteModal.value = false
   timecodeToDelete.value = null
 }
+
+// Gestion de la sélection de ligne
+function onLineSelected(lineNumber: number) {
+  // Vérifier que le numéro de ligne est valide
+  if (lineNumber >= 1 && lineNumber <= localRythmoLinesCount.value) {
+    selectedLine.value = lineNumber
+    // Émettre le changement vers le parent
+    emit('selected-line-changed', lineNumber)
+  }
+}
+
+// Gestion des raccourcis clavier pour la sélection de lignes (Shift + 1-6)
+function onKeyDownLineSelection(event: KeyboardEvent) {
+  // Ignore si focus dans un champ de saisie
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const tag = target.tagName.toLowerCase()
+  const isEditable = tag === 'input' || tag === 'textarea' || target.isContentEditable
+  if (isEditable) return
+
+  // Seulement si Shift est pressé
+  if (!event.shiftKey) return
+
+  // Mapping des touches avec Shift pour sélection de ligne
+  const lineKeyMap = {
+    'Digit1': 1, 'Numpad1': 1,
+    'Digit2': 2, 'Numpad2': 2,
+    'Digit3': 3, 'Numpad3': 3,
+    'Digit4': 4, 'Numpad4': 4,
+    'Digit5': 5, 'Numpad5': 5,
+    'Digit6': 6, 'Numpad6': 6,
+  } as const
+
+  const lineNumber = lineKeyMap[event.code as keyof typeof lineKeyMap]
+
+  if (lineNumber !== undefined) {
+    // Vérifier que la ligne existe
+    if (lineNumber <= localRythmoLinesCount.value) {
+      event.preventDefault()
+      selectedLine.value = lineNumber
+      // Émettre le changement vers le parent
+      emit('selected-line-changed', lineNumber)
+    }
+  }
+}
+
+// Gestion des événements de cycle de vie
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDownLineSelection)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyDownLineSelection)
+})
 </script>
 
 <style scoped>
