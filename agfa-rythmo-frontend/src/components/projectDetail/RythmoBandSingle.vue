@@ -238,6 +238,38 @@
       </div>
       <div class="rythmo-cursor"></div>
 
+      <!-- Tooltip de redimensionnement - compacte -->
+      <div
+        v-if="resizingIdx !== null"
+        class="resize-tooltip"
+        :style="getResizeTooltipStyle()"
+      >
+        <div class="resize-tooltip-content">
+          <span v-if="resizeMode === 'left'" class="resize-time">
+            {{ formatTime(localTimecodes[resizingIdx]?.start || 0) }}
+          </span>
+          <span v-else class="resize-time">
+            {{ formatTime(localTimecodes[resizingIdx]?.end || 0) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Tooltip de déplacement -->
+      <div
+        v-if="movingIdx !== null"
+        class="move-tooltip"
+        :style="getMoveTooltipStyle()"
+      >
+        <div class="move-tooltip-content">
+          <div class="move-time">
+            {{ formatTime(localTimecodes[movingIdx]?.start || 0) }}
+          </div>
+          <div class="move-line">
+            → Ligne {{ moveCurrentTargetLine }}
+          </div>
+        </div>
+      </div>
+
       <!-- Overlay avec informations de ligne -->
       <div v-if="isHovered" class="line-overlay">
         <div class="line-info">
@@ -419,6 +451,9 @@ const resizeMode = ref<'left' | 'right' | null>(null)
 const resizeStartX = ref(0)
 const resizeStartTime = ref(0)
 const resizeStartEnd = ref(0)
+const resizeMouseX = ref(0)
+const resizeMouseY = ref(0)
+const resizeFixedY = ref(0) // Position Y fixée à l'apparition de la tooltip
 
 // --- Déplacement des blocs ---
 const movingIdx = ref<number | null>(null)
@@ -426,6 +461,8 @@ const moveStartX = ref(0)
 const moveStartY = ref(0)
 const moveStartTime = ref(0)
 const moveCurrentTargetLine = ref<number | null>(null)
+const moveMouseX = ref(0)
+const moveMouseY = ref(0)
 
 const shouldRenderDragOverlay = computed(() => {
   const dragState = props.dragState
@@ -566,7 +603,51 @@ function cloneTimecode(tc: Timecode): Timecode {
   }
 }
 
-function getContrastColor(backgroundColor: string): string {
+// Fonctions de formatage du temps
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = (seconds % 60).toFixed(2)
+  return `${mins}:${secs.padStart(5, '0')}s`
+}
+
+
+
+function getResizeTooltipStyle(): CSSProperties {
+  if (resizingIdx.value === null || !resizeMode.value) return { display: 'none' }
+
+  // Position relative à la souris avec Y fixe
+  const containerRect = trackContainer.value?.getBoundingClientRect()
+  if (!containerRect) return { display: 'none' }
+
+  const relativeX = resizeMouseX.value - containerRect.left
+
+  return {
+    position: 'absolute',
+    left: `${relativeX - 30}px`, // Suit la souris en X (largeur tooltip ~60px)
+    top: `${resizeFixedY.value}px`,  // Y fixe défini à l'apparition
+    zIndex: 9999,
+    pointerEvents: 'none',
+  }
+}
+
+function getMoveTooltipStyle(): CSSProperties {
+  if (movingIdx.value === null) return { display: 'none' }
+
+  // Position relative à la souris (suit X et Y)
+  const containerRect = trackContainer.value?.getBoundingClientRect()
+  if (!containerRect) return { display: 'none' }
+
+  const relativeX = moveMouseX.value - containerRect.left
+  const relativeY = moveMouseY.value - containerRect.top
+
+  return {
+    position: 'absolute',
+    left: `${relativeX - 30}px`, // Suit la souris en X (largeur tooltip ~60px)
+    top: `${relativeY - 40}px`,  // 40px au-dessus de la souris
+    zIndex: 9999,
+    pointerEvents: 'none',
+  }
+}function getContrastColor(backgroundColor: string): string {
   // Convertir la couleur hex en RGB
   const hex = backgroundColor.replace('#', '')
   const r = parseInt(hex.substr(0, 2), 16)
@@ -833,6 +914,14 @@ function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
   resizingIdx.value = idx
   resizeMode.value = mode
   resizeStartX.value = event.clientX
+  resizeMouseX.value = event.clientX
+  resizeMouseY.value = event.clientY
+
+  // Calcul de la position Y fixe relative au conteneur
+  const containerRect = trackContainer.value?.getBoundingClientRect()
+  if (containerRect) {
+    resizeFixedY.value = event.clientY - containerRect.top - 40 // 40px au-dessus de la souris
+  }
 
   const timecode = effectiveTimecodes.value[idx]
   resizeStartTime.value = timecode.start
@@ -845,6 +934,9 @@ function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
 
 function onResizeMove(event: MouseEvent) {
   if (resizingIdx.value === null || !resizeMode.value) return
+
+  // Mise à jour de la position X de la souris pour la tooltip (Y reste fixe)
+  resizeMouseX.value = event.clientX
 
   const deltaX = event.clientX - resizeStartX.value
   const deltaTime = deltaX / PX_PER_SEC
@@ -925,6 +1017,8 @@ function onMoveStart(idx: number, event: MouseEvent) {
   movingIdx.value = idx
   moveStartX.value = event.clientX
   moveStartY.value = event.clientY
+  moveMouseX.value = event.clientX
+  moveMouseY.value = event.clientY
 
   const timecode = effectiveTimecodes.value[idx]
   moveStartTime.value = timecode.start
@@ -946,6 +1040,10 @@ function onMoveStart(idx: number, event: MouseEvent) {
 
 function onMoveMove(event: MouseEvent) {
   if (movingIdx.value === null) return
+
+  // Mise à jour de la position de la souris pour la tooltip
+  moveMouseX.value = event.clientX
+  moveMouseY.value = event.clientY
 
   const deltaX = event.clientX - moveStartX.value
   const deltaTime = deltaX / PX_PER_SEC
@@ -1142,7 +1240,7 @@ function onMoveEnd() {
   background: linear-gradient(135deg, #10b981, #059669);
   border: 1px solid #10b981;
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
-  z-index: 5; /* Bloc actif encore plus devant */
+  /* z-index: 5; Bloc actif encore plus devant */
 }
 .rythmo-block-gap {
   background: var(--agfa-gray) !important;
@@ -1183,7 +1281,7 @@ function onMoveEnd() {
   font-weight: bold;
   padding: 2px 6px;
   border-radius: 4px;
-  z-index: 10;
+  z-index: 20;
   line-height: 1;
   white-space: nowrap;
   text-shadow: none;
@@ -1511,5 +1609,67 @@ function onMoveEnd() {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Styles pour la tooltip de redimensionnement */
+.resize-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.resize-tooltip-content {
+  background: rgba(30, 35, 45, 0.95);
+  border: 1px solid rgba(132, 85, 246, 0.4);
+  border-radius: 4px;
+  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.resize-time {
+  color: #8455F6;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Styles pour la tooltip de déplacement */
+.move-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.move-tooltip-content {
+  background: rgba(30, 35, 45, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 4px;
+  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.move-time {
+  color: #10b981;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.move-line {
+  color: #e5e7eb;
+  font-size: 0.6rem;
+  font-weight: 500;
+  opacity: 0.9;
 }
 </style>
