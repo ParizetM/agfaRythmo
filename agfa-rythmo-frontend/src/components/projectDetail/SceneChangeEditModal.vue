@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{ show: boolean, timecode: number | null }>()
 const emit = defineEmits(['submit', 'close'])
