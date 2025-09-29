@@ -124,6 +124,20 @@
 
   <!-- CharactersList moved inside MultiRythmoBand (forwarded props/events) -->
 
+        <!-- Barre de navigation vidéo -->
+        <VideoNavigationBar
+          v-if="project && videoDuration > 0"
+          :currentTime="currentTime"
+          :videoDuration="videoDuration"
+          :timecodes="compatibleTimecodes"
+          :sceneChanges="sceneChanges.map(sc => sc.timecode)"
+          :isVideoPaused="isVideoPaused"
+          :rythmoLinesCount="project.rythmo_lines_count"
+          @seek="onNavigationSeek"
+          @seekDelta="seek"
+          @seekFrame="seekFrame"
+        />
+
         <!-- Configuration multi-lignes et bandes rythmo -->
         <MultiRythmoBand
           v-if="project"
@@ -153,11 +167,11 @@
 
 
 
-        <RythmoControls
+        <!-- <RythmoControls
           :isVideoPaused="isVideoPaused"
           @seek="seek"
           @seekFrame="seekFrame"
-        />
+        /> -->
       </div>
     </div>
 
@@ -244,9 +258,10 @@ async function onDeleteSceneChange(idx: number) {
   }
 }
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
+import VideoNavigationBar from '../components/projectDetail/VideoNavigationBar.vue'
 import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 
-import RythmoControls from '../components/projectDetail/RythmoControls.vue'
+// import RythmoControls from '../components/projectDetail/RythmoControls.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -731,39 +746,6 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
 function closeTimecodeModal() {
   showTimecodeModal.value = false
 }
-async function saveTimecode() {
-  if (!project.value) return
-
-  try {
-    if (editTimecodeIdx.value !== null) {
-      // Mode édition - trouver le timecode à partir de l'index dans compatibleTimecodes
-      const timecodeToEdit = compatibleTimecodes.value[editTimecodeIdx.value]
-      if (timecodeToEdit?.id) {
-        // Mettre à jour via l'API
-        await timecodeApi.update(project.value.id, timecodeToEdit.id, {
-          start: modalTimecode.start,
-          end: modalTimecode.end,
-          text: modalTimecode.text,
-          line_number: modalTimecode.line_number || 1
-        })
-      }
-    } else {
-      // Mode création - créer via l'API
-      await timecodeApi.create(project.value.id, {
-        start: modalTimecode.start,
-        end: modalTimecode.end,
-        text: modalTimecode.text,
-        line_number: modalTimecode.line_number || 1
-      })
-    }
-
-    // Recharger les timecodes
-    await loadTimecodes()
-    showTimecodeModal.value = false
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde du timecode:', error)
-  }
-}
 
 onMounted(async () => {
   loading.value = true
@@ -841,6 +823,22 @@ function handleKeydown(e: KeyboardEvent) {
 
 // Seek déclenché par clic sur un bloc de la bande rythmo
 const onRythmoSeek = (time: number) => {
+  lastSeekFromTimecode = true
+  currentTime.value = time
+  // Met à jour la vidéo si possible
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (videoEl) videoEl.currentTime = time
+  // Sélectionne le timecode courant
+  if (compatibleTimecodes.value.length > 0) {
+    const idx = compatibleTimecodes.value.findIndex((tc) => time >= tc.start && time < tc.end)
+    selectedTimecodeIdx.value = idx >= 0 ? idx : null
+  }
+  // Scroll instantané lors d'un seek manuel
+  instantRythmoScroll.value = true
+}
+
+// Seek déclenché par la barre de navigation vidéo
+const onNavigationSeek = (time: number) => {
   lastSeekFromTimecode = true
   currentTime.value = time
   // Met à jour la vidéo si possible

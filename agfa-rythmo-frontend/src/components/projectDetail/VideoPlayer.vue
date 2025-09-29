@@ -3,7 +3,6 @@
     <video
       ref="videoRef"
       :src="src"
-      controls
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
       class="w-full max-w-4xl rounded-lg bg-black shadow-xl max-h-[60vh] object-contain"

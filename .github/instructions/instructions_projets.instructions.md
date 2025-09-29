@@ -147,18 +147,6 @@ src/
 - Interface d'édition temps réel
 
 ## Scripts de développement
-
-### Backend
-```bash
-# Démarrage complet (recommandé)
-composer run dev  # Lance server + queue + logs + vite
-
-# Commandes individuelles
-php artisan serve
-php artisan migrate
-php artisan test
-```
-
 ### Frontend
 ```bash
 npm run dev        # Serveur de développement
@@ -218,3 +206,4 @@ npm run lint       # ESLint + Prettier
 3. **Utiliser** TypeScript pour tous les nouveaux fichiers frontend
 4. **Suivre** les conventions de nommage Laravel/Vue.js
 5. **Tester** les modifications avec les scripts composer appropriés
+6. **NE JAMAIS** exécuter `npm run dev` dans le frontend
