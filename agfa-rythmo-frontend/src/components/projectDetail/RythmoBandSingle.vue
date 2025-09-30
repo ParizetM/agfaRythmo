@@ -1560,7 +1560,7 @@ function onMoveEnd() {
 .rythmo-ticks {
   position: absolute;
   left: 0;
-  bottom: 0;
+  bottom: -2rem;
   width: 100%;
   height: 2rem;
   pointer-events: none;
@@ -1568,7 +1568,7 @@ function onMoveEnd() {
 }
 .rythmo-tick {
   position: absolute;
-  bottom: 0%;
+  top: 0;
   width: 2px;
   height: 45%;
   background: #aaa;
