@@ -46,6 +46,8 @@
           :lineNumber="Number(lineNumber)"
           :isLastLine="lineNumber === localRythmoLinesCount"
           :dragState="dragState"
+          :sceneChangeDragState="sceneChangeDragState"
+          :sceneChangeHoverState="sceneChangeHoverState"
           :characters="characters"
           :selectedLine="selectedLine"
           @seek="$emit('seek', $event)"
@@ -61,6 +63,13 @@
           @dragging-end="onDragEnd"
           @add-timecode="() => $emit('add-timecode-to-line', Number(lineNumber))"
           @line-selected="onLineSelected"
+          @update-scene-change="onUpdateSceneChange"
+          @delete-scene-change="onDeleteSceneChange"
+          @scene-change-drag-start="onSceneChangeDragStart"
+          @scene-change-drag-update="onSceneChangeDragUpdate"
+          @scene-change-drag-end="onSceneChangeDragEnd"
+          @scene-change-hover-start="onSceneChangeHoverStart"
+          @scene-change-hover-end="onSceneChangeHoverEnd"
         />
       </div>
     </div>
@@ -93,6 +102,12 @@ interface Timecode {
   show_character?: boolean
 }
 
+interface SceneChange {
+  id: number
+  timecode: number
+  project_id: number
+}
+
 interface DragState {
   active: boolean
   timecode: Timecode
@@ -118,12 +133,29 @@ interface DragUpdatePayload {
   pointerY: number
 }
 
+interface SceneChangeDragState {
+  active: boolean
+  sceneChangeId: number
+  index: number
+  startTime: number
+  currentTime: number
+  startX: number
+  currentX: number
+  currentY: number
+}
+
+interface SceneChangeHoverState {
+  active: boolean
+  sceneChangeId: number
+  index: number
+}
+
 const props = defineProps<{
   timecodes: Timecode[]
   currentTime: number
   videoDuration?: number
   instant?: boolean | import('vue').Ref<boolean>
-  sceneChanges?: number[]
+  sceneChanges?: SceneChange[]
   rythmoLinesCount: number
   hideConfig?: boolean
   characters?: Character[]
@@ -146,6 +178,9 @@ const emit = defineEmits<{
   (e: 'add-character'): void
   (e: 'edit-character', character: Character): void
   (e: 'character-deleted', characterId: number): void
+  // Scene change related events
+  (e: 'update-scene-change', payload: { id: number; newTimecode: number; isPreview: boolean }): void
+  (e: 'delete-scene-change', payload: { id: number }): void
 }>()
 
 const localRythmoLinesCount = ref(props.rythmoLinesCount || 1)
@@ -157,6 +192,12 @@ const timecodeToDelete = ref<Timecode | null>(null)
 // Clés pour forcer le reload individuel de chaque ligne
 const lineReloadKeys = ref<Record<number, number>>({})
 const dragState = ref<DragState | null>(null)
+
+// État de drag pour les scene changes
+const sceneChangeDragState = ref<SceneChangeDragState | null>(null)
+
+// État de hover partagé pour les scene changes
+const sceneChangeHoverState = ref<SceneChangeHoverState | null>(null)
 
 // État de la ligne sélectionnée
 const selectedLine = ref<number | null>(1)
@@ -264,6 +305,64 @@ function onLineSelected(lineNumber: number) {
     selectedLine.value = lineNumber
     // Émettre le changement vers le parent
     emit('selected-line-changed', lineNumber)
+  }
+}
+
+// Gestion des événements des scene changes
+function onUpdateSceneChange(payload: { id: number; newTimecode: number; isPreview: boolean }) {
+  emit('update-scene-change', payload)
+}
+
+function onDeleteSceneChange(payload: { id: number }) {
+  emit('delete-scene-change', payload)
+}
+
+function onSceneChangeDragStart(payload: { sceneChangeId: number; index: number; startTime: number; startX: number; startY: number }) {
+  sceneChangeDragState.value = {
+    active: true,
+    sceneChangeId: payload.sceneChangeId,
+    index: payload.index,
+    startTime: payload.startTime,
+    currentTime: payload.startTime,
+    startX: payload.startX,
+    currentX: payload.startX,
+    currentY: payload.startY,
+  }
+}
+
+function onSceneChangeDragUpdate(payload: { currentTime: number; currentX: number; currentY: number; isPreview: boolean }) {
+  if (!sceneChangeDragState.value || !sceneChangeDragState.value.active) return
+
+  sceneChangeDragState.value.currentTime = payload.currentTime
+  sceneChangeDragState.value.currentX = payload.currentX
+  sceneChangeDragState.value.currentY = payload.currentY
+
+  if (!payload.isPreview) {
+    emit('update-scene-change', {
+      id: sceneChangeDragState.value.sceneChangeId,
+      newTimecode: payload.currentTime,
+      isPreview: false
+    })
+  }
+}
+
+function onSceneChangeDragEnd() {
+  if (sceneChangeDragState.value) {
+    sceneChangeDragState.value.active = false
+  }
+}
+
+function onSceneChangeHoverStart(payload: { sceneChangeId: number; index: number }) {
+  sceneChangeHoverState.value = {
+    active: true,
+    sceneChangeId: payload.sceneChangeId,
+    index: payload.index,
+  }
+}
+
+function onSceneChangeHoverEnd() {
+  if (sceneChangeHoverState.value) {
+    sceneChangeHoverState.value.active = false
   }
 }
 

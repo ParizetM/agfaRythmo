@@ -28,6 +28,21 @@ class SceneChangeController extends Controller
         return response()->json($sceneChange, 201);
     }
 
+    // Modification d'un changement de plan
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'timecode' => 'required|numeric|min:0',
+        ]);
+
+        $sceneChange = SceneChange::findOrFail($id);
+        $sceneChange->update([
+            'timecode' => $request->timecode,
+        ]);
+
+        return response()->json($sceneChange);
+    }
+
     // Suppression d'un changement de plan
     public function destroy($id)
     {

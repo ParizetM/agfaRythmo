@@ -229,6 +229,14 @@
             {{ dragOverlayText }}
           </span>
         </div>
+
+        <!-- Overlay de déplacement des scene changes -->
+        <div
+          v-if="shouldRenderSceneChangeDragOverlay"
+          class="scene-change-drag-overlay"
+          :style="sceneChangeDragOverlayStyle"
+        ></div>
+
         <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
           <template v-for="tick in ticks" :key="'tick' + tick.x">
             <div
@@ -239,8 +247,36 @@
           </template>
           <!-- Barres verticales de changement de plan -->
         </div>
-        <template v-for="(x, idx) in sceneChangePositions" :key="'scenechange' + idx">
-          <div class="scene-change-bar" :style="{ left: x + 'px' }"></div>
+        <template v-for="(sceneChange, idx) in sceneChangePositions" :key="'scenechange' + sceneChange.id">
+          <div
+            class="scene-change-bar"
+            :class="{
+              'hovered': isSceneChangeHovered(sceneChange.id),
+              'dragging': draggingSceneChangeIdx === idx,
+              'interactive': props.lineNumber === 1 || props.isLastLine
+            }"
+            :style="{ left: sceneChange.x + 'px' }"
+            @mouseenter="onSceneChangeHover(idx)"
+            @mouseleave="onSceneChangeLeave()"
+          >
+            <!-- Zone de grab visible uniquement sur la ligne 1 -->
+            <div
+              v-if="props.lineNumber === 1"
+              class="scene-change-grab-handle"
+              @mousedown="onSceneChangeDragStart(idx, sceneChange, $event)"
+              title="Glisser pour déplacer le changement de plan"
+            ></div>
+
+            <!-- Bouton de suppression visible au hover uniquement sur la dernière ligne -->
+            <button
+              v-if="props.isLastLine && isSceneChangeHovered(sceneChange.id)"
+              class="scene-change-delete-btn"
+              @click="onSceneChangeDelete(sceneChange.id)"
+              title="Supprimer le changement de plan"
+            >
+              🗑️
+            </button>
+          </div>
         </template>
       </div>
       <div class="rythmo-cursor"></div>
@@ -264,6 +300,15 @@
             {{ formatTime(localTimecodes[movingIdx]?.start || 0) }}
           </div>
           <div class="move-line">→ Ligne {{ moveCurrentTargetLine }}</div>
+        </div>
+      </div>
+
+      <!-- Tooltip de déplacement des scene changes -->
+      <div v-if="props.sceneChangeDragState?.active" class="scene-change-drag-tooltip" :style="getSceneChangeDragTooltipStyle()">
+        <div class="scene-change-drag-tooltip-content">
+          <div class="scene-change-time">
+            {{ formatTime(getSceneChangeDragTime()) }}
+          </div>
         </div>
       </div>
 
@@ -345,6 +390,29 @@ interface Timecode {
   show_character?: boolean
 }
 
+interface SceneChange {
+  id: number
+  timecode: number
+  project_id: number
+}
+
+interface SceneChangeDragState {
+  active: boolean
+  sceneChangeId: number
+  index: number
+  startTime: number
+  currentTime: number
+  startX: number
+  currentX: number
+  currentY: number
+}
+
+interface SceneChangeHoverState {
+  active: boolean
+  sceneChangeId: number
+  index: number
+}
+
 interface DragState {
   active: boolean
   timecode: Timecode
@@ -376,10 +444,12 @@ const props = defineProps<{
   videoDuration?: number
   visibleWidth?: number
   instant?: boolean | import('vue').Ref<boolean>
-  sceneChanges?: number[]
+  sceneChanges?: SceneChange[]
   lineNumber: number
   isLastLine: boolean
   dragState?: DragState | null
+  sceneChangeDragState?: SceneChangeDragState | null
+  sceneChangeHoverState?: SceneChangeHoverState | null
   characters?: Character[]
   selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
 }>()
@@ -391,7 +461,11 @@ const isHovered = ref(false)
 // Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
   if (!props.sceneChanges || !props.sceneChanges.length) return []
-  return props.sceneChanges.map((t) => t * PX_PER_SEC + computedVisibleWidth.value / 2)
+  return props.sceneChanges.map((sc) => ({
+    id: sc.id,
+    timecode: sc.timecode,
+    x: sc.timecode * PX_PER_SEC + computedVisibleWidth.value / 2
+  }))
 })
 // Types pour la bande rythmo
 type BandBlock = { type: 'block'; x: number; width: number; text: string; tcIdx: number }
@@ -507,6 +581,42 @@ const dragOverlayCharacterVisible = computed(() => {
 const dragOverlayTextStyle = computed(() => {
   if (!props.dragState) return {}
   return computeDistortStyle(dragOverlayText.value, dragOverlayWidth.value)
+})
+
+// Scene Change Drag Overlay
+const shouldRenderSceneChangeDragOverlay = computed(() => {
+  return props.sceneChangeDragState?.active === true
+})
+
+// Fonction pour vérifier si un scene change est hovered via l'état partagé
+const isSceneChangeHovered = (sceneChangeId: number): boolean => {
+  return props.sceneChangeHoverState?.active === true &&
+         props.sceneChangeHoverState.sceneChangeId === sceneChangeId
+}
+
+const sceneChangeDragOverlayStyle = computed<CSSProperties>(() => {
+  if (!shouldRenderSceneChangeDragOverlay.value || !props.sceneChangeDragState) {
+    return { display: 'none' }
+  }
+
+  // Utiliser l'état partagé pour la position
+  const currentTime = props.sceneChangeDragState.currentTime
+  const x = currentTime * PX_PER_SEC + computedVisibleWidth.value / 2
+
+  return {
+    position: 'absolute',
+    left: `${x}px`,
+    bottom: '-5%',
+    width: '5px',
+    height: '110%',
+    background: '#10b981', // Couleur verte pendant le drag
+    opacity: 0.8,
+    borderRadius: '2px',
+    zIndex: 10,
+    boxShadow: '0 0 16px #10b981',
+    pointerEvents: 'none',
+    transition: 'none',
+  }
 })
 
 // Variables pour la preview de déplacement
@@ -646,6 +756,33 @@ function getMoveTooltipStyle(): CSSProperties {
     zIndex: 9999,
     pointerEvents: 'none',
   }
+}
+
+// Tooltip pour les scene changes
+function getSceneChangeDragTooltipStyle(): CSSProperties {
+  if (!props.sceneChangeDragState?.active) return { display: 'none' }
+
+  // Position relative à la souris (suit X et Y)
+  const containerRect = trackContainer.value?.getBoundingClientRect()
+  if (!containerRect) return { display: 'none' }
+
+  const relativeX = props.sceneChangeDragState.currentX - containerRect.left
+  const relativeY = props.sceneChangeDragState.currentY - containerRect.top
+
+  return {
+    position: 'absolute',
+    left: `${relativeX - 30}px`, // Suit la souris en X
+    top: `${relativeY - 40}px`, // 40px au-dessus de la souris
+    zIndex: 9999,
+    pointerEvents: 'none',
+  }
+}
+
+function getSceneChangeDragTime(): number {
+  if (!props.sceneChangeDragState?.active) return 0
+
+  // Utiliser le temps actuel de l'état partagé
+  return props.sceneChangeDragState.currentTime
 }
 function getContrastColor(backgroundColor: string): string {
   // Convertir la couleur hex en RGB
@@ -826,6 +963,13 @@ const emit = defineEmits<{
   (e: 'dragging-update', payload: DragUpdatePayload): void
   (e: 'dragging-end'): void
   (e: 'line-selected', lineNumber: number): void
+  (e: 'update-scene-change', payload: { id: number; newTimecode: number; isPreview: boolean }): void
+  (e: 'delete-scene-change', payload: { id: number }): void
+  (e: 'scene-change-drag-start', payload: { sceneChangeId: number; index: number; startTime: number; startX: number; startY: number }): void
+  (e: 'scene-change-drag-update', payload: { currentTime: number; currentX: number; currentY: number; isPreview: boolean }): void
+  (e: 'scene-change-drag-end'): void
+  (e: 'scene-change-hover-start', payload: { sceneChangeId: number; index: number }): void
+  (e: 'scene-change-hover-end'): void
 }>()
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
@@ -846,6 +990,102 @@ const onBandClick = () => {
   emit('line-selected', props.lineNumber)
 }
 
+// --- Fonctions pour l'interaction avec les scene changes ---
+function onSceneChangeHover(idx: number) {
+  hoveredSceneChangeIdx.value = idx
+
+  // Émettre vers le parent seulement si on est sur la première ou dernière ligne
+  if (props.lineNumber === 1 || props.isLastLine) {
+    const sceneChange = props.sceneChanges?.[idx]
+    if (sceneChange) {
+      emit('scene-change-hover-start', {
+        sceneChangeId: sceneChange.id,
+        index: idx
+      })
+    }
+  }
+}
+
+function onSceneChangeLeave() {
+  hoveredSceneChangeIdx.value = null
+
+  // Émettre vers le parent seulement si on est sur la première ou dernière ligne
+  if (props.lineNumber === 1 || props.isLastLine) {
+    emit('scene-change-hover-end')
+  }
+}
+
+function onSceneChangeDelete(sceneChangeId: number) {
+  emit('delete-scene-change', { id: sceneChangeId })
+}
+
+function onSceneChangeDragStart(idx: number, sceneChange: { id: number; timecode: number; x: number }, event: MouseEvent) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  draggingSceneChangeIdx.value = idx
+  sceneChangeDragStartX.value = event.clientX
+  sceneChangeDragStartTime.value = sceneChange.timecode
+  sceneChangeDragMouseX.value = event.clientX
+  sceneChangeDragMouseY.value = event.clientY
+
+  // Émettre vers le parent pour initialiser l'état partagé
+  emit('scene-change-drag-start', {
+    sceneChangeId: sceneChange.id,
+    index: idx,
+    startTime: sceneChange.timecode,
+    startX: event.clientX,
+    startY: event.clientY
+  })
+
+  document.addEventListener('mousemove', onSceneChangeDragMove)
+  document.addEventListener('mouseup', onSceneChangeDragEnd)
+  document.body.style.cursor = 'ew-resize'
+}
+
+function onSceneChangeDragMove(event: MouseEvent) {
+  if (draggingSceneChangeIdx.value === null) return
+
+  sceneChangeDragMouseX.value = event.clientX
+  sceneChangeDragMouseY.value = event.clientY
+
+  const deltaX = event.clientX - sceneChangeDragStartX.value
+  const deltaTime = deltaX / PX_PER_SEC
+  const newTimecode = Math.max(0, sceneChangeDragStartTime.value + deltaTime)
+
+  // Émettre vers le parent pour mettre à jour l'état partagé
+  emit('scene-change-drag-update', {
+    currentTime: newTimecode,
+    currentX: event.clientX,
+    currentY: event.clientY,
+    isPreview: true
+  })
+}
+
+function onSceneChangeDragEnd() {
+  if (draggingSceneChangeIdx.value === null) return
+
+  const deltaX = sceneChangeDragMouseX.value - sceneChangeDragStartX.value
+  const deltaTime = deltaX / PX_PER_SEC
+  const newTimecode = Math.max(0, sceneChangeDragStartTime.value + deltaTime)
+
+  // Émettre la mise à jour finale vers l'API
+  emit('scene-change-drag-update', {
+    currentTime: newTimecode,
+    currentX: sceneChangeDragMouseX.value,
+    currentY: sceneChangeDragMouseY.value,
+    isPreview: false
+  })
+
+  // Signaler la fin du drag
+  emit('scene-change-drag-end')
+
+  draggingSceneChangeIdx.value = null
+  document.removeEventListener('mousemove', onSceneChangeDragMove)
+  document.removeEventListener('mouseup', onSceneChangeDragEnd)
+  document.body.style.cursor = ''
+}
+
 watch(smoothScroll, (val, oldVal) => {
   if (Math.abs(val - oldVal) > 40) {
     noTransition.value = true
@@ -862,6 +1102,14 @@ const editingText = ref('')
 // Variables pour la gestion du dropdown de personnages
 const hoveredCharacterIdx = ref<number | null>(null)
 const characterDropdownIdx = ref<number | null>(null)
+
+// Variables pour l'interaction avec les scene changes
+const hoveredSceneChangeIdx = ref<number | null>(null)
+const draggingSceneChangeIdx = ref<number | null>(null)
+const sceneChangeDragStartX = ref(0)
+const sceneChangeDragStartTime = ref(0)
+const sceneChangeDragMouseX = ref(0)
+const sceneChangeDragMouseY = ref(0)
 
 
 
@@ -1019,6 +1267,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onResizeEnd)
   document.removeEventListener('mousemove', onMoveMove)
   document.removeEventListener('mouseup', onMoveEnd)
+  document.removeEventListener('mousemove', onSceneChangeDragMove)
+  document.removeEventListener('mouseup', onSceneChangeDragEnd)
   document.removeEventListener('click', handleGlobalClick)
   document.body.style.cursor = ''
 })
@@ -1173,6 +1423,85 @@ function onMoveEnd() {
   border-radius: 2px;
   z-index: 3;
   box-shadow: 0 0 8px #657390;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.scene-change-bar.interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.scene-change-bar.hovered {
+  background: #8455f6;
+  box-shadow: 0 0 12px #8455f6;
+  opacity: 1;
+  transform: scaleX(1.2);
+}
+
+.scene-change-bar.dragging {
+  background: #657390;
+  box-shadow: none;
+  opacity: 0.3;
+  z-index: 1;
+}
+
+.scene-change-grab-handle {
+  position: absolute;
+  top: -8px;
+  left: -3px;
+  width: 11px;
+  height: 16px;
+  background: rgba(132, 85, 246, 0.8);
+  border: 1px solid #8455f6;
+  border-radius: 3px;
+  cursor: grab;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.scene-change-bar.hovered .scene-change-grab-handle,
+.scene-change-bar.dragging .scene-change-grab-handle {
+  opacity: 1;
+}
+
+.scene-change-grab-handle:hover {
+  background: rgba(132, 85, 246, 1);
+  transform: scale(1.1);
+}
+
+.scene-change-grab-handle:active {
+  cursor: grabbing;
+}
+
+.scene-change-delete-btn {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 22px;
+  width: 20px;
+  background: linear-gradient(180deg, rgba(132,85,246,0.98), rgba(120,60,230,0.95));
+  color: #fff;
+  border-radius: 100%;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* centré */
+  z-index: 12;
+  box-shadow: 0 6px 14px rgba(132,85,246,0.18);
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.scene-change-delete-btn:hover {
+  background: rgba(132, 85, 246, 1);
+}
+
+.scene-change-drag-overlay {
+  position: absolute;
   pointer-events: none;
   transition: none;
 }
@@ -1689,6 +2018,33 @@ function onMoveEnd() {
   font-size: 0.6rem;
   font-weight: 500;
   opacity: 0.9;
+}
+
+/* Styles pour la tooltip de déplacement des scene changes */
+.scene-change-drag-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeInUp 0.15s ease-out;
+}
+
+.scene-change-drag-tooltip-content {
+  background: rgba(30, 35, 45, 0.95);
+  border: 1px solid rgba(132, 85, 246, 0.4);
+  border-radius: 4px;
+  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.scene-change-time {
+  color: #8455f6;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 /* Styles pour le triangle de sélection de ligne */

@@ -17,6 +17,7 @@ Route::patch('/projects/{project}/rythmo-lines', [ProjectController::class, 'upd
 // Changements de plan (scene changes)
 Route::get('/projects/{project}/scene-changes', [SceneChangeController::class, 'index']);
 Route::post('/projects/{project}/scene-changes', [SceneChangeController::class, 'store']);
+Route::put('/scene-changes/{id}', [SceneChangeController::class, 'update']);
 Route::delete('/scene-changes/{id}', [SceneChangeController::class, 'destroy']);
 
 // Timecodes multi-lignes

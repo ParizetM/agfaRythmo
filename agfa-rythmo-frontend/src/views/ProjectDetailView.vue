@@ -158,7 +158,7 @@
           v-if="project"
           :key="rythmoReloadKey"
           :timecodes="compatibleTimecodes"
-          :sceneChanges="sceneChanges.map(sc => sc.timecode)"
+          :sceneChanges="sceneChanges"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
@@ -179,6 +179,8 @@
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
           @selected-line-changed="onSelectedLineChanged"
+          @update-scene-change="onUpdateSceneChangeFromBand"
+          @delete-scene-change="onDeleteSceneChangeFromBand"
         />
 
 
@@ -243,6 +245,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import api from '../api/axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
+import * as sceneChangesApi from '../api/sceneChanges'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
@@ -280,6 +283,47 @@ async function onDeleteSceneChange(idx: number) {
     // TODO: gestion d'erreur
   }
 }
+
+// Nouveaux gestionnaires pour les événements des bandes rythmo
+async function onUpdateSceneChangeFromBand(payload: { id: number; newTimecode: number; isPreview: boolean }) {
+  if (payload.isPreview) {
+    // Pour le preview, on peut juste retourner sans rien faire
+    // Le feedback visuel est géré par le composant qui drag
+    return
+  }
+
+  try {
+    const updatedSceneChange = await sceneChangesApi.updateSceneChange(payload.id, {
+      timecode: payload.newTimecode
+    })
+
+    // Mettre à jour dans la liste locale
+    const index = sceneChanges.value.findIndex(sc => sc.id === payload.id)
+    if (index !== -1) {
+      sceneChanges.value[index] = updatedSceneChange
+      // Retrier par timecode
+      sceneChanges.value.sort((a, b) => a.timecode - b.timecode)
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du changement de plan:', error)
+    // TODO: Afficher un message d'erreur à l'utilisateur
+  }
+}
+
+async function onDeleteSceneChangeFromBand(payload: { id: number }) {
+  try {
+    await sceneChangesApi.deleteSceneChange(payload.id)
+
+    // Retirer de la liste locale
+    const index = sceneChanges.value.findIndex(sc => sc.id === payload.id)
+    if (index !== -1) {
+      sceneChanges.value.splice(index, 1)
+    }
+  } catch (error) {
+    console.error('Erreur lors de la suppression du changement de plan:', error)
+    // TODO: Afficher un message d'erreur à l'utilisateur
+  }
+}
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
 import VideoNavigationBar from '../components/projectDetail/VideoNavigationBar.vue'
 import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
@@ -290,7 +334,8 @@ const route = useRoute()
 const router = useRouter()
 
 // Liste des changements de plan (objets {id, timecode})
-interface SceneChange { id: number; timecode: number }
+// Utilise le type depuis l'API
+type SceneChange = sceneChangesApi.SceneChange
 const sceneChanges = ref<SceneChange[]>([])
 
 function goToFinalPreview() {
