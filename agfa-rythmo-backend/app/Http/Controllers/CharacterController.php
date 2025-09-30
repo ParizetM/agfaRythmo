@@ -32,6 +32,7 @@ class CharacterController extends Controller
             'project_id' => 'required|exists:projects,id',
             'name' => 'required|string|max:255',
             'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'text_color' => 'sometimes|nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
         $character = Character::create($validated);
@@ -49,6 +50,7 @@ class CharacterController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'color' => 'sometimes|required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'text_color' => 'sometimes|nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
         $character->update($validated);
@@ -96,6 +98,7 @@ class CharacterController extends Controller
             'project_id' => $targetProject->id,
             'name' => $sourceCharacter->name,
             'color' => $sourceCharacter->color,
+            'text_color' => $sourceCharacter->text_color,
         ]);
 
         return response()->json($newCharacter, 201);

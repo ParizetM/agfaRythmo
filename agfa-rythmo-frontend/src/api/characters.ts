@@ -5,6 +5,7 @@ export interface Character {
   project_id: number
   name: string
   color: string
+  text_color?: string | null
   created_at?: string
   updated_at?: string
   project?: {
@@ -17,11 +18,13 @@ export interface CreateCharacterData {
   project_id: number
   name: string
   color: string
+  text_color?: string | null
 }
 
 export interface UpdateCharacterData {
   name?: string
   color?: string
+  text_color?: string | null
 }
 
 export interface CloneCharacterData {

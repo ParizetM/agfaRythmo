@@ -94,7 +94,7 @@
                     :class="{ 'character-tag-hovered': characterDropdownIdx === el.tcIdx }"
                     :style="{
                       backgroundColor: getTimecodeCharacter(el.tcIdx)?.color,
-                      color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6'),
+                      color: getCharacterTextColor(getTimecodeCharacter(el.tcIdx)),
                     }"
                     @mouseenter="hoveredCharacterIdx = el.tcIdx"
                     @mouseleave="hoveredCharacterIdx = null"
@@ -137,7 +137,7 @@
                         class="character-option"
                         :style="{
                           backgroundColor: character.color,
-                          color: getContrastColor(character.color),
+                          color: getCharacterTextColor(character),
                         }"
                         @click="changeTimecodeCharacter(el.tcIdx, character.id)"
                       >
@@ -186,7 +186,7 @@
                         :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
                         :style="{
                           ...getSegmentStyle(segment),
-                          color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit',
+                          color: getCharacterTextColor(getTimecodeCharacter(el.tcIdx)) || 'inherit',
                         }"
                       >
                         {{ segment.text }}
@@ -232,7 +232,7 @@
             class="character-tag"
             :style="{
               backgroundColor: dragOverlayCharacter.color,
-              color: getContrastColor(dragOverlayCharacter.color || '#8455F6'),
+              color: getCharacterTextColor(dragOverlayCharacter),
             }"
           >
             {{ dragOverlayCharacter.name }}
@@ -251,7 +251,7 @@
                 :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
                 :style="{
                   ...getSegmentStyle(segment),
-                  color: dragOverlayCharacter?.color || 'inherit',
+                  color: getCharacterTextColor(dragOverlayCharacter) || 'inherit',
                 }"
               >
                 {{ segment.text }}
@@ -408,6 +408,7 @@ import {
 } from 'vue'
 import { useSmoothScroll } from './useSmoothScroll'
 import { type Character } from '../../api/characters'
+import { getContrastColor } from '../../utils/colorUtils'
 
 interface Timecode {
   id?: number
@@ -584,6 +585,8 @@ const dragOverlayStyle = computed<CSSProperties>(() => {
   if (!shouldRenderDragOverlay.value || !props.dragState) return {}
 
   const x = props.dragState.newStart * PX_PER_SEC + computedVisibleWidth.value / 2
+  const backgroundColor = props.dragState.timecode.character?.color || '#3b82f6'
+
   return {
     left: `${x}px`,
     width: `${dragOverlayWidth.value}px`,
@@ -598,6 +601,8 @@ const dragOverlayStyle = computed<CSSProperties>(() => {
     position: 'absolute',
     pointerEvents: 'none',
     zIndex: 5,
+    background: backgroundColor,
+    border: `1px solid ${backgroundColor}`,
   }
 })
 
@@ -812,21 +817,46 @@ function getSceneChangeDragTime(): number {
   // Utiliser le temps actuel de l'état partagé
   return props.sceneChangeDragState.currentTime
 }
-function getContrastColor(backgroundColor: string): string {
-  // Convertir la couleur hex en RGB
-  const hex = backgroundColor.replace('#', '')
-  const r = parseInt(hex.substr(0, 2), 16)
-  const g = parseInt(hex.substr(2, 2), 16)
-  const b = parseInt(hex.substr(4, 2), 16)
+// Fonction pour obtenir la couleur de texte d'un personnage (utilise text_color ou calcule automatiquement)
+function getCharacterTextColor(character: Character | null): string {
+  if (!character) return '#FFFFFF'
 
-  // Calculer la luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  // Si une couleur de texte personnalisée est définie, l'utiliser
+  if (character.text_color) {
+    return character.text_color
+  }
 
-  // Retourner blanc ou noir selon la luminance
-  return luminance > 0.5 ? '#000000' : '#FFFFFF'
+  // Sinon, calculer automatiquement basé sur la couleur de fond
+  return getContrastColor(character.color || '#8455F6')
 }
 
 function getAbsoluteBlockStyle(el: BandBlock) {
+  const character = getTimecodeCharacter(el.tcIdx)
+  const isActive = el.tcIdx === activeIdx.value
+
+  let backgroundColor: string
+  let borderColor: string
+  let boxShadow = 'none'
+
+  if (character?.color) {
+    // Si un personnage avec couleur est défini
+    backgroundColor = character.color
+    borderColor = character.color
+
+    if (isActive) {
+      // Effet de luminosité pour le bloc actif
+      boxShadow = `0 0 12px ${character.color}80` // 80 = 50% opacité en hex
+    }
+  } else {
+    // Couleur par défaut si pas de personnage
+    backgroundColor = isActive ? '#10b981' : '#3b82f6'
+    borderColor = isActive ? '#10b981' : 'rgba(59, 130, 246, 0.3)'
+
+    if (isActive) {
+      boxShadow = '0 0 12px rgba(16, 185, 129, 0.4)'
+    }
+  }
+
   return {
     left: el.x + 'px',
     width: el.width + 'px',
@@ -839,6 +869,9 @@ function getAbsoluteBlockStyle(el: BandBlock) {
     borderRadius: '4px',
     margin: '0',
     position: 'absolute',
+    background: backgroundColor,
+    border: `1px solid ${borderColor}`,
+    boxShadow: boxShadow,
   }
 }
 
@@ -1754,11 +1787,13 @@ function onMoveEnd() {
 }
 .rythmo-block {
   position: relative;
+  /* Couleur par défaut si pas de personnage (remplacée par JavaScript si personnage) */
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border: 1px solid rgba(59, 130, 246, 0.3);
   z-index: 4; /* Blocs de texte toujours devant les gaps */
 }
 .rythmo-block.active {
+  /* Styles par défaut pour les blocs actifs sans personnage (remplacés par JavaScript si personnage) */
   background: linear-gradient(135deg, #10b981, #059669);
   border: 1px solid #10b981;
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);

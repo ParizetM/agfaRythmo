@@ -22,7 +22,14 @@
 
         <!-- Nom du personnage avec raccourci clavier -->
         <div class="flex items-center gap-1 min-w-0 flex-1">
-          <span class="text-white font-medium text-sm truncate" :style="{ color: character.color }">
+          <span
+            class="text-white font-medium text-sm truncate"
+            :style="{
+              backgroundColor: character.color,
+              color: character.text_color || getContrastColor(character.color),
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }">
             {{ character.name }}
           </span>
           <span
@@ -90,7 +97,12 @@
 
         <p class="text-gray-300 mb-4">
           Êtes-vous sûr de vouloir supprimer le personnage
-          <span class="font-semibold" :style="{ color: characterToDelete?.color }">
+          <span
+            class="font-semibold px-2 py-1 rounded"
+            :style="{
+              backgroundColor: characterToDelete?.color,
+              color: characterToDelete?.text_color || getContrastColor(characterToDelete?.color || '#FFFFFF')
+            }">
             "{{ characterToDelete?.name }}"
           </span>
           ?
@@ -134,6 +146,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
+import { getContrastColor } from '../../utils/colorUtils'
 
 const props = defineProps<{
   characters: Character[]

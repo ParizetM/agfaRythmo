@@ -15,6 +15,7 @@ class Character extends Model
         'project_id',
         'name',
         'color',
+        'text_color',
     ];
 
     protected $casts = [

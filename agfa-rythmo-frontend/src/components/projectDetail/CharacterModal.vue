@@ -20,24 +20,74 @@
           />
         </div>
 
-        <!-- Couleur -->
+        <!-- Couleur de fond -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">
-            Couleur
+            Couleur de fond
           </label>
           <div class="flex items-center space-x-3">
             <input
               v-model="formData.color"
               type="color"
+              @input="onBackgroundColorChange"
               class="w-12 h-10 rounded border border-gray-600 bg-agfa-button cursor-pointer"
             />
             <input
               v-model="formData.color"
               type="text"
               pattern="^#[0-9A-Fa-f]{6}$"
+              @input="onBackgroundColorChange"
               class="flex-1 bg-agfa-button text-white border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
               placeholder="#8455F6"
             />
+          </div>
+        </div>
+
+        <!-- Couleur de texte -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Couleur de texte
+          </label>
+          <div class="flex items-center space-x-3">
+            <input
+              v-model="formData.text_color"
+              type="color"
+              class="w-12 h-10 rounded border border-gray-600 bg-agfa-button cursor-pointer"
+            />
+            <input
+              v-model="formData.text_color"
+              type="text"
+              pattern="^#[0-9A-Fa-f]{6}$"
+              class="flex-1 bg-agfa-button text-white border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+              :placeholder="suggestTextColor(formData.color)"
+            />
+            <button
+              type="button"
+              @click="autoSelectTextColor"
+              class="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-500 transition-colors"
+              title="Couleur automatique"
+            >
+              Auto
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">
+            Laissez vide pour une sélection automatique basée sur la couleur de fond
+          </p>
+        </div>
+
+        <!-- Aperçu -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Aperçu
+          </label>
+          <div
+            class="px-4 py-2 rounded text-center font-medium"
+            :style="{
+              backgroundColor: formData.color,
+              color: formData.text_color || suggestTextColor(formData.color)
+            }"
+          >
+            {{ formData.name || 'Nom du personnage' }}
           </div>
         </div>
 
@@ -109,6 +159,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
+import { suggestTextColor } from '../../utils/colorUtils'
 
 const props = defineProps<{
   projectId: number
@@ -122,7 +173,8 @@ const emit = defineEmits<{
 
 const formData = reactive({
   name: '',
-  color: '#8455F6'
+  color: '#8455F6',
+  text_color: null as string | null
 })
 
 const isSubmitting = ref(false)
@@ -136,11 +188,24 @@ watch(() => props.editingCharacter, (character) => {
   if (character) {
     formData.name = character.name
     formData.color = character.color
+    formData.text_color = character.text_color || null
   } else {
     formData.name = ''
     formData.color = '#8455F6'
+    formData.text_color = null
   }
 }, { immediate: true })
+
+// Fonction appelée quand la couleur de fond change pour suggérer automatiquement une couleur de texte
+function onBackgroundColorChange() {
+  // Si pas de couleur de texte personnalisée définie, ne rien faire
+  // L'aperçu utilisera automatiquement la suggestion
+}
+
+// Fonction pour sélectionner automatiquement la couleur de texte
+function autoSelectTextColor() {
+  formData.text_color = suggestTextColor(formData.color)
+}
 
 // Charger les personnages disponibles pour le clonage
 async function loadCloneCharacters() {
@@ -162,6 +227,7 @@ function selectCharacterToClone(character: Character) {
   selectedCloneCharacter.value = character
   formData.name = character.name
   formData.color = character.color
+  formData.text_color = character.text_color || null
 }
 
 async function handleSubmit() {
@@ -174,7 +240,8 @@ async function handleSubmit() {
       // Mode édition
       const response = await characterApi.update(props.editingCharacter.id, {
         name: formData.name.trim(),
-        color: formData.color
+        color: formData.color,
+        text_color: formData.text_color
       })
       character = response.data
     } else if (selectedCloneCharacter.value) {
@@ -185,10 +252,11 @@ async function handleSubmit() {
       })
       character = response.data
       // Mettre à jour avec les données du formulaire si elles ont été modifiées
-      if (character.name !== formData.name.trim() || character.color !== formData.color) {
+      if (character.name !== formData.name.trim() || character.color !== formData.color || character.text_color !== formData.text_color) {
         const updateResponse = await characterApi.update(character.id, {
           name: formData.name.trim(),
-          color: formData.color
+          color: formData.color,
+          text_color: formData.text_color
         })
         character = updateResponse.data
       }
@@ -197,7 +265,8 @@ async function handleSubmit() {
       const response = await characterApi.create({
         project_id: props.projectId,
         name: formData.name.trim(),
-        color: formData.color
+        color: formData.color,
+        text_color: formData.text_color
       })
       character = response.data
     }
