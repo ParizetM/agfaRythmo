@@ -58,8 +58,14 @@
             v-model="formData.text"
             type="text"
             required
+            placeholder="Entrez le texte du timecode"
             class="w-full p-3 rounded-lg border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300"
           />
+          <div class="mt-2 text-sm text-gray-400">
+            <p class="mb-1">💡 <strong>Astuce :</strong> Utilisez le caractère <code class="bg-gray-700 px-1 rounded">|</code> pour contrôler l'espacement et les largeurs.</p>
+            <p class="text-xs mb-1">• <code class="bg-gray-700 px-1 rounded">mot1|mot2</code> → espaces fixes entre les mots</p>
+            <p class="text-xs">• <code class="bg-gray-700 px-1 rounded">mot1|2|mot2</code> → "mot2" sera 2× plus large que "mot1"</p>
+          </div>
         </label>
 
         <div class="flex gap-4 pt-4">

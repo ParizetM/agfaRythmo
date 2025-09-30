@@ -165,16 +165,28 @@
                     🗑️
                   </button>
 
-                  <!-- Texte du timecode coloré selon le personnage -->
-                  <span
-                    class="distort-text"
+                  <!-- Texte du timecode avec support des segments (pipes) -->
+                  <div
+                    class="timecode-text-segments"
                     :style="{
-                      ...getDistortStyle(el.tcIdx),
-                      color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      height: '100%'
                     }"
                   >
-                    {{ el.text }}
-                  </span>
+                    <template v-for="(segment, segIdx) in getTextSegments(el.tcIdx)" :key="segIdx">
+                      <span
+                        :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
+                        :style="{
+                          ...getSegmentStyle(segment),
+                          color: getTimecodeCharacter(el.tcIdx)?.color || 'inherit',
+                        }"
+                      >
+                        {{ segment.text }}
+                      </span>
+                    </template>
+                  </div>
                 </template>
               </div>
 
@@ -219,15 +231,27 @@
           >
             {{ dragOverlayCharacter.name }}
           </div>
-          <span
-            class="distort-text"
+          <div
+            class="timecode-text-segments"
             :style="{
-              ...dragOverlayTextStyle,
-              color: dragOverlayCharacter?.color || 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              height: '100%'
             }"
           >
-            {{ dragOverlayText }}
-          </span>
+            <template v-for="(segment, segIdx) in getDragOverlayTextSegments()" :key="segIdx">
+              <span
+                :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
+                :style="{
+                  ...getSegmentStyle(segment),
+                  color: dragOverlayCharacter?.color || 'inherit',
+                }"
+              >
+                {{ segment.text }}
+              </span>
+            </template>
+          </div>
         </div>
 
         <!-- Overlay de déplacement des scene changes -->
@@ -578,10 +602,7 @@ const dragOverlayCharacterVisible = computed(() => {
   return dragOverlayWidth.value >= 100
 })
 
-const dragOverlayTextStyle = computed(() => {
-  if (!props.dragState) return {}
-  return computeDistortStyle(dragOverlayText.value, dragOverlayWidth.value)
-})
+
 
 // Scene Change Drag Overlay
 const shouldRenderSceneChangeDragOverlay = computed(() => {
@@ -820,7 +841,111 @@ const activeIdx = computed(() => {
   return effectiveTimecodes.value.findIndex((tc) => t >= tc.start && t < tc.end)
 })
 
-function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
+// Interface pour les segments de texte avec largeurs fixes
+interface TextSegment {
+  text: string
+  width: number
+  isFixed: boolean // true si c'est un espace fixe (|), false si c'est du texte à redimensionner
+  relativeWeight?: number // poids relatif pour le redimensionnement
+}
+
+function parseTextWithPipes(text: string, totalWidth: number): TextSegment[] {
+  const segments: TextSegment[] = []
+  const parts = text.split('|')
+
+  if (parts.length === 1) {
+    // Pas de pipes, retour au comportement normal
+    return [{
+      text: text,
+      width: totalWidth,
+      isFixed: false,
+      relativeWeight: 1
+    }]
+  }
+
+  // Largeur fixe pour chaque espace (pipe transformé) - configurable
+  const PIPE_SPACE_WIDTH = 20 // pixels
+
+  // Parse les segments et leurs poids relatifs
+  const textSegments: Array<{ text: string; weight: number }> = []
+  let totalRelativeWeight = 0
+  let spacesCount = 0
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim()
+
+    if (part === '') {
+      // Pipe vide = espace fixe
+      spacesCount++
+      continue
+    }
+
+    // Vérifier si c'est un nombre (poids relatif)
+    const weight = parseFloat(part)
+    if (!isNaN(weight) && weight > 0) {
+      // C'est un multiplicateur de poids pour le segment précédent
+      if (textSegments.length > 0) {
+        textSegments[textSegments.length - 1].weight = weight
+        totalRelativeWeight += weight - 1 // Ajuster le total (on avait déjà compté 1)
+      }
+      spacesCount++ // Le multiplicateur compte comme un espace
+    } else {
+      // C'est du texte normal
+      textSegments.push({ text: part, weight: 1 })
+      totalRelativeWeight += 1
+      if (i > 0) spacesCount++ // Espace avant ce segment (sauf le premier)
+    }
+  }
+
+  // Calculer la largeur disponible pour le texte
+  const totalFixedWidth = spacesCount * PIPE_SPACE_WIDTH
+  const availableTextWidth = totalWidth - totalFixedWidth
+
+  // Calculer les largeurs basées sur les poids relatifs
+  const unitWidth = availableTextWidth / totalRelativeWeight
+
+  // Construire les segments finaux
+  let isFirstSegment = true
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim()
+
+    if (part === '' || (!isNaN(parseFloat(part)) && parseFloat(part) > 0)) {
+      // Pipe vide ou multiplicateur = espace fixe
+      if (!isFirstSegment) {
+        segments.push({
+          text: ' ',
+          width: PIPE_SPACE_WIDTH,
+          isFixed: true
+        })
+      }
+      continue
+    }
+
+    // Ajouter un espace avant ce segment (sauf le premier)
+    if (!isFirstSegment) {
+      segments.push({
+        text: ' ',
+        width: PIPE_SPACE_WIDTH,
+        isFixed: true
+      })
+    }
+
+    // Trouver le poids de ce segment dans textSegments
+    const segmentIndex = textSegments.findIndex(ts => ts.text === part)
+    const weight = segmentIndex >= 0 ? textSegments[segmentIndex].weight : 1
+
+    segments.push({
+      text: part,
+      width: Math.max(10, unitWidth * weight),
+      isFixed: false,
+      relativeWeight: weight
+    })
+
+    isFirstSegment = false
+  }
+
+  return segments
+}function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
   const span = document.createElement('span')
   span.style.visibility = 'hidden'
   span.style.position = 'absolute'
@@ -839,10 +964,39 @@ function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): 
   }
 }
 
-function getDistortStyle(idx: number) {
+
+
+// Nouvelle fonction pour obtenir les segments de texte avec pipes
+function getTextSegments(idx: number): TextSegment[] {
   const width = getBlockWidth(idx)
   const text = effectiveTimecodes.value[idx].text || ''
-  return computeDistortStyle(text, width)
+  return parseTextWithPipes(text, width)
+}
+
+// Fonction pour calculer le style d'un segment spécifique
+function getSegmentStyle(segment: TextSegment): CSSProperties {
+  if (segment.isFixed) {
+    // Espace fixe - pas de déformation
+    return {
+      width: `${segment.width}px`,
+      flexShrink: 0,
+      textAlign: 'center' as const,
+    }
+  } else {
+    // Texte à redimensionner
+    return {
+      ...computeDistortStyle(segment.text, segment.width),
+      width: `${segment.width}px`,
+      flexShrink: 0,
+    }
+  }
+}
+
+// Fonction pour obtenir les segments pour l'overlay de déplacement
+function getDragOverlayTextSegments(): TextSegment[] {
+  if (!props.dragState || !dragOverlayWidth.value) return []
+  const text = dragOverlayText.value
+  return parseTextWithPipes(text, dragOverlayWidth.value)
 }
 
 function isBlockBeingDragged(idx: number) {
@@ -1618,6 +1772,32 @@ function onMoveEnd() {
   width: 100%;
   white-space: pre;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Styles pour les espaces fixes (pipes transformés) */
+.fixed-space {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0;
+  opacity: 0.6;
+  background: none;
+  border-radius: 3px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  overflow: visible;
+  white-space: pre;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Container pour les segments de texte */
+.timecode-text-segments {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
 }
 .rythmo-block.active .distort-text {
   opacity: 1;
