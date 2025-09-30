@@ -32,6 +32,16 @@
           </svg>
         </button>
 
+        <!-- Bouton collaborateurs -->
+        <button
+          v-if="project && canManageProject"
+          class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
+          @click="showCollaboratorsModal = true"
+          title="Gérer les collaborateurs"
+        >
+            <UsersIcon class="w-5 h-5" />
+        </button>
+
         <!-- Bouton aperçu final -->
         <button
           v-if="project && project.video_path && compatibleTimecodes.length > 0"
@@ -44,8 +54,24 @@
       </div>
     </header>
 
+    <!-- Message d'erreur d'accès -->
+    <div v-if="project && !hasProjectAccess" class="w-full max-w-4xl mx-auto p-6 bg-red-600 text-white rounded-lg mb-6">
+      <div class="flex items-center justify-center">
+        <div class="text-center">
+          <h3 class="text-lg font-semibold mb-2">Accès refusé</h3>
+          <p class="mb-4">Vous n'avez pas les droits pour accéder à ce projet.</p>
+          <button
+            @click="goBack"
+            class="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100"
+          >
+            Retour aux projets
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Grid -->
-  <div class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2 overflow-x-hidden">
+  <div v-else class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2 overflow-x-hidden">
   <!-- Overlay Left Panel - Timecodes -->
       <!-- Overlay Right Panel - Scene Changes -->
       <div>
@@ -229,6 +255,31 @@
       :show="showKeyboardShortcuts"
       @close="showKeyboardShortcuts = false"
     />
+
+    <!-- Modal de gestion des collaborateurs -->
+    <div v-if="showCollaboratorsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+            Gérer les collaborateurs
+          </h3>
+          <button
+            @click="showCollaboratorsModal = false"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <CollaboratorsPanel
+          v-if="project"
+          :projectId="project.id"
+          :canManage="canManageProject"
+        />
+      </div>
+    </div>
   </div>
 
 </template>
@@ -236,14 +287,12 @@
 <script setup lang="ts">
 import TimecodeModal from '../components/projectDetail/TimecodeModal.vue'
 import KeyboardShortcutsModal from '../components/projectDetail/KeyboardShortcutsModal.vue'
+import { UsersIcon } from '@heroicons/vue/24/outline'
 // Contrôle du scroll instantané pour la bande rythmo
 
 const instantRythmoScroll = ref(true) // true = instantané, false = smooth
 import BackSvg from '../assets/icons/back.svg'
 import ArrowSvg from '../assets/icons/arrow.svg'
-function goBack() {
-  router.push({ name: 'projects' })
-}
 // Gestion du repli horizontal de la partie timecodes (fermé par défaut)
 const isTimecodesCollapsed = ref(true)
 function toggleTimecodesPanel() {
@@ -251,7 +300,9 @@ function toggleTimecodesPanel() {
 }
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import api from '../api/axios'
+import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
 import * as sceneChangesApi from '../api/sceneChanges'
@@ -259,6 +310,7 @@ import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMul
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
 import SceneChangeEditModal from '../components/projectDetail/SceneChangeEditModal.vue'
+import CollaboratorsPanel from '../components/projectDetail/CollaboratorsPanel.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
 function toggleSceneChangesPanel() {
@@ -344,6 +396,11 @@ import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 const route = useRoute()
 const router = useRouter()
 
+// Fonction de retour aux projets
+function goBack() {
+  router.push({ name: 'home' })
+}
+
 // Liste des changements de plan (objets {id, timecode})
 // Utilise le type depuis l'API
 type SceneChange = sceneChangesApi.SceneChange
@@ -376,6 +433,15 @@ interface Project {
   video_path?: string
   timecodes?: Timecode[]
   rythmo_lines_count?: number
+  user_id?: number
+  owner?: { id: number; name: string; email: string }
+  collaborators?: Array<{
+    id: number;
+    name: string;
+    email: string;
+    permission?: string;
+    pivot?: { permission: string; created_at: string }
+  }>
 }
 const project = ref<Project | null>(null)
 const loading = ref(true)
@@ -401,9 +467,57 @@ const editingCharacter = ref<Character | null>(null)
 
 // Gestion du modal des raccourcis clavier
 const showKeyboardShortcuts = ref(false)
+const showCollaboratorsModal = ref(false)
 
 // Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
 const selectedLineNumber = ref<number>(1)
+
+// Store d'authentification
+const authStore = useAuthStore()
+
+// Vérifier si l'utilisateur a accès au projet (lecture)
+const hasProjectAccess = computed(() => {
+  if (!project.value || !authStore.user) return false
+
+  // Admin global a toujours accès
+  if (authStore.isAdmin) return true
+
+  // Propriétaire du projet a accès
+  if (project.value.user_id === authStore.user.id) return true
+
+  // Collaborateur a accès
+  if (project.value.collaborators && authStore.user) {
+    return project.value.collaborators.some(
+      collab => collab.id === authStore.user!.id
+    )
+  }
+
+  return false
+})
+
+// Vérifier si l'utilisateur peut gérer le projet
+const canManageProject = computed(() => {
+  if (!project.value || !authStore.user) return false
+
+  // Admin global ou propriétaire du projet
+  if (authStore.isAdmin || project.value.user_id === authStore.user.id) {
+    return true
+  }
+
+  // Collaborateur avec permission 'admin'
+  if (project.value.collaborators && authStore.user) {
+    const userCollaborator = project.value.collaborators.find(
+      collab => collab.id === authStore.user!.id
+    )
+    if (userCollaborator) {
+      // Support des deux structures possibles: permission directe ou dans pivot
+      const permission = userCollaborator.permission || userCollaborator.pivot?.permission
+      return permission === 'admin'
+    }
+  }
+
+  return false
+})
 
 // Conversion temporaire des anciens timecodes en format compatible
 const compatibleTimecodes = computed(() => {
@@ -982,9 +1096,28 @@ onMounted(async () => {
 
     // Charge les personnages
     await loadCharacters()
-  } catch {
+  } catch (error) {
+    // Vérifier si c'est une erreur d'accès refusé (403)
+    if (error instanceof AxiosError && error.response?.status === 403) {
+      // Rediriger vers la page d'accueil avec un message d'erreur
+      router.push({
+        name: 'home',
+        query: {
+          error: 'Vous n\'avez pas les droits pour accéder à ce projet'
+        }
+      })
+      return
+    }
+
+    // Pour les autres erreurs (404, 500, etc.), rediriger également
     project.value = null
     sceneChanges.value = []
+    router.push({
+      name: 'home',
+      query: {
+        error: 'Projet introuvable ou erreur de chargement'
+      }
+    })
   } finally {
     loading.value = false
   }

@@ -28,7 +28,7 @@
       <ul v-show="!foldedLines[lineNumber]" class="list-none p-0 m-0 space-y-1">
         <li
           v-for="(timecode, idx) in getTimecodesForLine(lineNumber)"
-          :key="timecode.id || idx"
+          :key="timecode.id != null ? `tc-${timecode.id}` : `line-${lineNumber}-idx-${idx}`"
           :class="[
             'p-2 rounded-lg cursor-pointer transition-all duration-300 hover:bg-gray-700',
             {

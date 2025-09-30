@@ -17,6 +17,10 @@ export default {
         'agfa-green-hover': '#2f855a',
         'agfa-red': '#e53e3e',
         'agfa-red-hover': '#c53030',
+        // Couleurs du thème sombre AgfaRythmo
+        'agfa-bg-primary': '#121827',    // Fond principal (très sombre)
+        'agfa-bg-secondary': '#202937',  // Couleur menu/cartes (moins sombre)
+        'agfa-bg-tertiary': '#2a3441',   // Couleur pour les cartes (plus claire)
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',

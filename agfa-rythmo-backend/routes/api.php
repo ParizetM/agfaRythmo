@@ -7,6 +7,9 @@ use App\Http\Controllers\SceneChangeController;
 use App\Http\Controllers\TimecodeController;
 use App\Http\Controllers\CharacterController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\ProjectCollaboratorController;
+use App\Http\Controllers\Api\ProjectInvitationController;
 
 // Routes publiques (pas d'authentification requise)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -51,4 +54,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/characters/{character}', [CharacterController::class, 'destroy']);
     Route::post('/characters/clone', [CharacterController::class, 'clone']);
     Route::get('/characters/for-cloning', [CharacterController::class, 'getForCloning']);
+
+    // Collaboration sur les projets
+    Route::get('/projects/{project}/collaborators', [ProjectCollaboratorController::class, 'index']);
+    Route::post('/projects/{project}/collaborators', [ProjectCollaboratorController::class, 'store']);
+    Route::put('/projects/{project}/collaborators/{user}', [ProjectCollaboratorController::class, 'update']);
+    Route::delete('/projects/{project}/collaborators/{user}', [ProjectCollaboratorController::class, 'destroy']);
+    Route::post('/projects/{project}/leave', [ProjectCollaboratorController::class, 'leave']);
+    Route::get('/projects/{project}/search-users', [ProjectCollaboratorController::class, 'searchUsers']);
+
+    // Invitations de projets
+    Route::get('/invitations', [ProjectInvitationController::class, 'index']);
+    Route::post('/invitations', [ProjectInvitationController::class, 'store']);
+    Route::get('/projects/{project}/invitations', [ProjectInvitationController::class, 'projectInvitations']);
+    Route::post('/invitations/{invitation}/accept', [ProjectInvitationController::class, 'accept']);
+    Route::post('/invitations/{invitation}/decline', [ProjectInvitationController::class, 'decline']);
+    Route::delete('/invitations/{invitation}', [ProjectInvitationController::class, 'destroy']);
+
+    // Routes admin (middleware admin requis)
+    Route::middleware('admin')->group(function () {
+        Route::get('/admin/users', [AdminUserController::class, 'index']);
+        Route::post('/admin/users', [AdminUserController::class, 'store']);
+        Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
+        Route::put('/admin/users/{user}', [AdminUserController::class, 'update']);
+        Route::post('/admin/users/{user}/change-password', [AdminUserController::class, 'changePassword']);
+        Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy']);
+        Route::get('/admin/projects', [AdminUserController::class, 'allProjects']);
+        Route::get('/admin/stats', [AdminUserController::class, 'stats']);
+    });
 });

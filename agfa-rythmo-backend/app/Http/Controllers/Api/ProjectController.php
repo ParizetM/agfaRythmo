@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\Character;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class ProjectController extends Controller
 {
@@ -16,8 +18,20 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        // Retourne la liste de tous les projets
-        return response()->json(Project::all());
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->isAdmin()) {
+            // Les admins voient tous les projets
+            $projects = Project::with(['owner', 'collaborators'])->get();
+        } else {
+            // Les utilisateurs voient uniquement leurs projets + ceux où ils sont collaborateurs
+            $projects = $user->accessibleProjects()
+                ->with(['owner', 'collaborators'])
+                ->get();
+        }
+
+        return response()->json($projects);
     }
 
     /**
@@ -41,6 +55,8 @@ class ProjectController extends Controller
         }
 
         $project = DB::transaction(function () use ($validated) {
+            // Assigner l'utilisateur courant comme propriétaire
+            $validated['user_id'] = Auth::id();
             $project = Project::create($validated);
 
             // Créer automatiquement un personnage par défaut
@@ -61,6 +77,12 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
+        // Vérifier l'accès
+        if (!$project->hasAccess(Auth::user())) {
+            return response()->json(['message' => 'Accès refusé'], 403);
+        }
+
+        $project->load(['owner', 'collaborators']);
         return response()->json($project);
     }
 
@@ -69,6 +91,11 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
+        // Vérifier les permissions d'écriture
+        if (!$project->canModify(Auth::user())) {
+            return response()->json(['message' => 'Droits insuffisants'], 403);
+        }
+
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
@@ -92,6 +119,11 @@ class ProjectController extends Controller
      */
     public function updateRythmoLinesCount(Request $request, Project $project)
     {
+        // Vérifier les permissions d'écriture
+        if (!$project->canModify(Auth::user())) {
+            return response()->json(['message' => 'Droits insuffisants'], 403);
+        }
+
         $validated = $request->validate([
             'rythmo_lines_count' => 'required|integer|min:1|max:6',
         ]);
@@ -105,14 +137,44 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
-        // Supprimer la vidéo associée si elle existe
-        if ($project->video_path) {
-            $videoPath = 'public/videos/' . $project->video_path;
-            if (Storage::exists($videoPath)) {
-                Storage::delete($videoPath);
-            }
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Seul le propriétaire ou un admin peut supprimer
+        if (!$user->isAdmin() && $project->user_id !== $user->id) {
+            return response()->json(['message' => 'Seul le propriétaire peut supprimer ce projet'], 403);
         }
-        $project->delete();
-        return response()->json(['message' => 'Projet supprimé']);
+
+        DB::transaction(function () use ($project) {
+            // Supprimer toutes les relations et données associées
+
+            // 1. Supprimer les timecodes
+            $project->timecodes()->delete();
+
+            // 2. Supprimer les changements de plan
+            $project->sceneChanges()->delete();
+
+            // 3. Supprimer les personnages
+            $project->characters()->delete();
+
+            // 4. Supprimer les collaborations (table pivot)
+            $project->collaborators()->detach();
+
+            // 5. Supprimer les invitations en attente
+            $project->invitations()->delete();
+
+            // 6. Supprimer la vidéo associée si elle existe
+            if ($project->video_path) {
+                $videoPath = 'public/videos/' . $project->video_path;
+                if (Storage::exists($videoPath)) {
+                    Storage::delete($videoPath);
+                }
+            }
+
+            // 7. Supprimer le projet lui-même
+            $project->delete();
+        });
+
+        return response()->json(['message' => 'Projet et toutes ses données associées supprimés avec succès']);
     }
 }

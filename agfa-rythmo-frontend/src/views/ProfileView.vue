@@ -5,7 +5,7 @@
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
           Profil utilisateur
         </h3>
-        
+
         <form @submit.prevent="updateProfile" class="mt-6 space-y-6">
           <div>
             <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -19,7 +19,7 @@
               class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
-          
+
           <div>
             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Adresse email
@@ -32,7 +32,7 @@
               class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
-          
+
           <div class="flex justify-end">
             <button
               type="submit"
@@ -43,11 +43,11 @@
             </button>
           </div>
         </form>
-        
+
         <div v-if="message" class="mt-4 text-green-600 dark:text-green-400">
           {{ message }}
         </div>
-        
+
         <div v-if="error" class="mt-4 text-red-600 dark:text-red-400">
           {{ error }}
         </div>
@@ -82,14 +82,14 @@ const updateProfile = async () => {
     loading.value = true
     error.value = ''
     message.value = ''
-    
+
     await authStore.updateProfile({
       name: form.name,
       email: form.email
     })
-    
+
     message.value = 'Profil mis à jour avec succès'
-    
+
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'response' in err) {
       const axiosError = err as { response?: { data?: { message?: string } } }

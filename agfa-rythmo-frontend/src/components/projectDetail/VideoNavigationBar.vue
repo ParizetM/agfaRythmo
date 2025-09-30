@@ -34,8 +34,8 @@
 
         <!-- Indicateurs de changements de plan -->
         <div
-          v-for="sceneChange in sceneChanges"
-          :key="sceneChange"
+          v-for="(sceneChange, scIdx) in sceneChanges"
+          :key="`scene-${scIdx}-${sceneChange}`"
           class="scene-change-indicator"
           :style="{ left: getSceneChangePosition(sceneChange) + '%' }"
           :title="`Changement de plan à ${formatTime(sceneChange)} (clic pour naviguer)`"
@@ -44,8 +44,8 @@
 
         <!-- Blocs de timecodes simplifiés -->
         <div
-          v-for="timecode in timecodes"
-          :key="timecode.id || `${timecode.start}-${timecode.end}`"
+          v-for="(timecode, tcIdx) in timecodes"
+          :key="`tc-${tcIdx}-${timecode.id ?? 'new'}-${timecode.start}-${timecode.end}`"
           class="timecode-block"
           :class="{ 'active': isTimecodeActive(timecode) }"
           :style="getSimpleTimecodeStyle(timecode)"

@@ -32,6 +32,28 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
+    // Améliorer le message d'erreur pour le développement
+    if (error.response?.data) {
+      const errorData = error.response.data;
+      let errorMessage = error.message;
+
+      if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.errors) {
+        // Erreurs de validation Laravel
+        const validationErrors = Object.values(errorData.errors).flat();
+        errorMessage = validationErrors.join(', ');
+      }
+
+      // Créer une nouvelle erreur avec le message amélioré
+      const enhancedError = new Error(errorMessage);
+      enhancedError.name = error.name;
+      Object.assign(enhancedError, { response: error.response, config: error.config });
+
+      return Promise.reject(enhancedError);
+    }
+
     return Promise.reject(error);
   }
 );

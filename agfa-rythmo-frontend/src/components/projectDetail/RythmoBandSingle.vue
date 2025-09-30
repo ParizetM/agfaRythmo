@@ -17,7 +17,7 @@
       >
         <div class="rythmo-text">
           <template v-if="bandElements.length">
-            <template v-for="(el, idx) in bandElements" :key="'el' + idx">
+            <template v-for="(el, idx) in bandElements" :key="getElementKey(el, idx)">
               <div
                 v-if="el.type === 'block'"
                 class="rythmo-block"
@@ -238,7 +238,7 @@
         ></div>
 
         <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
-          <template v-for="tick in ticks" :key="'tick' + tick.x">
+          <template v-for="(tick, tickIdx) in ticks" :key="'tick' + tickIdx">
             <div
               class="rythmo-tick"
               :class="{ 'tick-second': tick.isSecond }"
@@ -924,6 +924,17 @@ const bandElements = computed<BandElement[]>(() => {
   }
   return arr
 })
+
+// Génère une clé unique et stable pour chaque élément de la bande
+function getElementKey(el: BandElement, idx: number): string {
+  if (el.type === 'block') {
+    // Pour les blocs, utiliser l'ID du timecode qui est stable
+    return `block-${el.tcIdx}-${effectiveTimecodes.value[el.tcIdx]?.id || idx}`
+  } else {
+    // Pour les gaps, utiliser leur position arrondie qui est relativement stable
+    return `gap-${Math.round(el.x)}-${Math.round(el.width)}`
+  }
+}
 
 const noTransition = ref(false)
 const targetScroll = computed(() => {

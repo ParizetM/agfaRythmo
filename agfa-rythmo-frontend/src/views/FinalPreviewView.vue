@@ -13,7 +13,7 @@
           :src="videoSrc"
           class="preview-video"
           @loadedmetadata="onLoadedMetadata"
-          @click="playError && video.value && video.value.play()"
+          @click="playError && video && video.play()"
           tabindex="0"
         />
         <div
@@ -142,25 +142,7 @@ onUnmounted(() => {
   console.log('[onUnmounted] Clean up')
 })
 
-async function waitForVideoReady() {
-  return new Promise<void>((resolve) => {
-    if (!video.value) {
-      console.log('[waitForVideoReady] Pas de ref vidéo')
-      return resolve()
-    }
-    if (video.value.readyState >= 2) {
-      console.log('[waitForVideoReady] Vidéo déjà prête')
-      return resolve()
-    }
-    const onCanPlay = () => {
-      video.value?.removeEventListener('canplay', onCanPlay)
-      console.log('[waitForVideoReady] canplay event')
-      resolve()
-    }
-    video.value.addEventListener('canplay', onCanPlay)
-    console.log('[waitForVideoReady] En attente de canplay...')
-  })
-}
+
 
 async function startPreview() {
   started.value = true

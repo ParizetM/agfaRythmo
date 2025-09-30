@@ -12,6 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isGuest = computed(() => !isAuthenticated.value)
+  const isAdmin = computed(() => isAuthenticated.value && user.value?.role === 'admin')
+  const isUser = computed(() => isAuthenticated.value && user.value?.role === 'user')
 
   // Actions
   const setAuth = (userData: User, authToken: string) => {
@@ -114,6 +116,8 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     isAuthenticated,
     isGuest,
+    isAdmin,
+    isUser,
 
     // Actions
     login,
