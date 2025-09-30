@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50"
   >
     <div class="bg-agfa-dark text-white rounded-xl p-8 min-w-96 shadow-2xl">
       <h4 class="text-xl font-bold mb-6">

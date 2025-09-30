@@ -61,7 +61,7 @@
         <transition name="fade">
           <div
             v-if="!isSceneChangesCollapsed"
-            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col pr-2"
+            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-64 max-w-full flex flex-col pr-2 pointer-events-none"
           >
             <SceneChangesList
               :sceneChanges="sceneChanges.map(sc => sc.timecode)"
@@ -70,6 +70,7 @@
               @edit="onEditSceneChange"
               @delete="onDeleteSceneChange"
               @add="onAddSceneChange"
+              @seekTo="onNavigationSeek"
             />
           </div>
         </transition>
@@ -87,7 +88,7 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col pl-2 "
+            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col "
           >
                       <TimecodesListMultiLine
             :timecodes="compatibleTimecodes"
@@ -215,6 +216,14 @@
       @saved="onCharacterSaved"
     />
 
+    <!-- Modal d'édition de changement de plan -->
+    <SceneChangeEditModal
+      :show="showSceneChangeModal"
+      :timecode="editSceneChangeIdx !== null ? sceneChanges[editSceneChangeIdx]?.timecode : null"
+      @submit="onSceneChangeModalSubmit"
+      @close="closeSceneChangeModal"
+    />
+
     <!-- Modal des raccourcis clavier -->
     <KeyboardShortcutsModal
       :show="showKeyboardShortcuts"
@@ -249,6 +258,7 @@ import * as sceneChangesApi from '../api/sceneChanges'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
+import SceneChangeEditModal from '../components/projectDetail/SceneChangeEditModal.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
 function toggleSceneChangesPanel() {
@@ -268,7 +278,8 @@ function onSelectSceneChange(idx: number) {
 }
 function onEditSceneChange(idx: number) {
   selectedSceneChangeIdx.value = idx
-  // TODO: Implémenter l'édition de scene change si nécessaire
+  editSceneChangeIdx.value = idx
+  showSceneChangeModal.value = true
 }
 function onAddSceneChange() {
   addSceneChange()
@@ -698,6 +709,10 @@ const showTimecodeModal = ref(false)
 const editTimecodeIdx = ref<number | null>(null)
 const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '', line_number: 1, character_id: null })
 
+// Modal d'édition de changement de plan
+const showSceneChangeModal = ref(false)
+const editSceneChangeIdx = ref<number | null>(null)
+
 function getVideoUrl(path?: string) {
   if (!path) return ''
   if (path.startsWith('http')) return path
@@ -856,6 +871,33 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
 }
 function closeTimecodeModal() {
   showTimecodeModal.value = false
+}
+
+// Gestion du modal de changement de plan
+async function onSceneChangeModalSubmit(newTimecode: number) {
+  if (editSceneChangeIdx.value === null || !project.value) return
+
+  const sceneChange = sceneChanges.value[editSceneChangeIdx.value]
+  if (!sceneChange) return
+
+  try {
+    const updatedSceneChange = await sceneChangesApi.updateSceneChange(sceneChange.id, {
+      timecode: newTimecode
+    })
+
+    // Mettre à jour dans la liste locale
+    sceneChanges.value[editSceneChangeIdx.value] = updatedSceneChange
+    sceneChanges.value.sort((a, b) => a.timecode - b.timecode)
+
+    closeSceneChangeModal()
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du changement de plan:', error)
+  }
+}
+
+function closeSceneChangeModal() {
+  showSceneChangeModal.value = false
+  editSceneChangeIdx.value = null
 }
 
 // Gestion des raccourcis clavier globaux

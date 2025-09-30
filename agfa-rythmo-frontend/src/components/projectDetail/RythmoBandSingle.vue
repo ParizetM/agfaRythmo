@@ -2055,7 +2055,7 @@ function onMoveEnd() {
   transform: translateY(-50%);
   font-size: 1.2rem;
   color: #8455f6;
-  z-index: 100;
+  z-index: 1;
   transition: all 0.3s ease;
   animation: fadeInLeft 0.3s ease-out;
   pointer-events: none;

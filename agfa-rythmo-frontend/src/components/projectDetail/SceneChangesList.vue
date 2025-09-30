@@ -1,47 +1,55 @@
 <template>
-  <div class="bg-agfa-dark rounded-xl p-6 min-w-56 max-w-96 text-white shadow-lg">
-    <h3 class="text-xl font-bold mb-4 text-white">Changements de plan</h3>
-    <ul class="list-none p-0 m-0 mb-6 space-y-2">
-      <li
-        v-for="(time, idx) in sceneChanges"
-        :key="idx"
-        :class="[
-          'flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all duration-300 hover:bg-gray-700',
-          { 'bg-agfa-blue bg-opacity-40 ring-2 ring-agfa-blue ring-opacity-50': idx === selected }
-        ]"
-        @click="$emit('select', idx)"
-      >
-        <span class="text-sm font-medium text-gray-300">
-          {{ time.toFixed(2) }}s
-        </span>
-        <div class="flex gap-2 ml-auto">
-          <button
-            @click.stop="$emit('edit', idx)"
-            class="bg-transparent border-none text-white cursor-pointer text-base ml-1 hover:text-agfa-blue transition-colors duration-300 p-1 rounded hover:bg-gray-600"
-            title="Éditer"
+  <div class="bg-agfa-dark rounded-lg p-3 w-64 text-white shadow-lg flex flex-col h-80">
+    <h3 class="text-lg font-semibold mb-2 text-white">Changements de plan</h3>
+
+    <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+      <div class="space-y-1">
+        <div
+          v-for="(time, idx) in sceneChanges"
+          :key="idx"
+          :class="[
+            'flex items-center justify-between p-2 rounded transition-colors group',
+            'hover:bg-gray-700',
+            { 'bg-agfa-blue bg-opacity-30': idx === selected }
+          ]"
+        >
+          <span
+            class="text-sm font-medium cursor-pointer flex-1 hover:text-agfa-blue transition-colors"
+            @click="$emit('seekTo', time); $emit('select', idx)"
+            title="Aller au temps {{ time.toFixed(2) }}s"
           >
-            ✏️
-          </button>
-          <button
-            @click.stop="$emit('delete', idx)"
-            class="bg-transparent border-none text-white cursor-pointer text-base ml-1 hover:text-agfa-red transition-colors duration-300 p-1 rounded hover:bg-gray-600"
-            title="Supprimer"
-          >
-            🗑️
-          </button>
+            {{ time.toFixed(2) }}s
+          </span>
+          <div class="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+            <button
+              @click.stop="$emit('edit', idx)"
+              class="p-1.5 hover:bg-gray-600 rounded text-sm transition-all hover:scale-110 bg-gray-800"
+              title="Éditer"
+            >
+              ✏️
+            </button>
+            <button
+              @click.stop="$emit('delete', idx)"
+              class="p-1.5 hover:bg-red-600 rounded text-sm transition-all hover:scale-110 bg-gray-800"
+              title="Supprimer"
+            >
+              🗑️
+            </button>
+          </div>
         </div>
-      </li>
-    </ul>
+      </div>
+    </div>
+
     <button
       @click="$emit('add')"
-      class="w-full bg-agfa-green hover:bg-agfa-green-hover text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"
+      class="mt-2 bg-agfa-green hover:bg-agfa-green-hover text-white font-medium py-2 px-3 rounded text-sm transition-colors"
     >
-      + Ajouter un changement de plan
+      + Ajouter
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 defineProps<{ sceneChanges: number[], selected?: number }>();
-defineEmits(['select', 'edit', 'delete', 'add']);
+defineEmits(['select', 'edit', 'delete', 'add', 'seekTo']);
 </script>
