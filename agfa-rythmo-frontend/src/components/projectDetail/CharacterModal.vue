@@ -25,21 +25,52 @@
           <label class="block text-sm font-medium text-gray-300 mb-2">
             Couleur de fond
           </label>
-          <div class="flex items-center space-x-3">
-            <input
-              v-model="formData.color"
-              type="color"
-              @input="onBackgroundColorChange"
-              class="w-12 h-10 rounded border border-gray-600 bg-agfa-button cursor-pointer"
-            />
-            <input
-              v-model="formData.color"
-              type="text"
-              pattern="^#[0-9A-Fa-f]{6}$"
-              @input="onBackgroundColorChange"
-              class="flex-1 bg-agfa-button text-white border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
-              placeholder="#8455F6"
-            />
+          <div class="space-y-3">
+            <!-- Sélecteur de couleur de base -->
+            <div class="flex items-center space-x-3">
+              <input
+                v-model="baseColor"
+                type="color"
+                @input="onBaseColorChange"
+                class="w-12 h-10 rounded border border-gray-600 bg-agfa-button cursor-pointer"
+              />
+              <input
+                v-model="formData.color"
+                type="text"
+                @input="onColorTextChange"
+                class="flex-1 bg-agfa-button text-white border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+                placeholder="rgba(132, 85, 246, 0.8)"
+              />
+            </div>
+            
+            <!-- Couleurs prédéfinies -->
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(color, idx) in predefinedColors"
+                :key="idx"
+                type="button"
+                @click="selectPredefinedColor(color)"
+                class="w-8 h-8 rounded border-2 border-gray-600 hover:border-blue-400 transition-colors"
+                :style="{ backgroundColor: color }"
+                :title="color"
+              ></button>
+            </div>
+            
+            <!-- Slider d'opacité -->
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">
+                Opacité: {{ Math.round(opacity * 100) }}%
+              </label>
+              <input
+                v-model.number="opacity"
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                @input="updateOpacity"
+                class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+              />
+            </div>
           </div>
         </div>
 
@@ -159,7 +190,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
-import { suggestTextColor } from '../../utils/colorUtils'
+import { suggestTextColor, predefinedColors, toRGBA, withOpacity } from '../../utils/colorUtils'
 
 const props = defineProps<{
   projectId: number
@@ -173,9 +204,13 @@ const emit = defineEmits<{
 
 const formData = reactive({
   name: '',
-  color: '#8455F6',
+  color: 'rgba(132, 85, 246, 0.8)',
   text_color: null as string | null
 })
+
+// Variables pour la gestion des couleurs RGBA
+const baseColor = ref('#8455F6')
+const opacity = ref(0.8)
 
 const isSubmitting = ref(false)
 const showCloneSection = ref(false)
@@ -189,17 +224,58 @@ watch(() => props.editingCharacter, (character) => {
     formData.name = character.name
     formData.color = character.color
     formData.text_color = character.text_color || null
+    // Mettre à jour baseColor et opacity depuis la couleur du personnage
+    onColorTextChange()
   } else {
     formData.name = ''
-    formData.color = '#8455F6'
+    formData.color = 'rgba(132, 85, 246, 0.8)'
     formData.text_color = null
+    baseColor.value = '#8455F6'
+    opacity.value = 0.8
   }
 }, { immediate: true })
 
-// Fonction appelée quand la couleur de fond change pour suggérer automatiquement une couleur de texte
-function onBackgroundColorChange() {
-  // Si pas de couleur de texte personnalisée définie, ne rien faire
-  // L'aperçu utilisera automatiquement la suggestion
+// Fonction appelée quand la couleur de base change
+function onBaseColorChange() {
+  updateColorFromBase()
+}
+
+// Fonction appelée quand le texte de couleur change
+function onColorTextChange() {
+  // Tenter d'extraire la couleur de base et l'opacité depuis le texte
+  try {
+    const colorMatch = formData.color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:\s*,\s*([\d.]+))?\s*\)/)
+    if (colorMatch) {
+      const r = parseInt(colorMatch[1])
+      const g = parseInt(colorMatch[2])
+      const b = parseInt(colorMatch[3])
+      const a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1
+      
+      baseColor.value = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+      opacity.value = a
+    }
+  } catch {
+    // Ignorer les erreurs de parsing
+  }
+}
+
+// Fonction pour sélectionner une couleur prédéfinie
+function selectPredefinedColor(color: string) {
+  formData.color = color
+  onColorTextChange() // Mettre à jour baseColor et opacity
+}
+
+// Fonction pour mettre à jour l'opacité
+function updateOpacity() {
+  updateColorFromBase()
+}
+
+// Fonction pour mettre à jour la couleur RGBA basée sur baseColor et opacity
+function updateColorFromBase() {
+  const rgba = toRGBA(baseColor.value, opacity.value)
+  if (rgba) {
+    formData.color = rgba
+  }
 }
 
 // Fonction pour sélectionner automatiquement la couleur de texte
@@ -228,6 +304,8 @@ function selectCharacterToClone(character: Character) {
   formData.name = character.name
   formData.color = character.color
   formData.text_color = character.text_color || null
+  // Mettre à jour baseColor et opacity depuis la couleur clonée
+  onColorTextChange()
 }
 
 async function handleSubmit() {
@@ -284,3 +362,42 @@ onMounted(() => {
   loadCloneCharacters()
 })
 </script>
+
+<style scoped>
+/* Styles pour le slider d'opacité */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, transparent 0%, currentColor 100%);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1e40af;
+}
+
+.slider::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1e40af;
+}
+
+/* Effet hover sur les couleurs prédéfinies */
+.predefined-color-btn {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.predefined-color-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+</style>
