@@ -356,7 +356,6 @@ function getSimpleTimecodeStyle(timecode: Timecode) {
   // INVERSION: ligne 1 en haut (top), dernière ligne en bas
   // Pour cela, on calcule depuis le haut au lieu du bas
   const topOffset = (lineNumber - 1) * lineSpacing + 5 // 5px de marge du haut
-  const baseZIndex = timecode.character ? 40 : 30
 
   return {
     left: Math.max(0, startPos) + '%',
@@ -364,7 +363,6 @@ function getSimpleTimecodeStyle(timecode: Timecode) {
     top: `${topOffset}px`, // Positionnement depuis le haut
     '--character-color': color,
     '--line-color': color,
-    zIndex: baseZIndex + lineNumber // Z-index différent par ligne
   }
 }
 
