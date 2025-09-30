@@ -1,0 +1,24 @@
+# Configuration Nginx pour SPA Vue.js
+# À ajouter dans votre bloc server {} dans la configuration Nginx
+
+location / {
+    try_files $uri $uri/ /index.html;
+}
+
+# Configuration complète pour référence :
+server {
+    listen 80;
+    server_name votre-domaine.com;
+    root /path/to/your/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Optimisations pour les assets statiques
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
