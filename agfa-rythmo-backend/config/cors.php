@@ -5,7 +5,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173'],
+    'allowed_origins' => [
+        'http://localhost:5173',
+        'http://agfarythmo.agfagoofay.fr',
+        'https://agfarythmo.agfagoofay.fr',
+    ],
 
     'allowed_origins_patterns' => [],
 
