@@ -1,8 +1,14 @@
 <template>
-  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick">
+  <div
+    class="rythmo-band"
+    :class="{ 'selected': !props.disableSelection && props.selectedLine === props.lineNumber }"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+    @click="onBandClick"
+  >
     <!-- Triangle de sélection de ligne -->
     <div
-      v-if="props.selectedLine === props.lineNumber"
+      v-if="!props.disableSelection && props.selectedLine === props.lineNumber"
       class="line-selector-triangle"
       :title="`Ligne ${props.lineNumber} sélectionnée`"
     >
@@ -476,6 +482,7 @@ const props = defineProps<{
   sceneChangeHoverState?: SceneChangeHoverState | null
   characters?: Character[]
   selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
+  disableSelection?: boolean // Désactive les effets visuels de sélection
 }>()
 
 const isHovered = ref(false)
@@ -1682,6 +1689,8 @@ function onMoveEnd() {
   word-break: break-all;
 }
 .rythmo-band {
+  position: relative;
+  user-select: none;
   width: 100%;
   overflow: visible;
   background: #1f2937;
@@ -1692,6 +1701,12 @@ function onMoveEnd() {
   align-items: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rythmo-band.selected {
+  border: 1px solid #8455F6;
+  box-shadow: 0 4px 12px rgba(132, 85, 246, 0.3), 0 0 0 1px rgba(132, 85, 246, 0.2);
 }
 .rythmo-track-container {
   position: relative;

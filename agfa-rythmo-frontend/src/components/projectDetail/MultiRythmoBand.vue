@@ -50,6 +50,7 @@
           :sceneChangeHoverState="sceneChangeHoverState"
           :characters="characters"
           :selectedLine="selectedLine"
+          :disableSelection="disableSelection"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"
@@ -160,6 +161,7 @@ const props = defineProps<{
   hideConfig?: boolean
   characters?: Character[]
   activeCharacter?: Character | null
+  disableSelection?: boolean // Désactive les effets visuels de sélection
 }>()
 
 const emit = defineEmits<{

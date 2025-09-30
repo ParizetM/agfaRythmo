@@ -32,6 +32,7 @@
             :videoDuration="videoDuration"
             :rythmoLinesCount="getRythmoLinesCount"
             :hideConfig="true"
+            :disableSelection="true"
           />
         </div>
       </div>
