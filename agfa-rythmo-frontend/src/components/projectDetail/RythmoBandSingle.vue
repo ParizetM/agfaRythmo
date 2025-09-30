@@ -1813,6 +1813,7 @@ function onMoveEnd() {
   height: 100%;
   display: flex;
   align-items: center;
+  overflow-x: hidden;
 }
 .rythmo-block.active .distort-text {
   opacity: 1;
