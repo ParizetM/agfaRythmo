@@ -21,6 +21,18 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <!-- Bouton paramètres du projet -->
+        <button
+          class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
+          @click="showProjectSettings = true"
+          title="Paramètres du projet"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+
         <!-- Bouton raccourcis clavier -->
         <button
           class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
@@ -256,6 +268,12 @@
       @close="showKeyboardShortcuts = false"
     />
 
+    <!-- Modal des paramètres du projet -->
+    <ProjectSettingsModal
+      :show="showProjectSettings"
+      @close="showProjectSettings = false"
+    />
+
     <!-- Modal de gestion des collaborateurs -->
     <div v-if="showCollaboratorsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -287,6 +305,7 @@
 <script setup lang="ts">
 import TimecodeModal from '../components/projectDetail/TimecodeModal.vue'
 import KeyboardShortcutsModal from '../components/projectDetail/KeyboardShortcutsModal.vue'
+import ProjectSettingsModal from '../components/projectDetail/ProjectSettingsModal.vue'
 import { UsersIcon } from '@heroicons/vue/24/outline'
 // Contrôle du scroll instantané pour la bande rythmo
 
@@ -468,6 +487,7 @@ const editingCharacter = ref<Character | null>(null)
 // Gestion du modal des raccourcis clavier
 const showKeyboardShortcuts = ref(false)
 const showCollaboratorsModal = ref(false)
+const showProjectSettings = ref(false)
 
 // Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
 const selectedLineNumber = ref<number>(1)

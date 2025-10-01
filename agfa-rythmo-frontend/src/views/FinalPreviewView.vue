@@ -7,23 +7,42 @@
       <span>{{ countdown }}</span>
     </div>
     <div v-else class="preview-content">
-      <div class="video-wrapper">
-        <video
-          ref="video"
-          :src="videoSrc"
-          class="preview-video"
-          @loadedmetadata="onLoadedMetadata"
-          @click="playError && video && video.play()"
-          tabindex="0"
-        />
+      <div class="video-wrapper" :class="{ 'with-band-below': projectSettings.overlayPosition === 'under' }">
+        <div class="video-container">
+          <video
+            ref="video"
+            :src="videoSrc"
+            class="preview-video"
+            @loadedmetadata="onLoadedMetadata"
+            @click="playError && video && video.play()"
+            tabindex="0"
+          />
+          <!-- Bande rythmo par-dessus la vidéo (ancrée en bas) -->
+          <div
+            v-if="videoWidth && videoHeight && projectSettings.overlayPosition === 'over'"
+            class="preview-rythmo overlay-mode"
+            :style="{
+              width: rythmoBarWidth + 'px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }"
+          >
+            <MultiRythmoBand
+              :timecodes="rythmoData"
+              :currentTime="currentTime"
+              :videoDuration="videoDuration"
+              :rythmoLinesCount="getRythmoLinesCount"
+              :hideConfig="true"
+              :disableSelection="true"
+            />
+          </div>
+        </div>
+
+        <!-- Bande rythmo sous la vidéo (ne chevauche pas) -->
         <div
-          v-if="videoWidth && videoHeight"
-          class="preview-rythmo"
+          v-if="videoWidth && videoHeight && projectSettings.overlayPosition === 'under'"
+          class="preview-rythmo below-mode"
           :style="{
-            width: rythmoBarWidth + 'px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            bottom: '0',
           }"
         >
           <MultiRythmoBand
@@ -41,12 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, watch, onMounted } from 'vue'
+import { ref, onUnmounted, watch, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
+import { useProjectSettingsStore } from '../stores/projectSettings'
 
 const router = useRouter()
 const route = useRoute()
+const settingsStore = useProjectSettingsStore()
+const projectSettings = computed(() => settingsStore.settings)
 
 const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
 // Détermine le nombre de lignes rythmo à partir des données
@@ -217,28 +239,70 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
+
 .video-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Mode avec bande sous la vidéo : ajuster le conteneur */
+.video-wrapper.with-band-below {
+  justify-content: flex-start;
+  padding-top: 2vh;
+}
+
+.video-container {
   position: relative;
-  width: 100vw;
-  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  flex-shrink: 0;
 }
-.preview-video {
-  width: 100vw;
+
+/* Mode overlay : la vidéo prend tout l'espace */
+.video-wrapper:not(.with-band-below) .video-container {
   height: 100vh;
+}
+
+/* Mode below : la vidéo laisse de la place pour la bande */
+.video-wrapper.with-band-below .video-container {
+  max-height: calc(100vh - 200px);
+}
+
+.preview-video {
+  max-width: 100vw;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   background: #000;
   display: block;
-  margin: 0 auto;
 }
-.preview-rythmo {
+
+/* Bande rythmo en mode overlay (par-dessus, ancrée en bas de la vidéo) */
+.preview-rythmo.overlay-mode {
   position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.95;
+  backdrop-filter: blur(2px);
+}
+
+/* Bande rythmo en mode below (sous la vidéo, collée en haut de la bande) */
+.preview-rythmo.below-mode {
+  position: relative;
+  width: 100%;
+  margin-top: 0;
   pointer-events: none;
   z-index: 2;
 }

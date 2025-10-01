@@ -109,8 +109,29 @@
 
           </div>
 
+          <!-- Section séparateur de texte (compacte) -->
+          <div class="mt-10 pt-6 border-t border-gray-700">
+            <div class="text-center mb-4">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide section-title">Séparateur de texte</h3>
+            </div>
+            <div class="flex items-center justify-center gap-8 text-sm text-gray-400">
+              <div class="flex items-center gap-2">
+                <span>Utilisez</span>
+                <kbd class="key-inline">|</kbd>
+                <span>pour diviser le texte</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>Ex:</span>
+                <code class="px-2 py-0.5 bg-[#384152] text-gray-300 rounded text-xs">Gauche|Droite</code>
+              </div>
+              <div class="text-gray-500 text-xs">
+                Glissez la barre pour redimensionner
+              </div>
+            </div>
+          </div>
+
           <!-- Note simple -->
-          <div class="text-center mt-12">
+          <div class="text-center mt-6">
             <p class="text-xs text-gray-500">
               * Personnages et lignes : hors champs de saisie uniquement
             </p>
@@ -219,6 +240,18 @@ onUnmounted(() => {
   color: #e5e7eb;
   font-size: 0.875rem;
   font-weight: 400;
+}
+
+.key-inline {
+  background-color: #384152;
+  color: #ffffff;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  border: 1px solid #6b7280;
+  white-space: nowrap;
 }
 
 .section-title {

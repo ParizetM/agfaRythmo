@@ -412,6 +412,7 @@ import {
 import { useSmoothScroll } from './useSmoothScroll'
 import { type Character } from '../../api/characters'
 import { getContrastColor } from '../../utils/colorUtils'
+import { useProjectSettingsStore } from '../../stores/projectSettings'
 
 interface Timecode {
   id?: number
@@ -488,6 +489,10 @@ const props = defineProps<{
   selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
 }>()
 
+// Store des paramètres de projet
+const settingsStore = useProjectSettingsStore()
+const projectSettings = computed(() => settingsStore.settings)
+
 const isHovered = ref(false)
 
 // --- Gestion de la séparation de texte ---
@@ -542,7 +547,7 @@ function getSegmentDistortStyle(idx: number, segmentIdx: number): CSSProperties 
   // Calcule la largeur disponible pour ce segment
   const availableWidth = ((blockWidth - totalSeparatorsWidth) * segmentFlex) / totalFlexes
 
-  return computeDistortStyle(text, Math.max(20, availableWidth), '2.1rem')
+  return computeDistortStyle(text, Math.max(20, availableWidth))
 }
 
 // Commence le redimensionnement du séparateur
@@ -669,6 +674,8 @@ onMounted(() => {
 const rythmoTextStyle = computed(() => ({
   width: `${bandWidth.value}px`,
   transform: `translateX(-${smoothScroll.value}px)`,
+  fontFamily: projectSettings.value.fontFamily,
+  fontSize: `${projectSettings.value.fontSize}rem`,
   // plus de paddingLeft, tout est positionné en absolu
 }))
 
@@ -1003,18 +1010,19 @@ const activeIdx = computed(() => {
   return effectiveTimecodes.value.findIndex((tc) => t >= tc.start && t < tc.end)
 })
 
-function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
+function computeDistortStyle(text: string, width: number, fontSize?: string): CSSProperties {
+  const actualFontSize = fontSize || `${projectSettings.value.fontSize}rem`
   const span = document.createElement('span')
   span.style.visibility = 'hidden'
   span.style.position = 'absolute'
   span.style.whiteSpace = 'pre'
-  span.style.fontSize = fontSize
-  span.style.fontFamily = 'inherit'
+  span.style.fontSize = actualFontSize
+  span.style.fontFamily = projectSettings.value.fontFamily
   span.innerText = text
   document.body.appendChild(span)
   const textWidth = span.offsetWidth || 1
   document.body.removeChild(span)
-  const scaleX = width / textWidth
+  const scaleX = (width / textWidth ) * 0.95 // facteur d'ajustement pour éviter le débordement
 
   return {
     transform: `scaleX(${scaleX})`,
@@ -1619,11 +1627,11 @@ function onMoveEnd() {
   bottom: -5%;
   width: 5px;
   height: 110%;
-  background: #657390;
-  opacity: 0.95;
+  background: v-bind('projectSettings.sceneChangeColor');
+  opacity: 0.7;
   border-radius: 2px;
   z-index: 3;
-  box-shadow: 0 0 8px #657390;
+  box-shadow: 0 0 8px v-bind('projectSettings.sceneChangeColor');
   pointer-events: none;
   transition: all 0.2s ease;
 }
@@ -1634,8 +1642,8 @@ function onMoveEnd() {
 }
 
 .scene-change-bar.hovered {
-  background: #8455f6;
-  box-shadow: 0 0 12px #8455f6;
+  background: v-bind('projectSettings.sceneChangeColor');
+  box-shadow: 0 0 12px v-bind('projectSettings.sceneChangeColor');
   opacity: 1;
   transform: scaleX(1.2);
 }
@@ -1720,10 +1728,10 @@ function onMoveEnd() {
 .rythmo-band {
   width: 100%;
   overflow: visible;
-  background: #1f2937;
+  background: v-bind('projectSettings.bandBackgroundColor');
   border-radius: 8px;
   /* margin-top: 0.75rem; */
-  min-height: 3rem;
+  min-height: v-bind('projectSettings.bandHeight + "px"');
   display: flex;
   align-items: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -1731,7 +1739,7 @@ function onMoveEnd() {
 }
 .rythmo-track-container {
   position: relative;
-  height: 3rem;
+  height: v-bind('projectSettings.bandHeight + "px"');
   overflow: visible;
 }
 .rythmo-text {
@@ -1740,7 +1748,7 @@ function onMoveEnd() {
   left: 0;
   top: 0;
   width: 100%;
-  height: 3rem;
+  height: v-bind('projectSettings.bandHeight + "px"');
   font-size: 1.1rem;
   color: #fff;
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
@@ -1750,7 +1758,7 @@ function onMoveEnd() {
   left: 0;
   top: 0;
   width: 100%;
-  height: 3rem;
+  height: v-bind('projectSettings.bandHeight + "px"');
   will-change: transform;
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
 }
@@ -1762,7 +1770,7 @@ function onMoveEnd() {
   left: 0;
   top: 0;
   width: 100%;
-  height: 3rem;
+  height: v-bind('projectSettings.bandHeight + "px"');
   z-index: 1;
   display: flex;
   align-items: center;
@@ -1807,7 +1815,7 @@ function onMoveEnd() {
   opacity: 0.9;
   background: none;
   border-radius: 3px;
-  font-size: 1.8rem;
+  font-size: v-bind('projectSettings.fontSize + "rem"');
   font-weight: 600;
   overflow: visible;
   flex-grow: 1;
