@@ -178,7 +178,6 @@ npm run lint       # ESLint + Prettier
 - **TypeScript strict** pour le frontend
 - **Validation Laravel** pour les APIs
 - **Tests unitaires** obligatoires pour les fonctions critiques
-- **Documentation** des endpoints et composants complexes
 
 ### Architecture
 - Séparation stricte frontend/backend via API REST
@@ -205,5 +204,5 @@ npm run lint       # ESLint + Prettier
 2. **Respecter** la structure des modèles Laravel existants
 3. **Utiliser** TypeScript pour tous les nouveaux fichiers frontend
 4. **Suivre** les conventions de nommage Laravel/Vue.js
-5. **Tester** les modifications avec les scripts composer appropriés
+5. **Tester** les modifications avec les scripts npm et laravel appropriés
 6. **NE JAMAIS** exécuter `npm run dev` dans le frontend

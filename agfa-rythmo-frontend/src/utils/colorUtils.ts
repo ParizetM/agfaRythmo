@@ -17,13 +17,13 @@ interface RGBAColor {
  */
 function parseColor(color: string): RGBAColor | null {
   if (!color) return null
-  
+
   const trimmed = color.trim()
-  
+
   // Format hex (#RRGGBB ou #RGB)
   if (trimmed.startsWith('#')) {
     const hex = trimmed.substring(1)
-    
+
     if (hex.length === 3) {
       // Format #RGB -> #RRGGBB
       const r = parseInt(hex[0] + hex[0], 16)
@@ -39,7 +39,7 @@ function parseColor(color: string): RGBAColor | null {
     }
     return null
   }
-  
+
   // Format rgb() ou rgba()
   const rgbaMatch = trimmed.match(/rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/)
   if (rgbaMatch) {
@@ -47,12 +47,12 @@ function parseColor(color: string): RGBAColor | null {
     const g = Math.round(parseFloat(rgbaMatch[2]))
     const b = Math.round(parseFloat(rgbaMatch[3]))
     const a = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1
-    
+
     if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 && a >= 0 && a <= 1) {
       return { r, g, b, a }
     }
   }
-  
+
   return null
 }
 
@@ -64,15 +64,15 @@ function parseColor(color: string): RGBAColor | null {
 export function getContrastColor(backgroundColor: string): string {
   const color = parseColor(backgroundColor)
   if (!color) return '#FFFFFF' // Par défaut blanc si couleur invalide
-  
+
   // Calculer la luminance relative
   const getLuminance = (c: number) => {
     c = c / 255
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
   }
-  
+
   const luminance = 0.2126 * getLuminance(color.r) + 0.7152 * getLuminance(color.g) + 0.0722 * getLuminance(color.b)
-  
+
   // Retourner blanc ou noir selon la luminance
   return luminance > 0.179 ? '#000000' : '#FFFFFF'
 }
@@ -114,7 +114,7 @@ export function isValidHexColor(color: string): boolean {
 export function toRGBA(color: string, alpha?: number): string | null {
   const parsed = parseColor(color)
   if (!parsed) return null
-  
+
   const finalAlpha = alpha !== undefined ? alpha : parsed.a
   return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${finalAlpha})`
 }
@@ -127,7 +127,7 @@ export function toRGBA(color: string, alpha?: number): string | null {
 export function toHex(color: string): string | null {
   const parsed = parseColor(color)
   if (!parsed) return null
-  
+
   const toHexComponent = (c: number) => Math.round(c).toString(16).padStart(2, '0')
   return `#${toHexComponent(parsed.r)}${toHexComponent(parsed.g)}${toHexComponent(parsed.b)}`
 }
@@ -146,14 +146,14 @@ export function withOpacity(baseColor: string, opacity: number): string {
  * Génère des couleurs prédéfinies avec transparence pour les personnages
  */
 export const predefinedColors = [
-  'rgba(59, 130, 246, 0.8)',   // Bleu
-  'rgba(16, 185, 129, 0.8)',   // Vert
   'rgba(245, 101, 101, 0.8)',  // Rouge
+  'rgba(249, 115, 22, 0.8)',   // Orange
   'rgba(251, 191, 36, 0.8)',   // Jaune
+  'rgba(16, 185, 129, 0.8)',   // Vert
+  'rgba(20, 184, 166, 0.8)',   // Teal
+  'rgba(59, 130, 246, 0.8)',   // Bleu
   'rgba(168, 85, 247, 0.8)',   // Violet
   'rgba(236, 72, 153, 0.8)',   // Rose
-  'rgba(20, 184, 166, 0.8)',   // Teal
-  'rgba(249, 115, 22, 0.8)',   // Orange
   'rgba(139, 69, 19, 0.8)',    // Marron
   'rgba(75, 85, 99, 0.8)',     // Gris
 ]
@@ -166,7 +166,7 @@ export const predefinedColors = [
 export function normalizeColor(color: string): string | null {
   const parsed = parseColor(color)
   if (!parsed) return null
-  
+
   // Si opaque, retourner en hex, sinon en rgba
   if (parsed.a === 1) {
     return toHex(color)

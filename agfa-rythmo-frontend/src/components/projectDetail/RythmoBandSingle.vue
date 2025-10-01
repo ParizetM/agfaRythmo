@@ -1,14 +1,8 @@
 <template>
-  <div
-    class="rythmo-band"
-    :class="{ 'selected': !props.disableSelection && props.selectedLine === props.lineNumber }"
-    @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false"
-    @click="onBandClick"
-  >
+  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick">
     <!-- Triangle de sélection de ligne -->
     <div
-      v-if="!props.disableSelection && props.selectedLine === props.lineNumber"
+      v-if="props.selectedLine === props.lineNumber"
       class="line-selector-triangle"
       :title="`Ligne ${props.lineNumber} sélectionnée`"
     >
@@ -94,7 +88,7 @@
                     :class="{ 'character-tag-hovered': characterDropdownIdx === el.tcIdx }"
                     :style="{
                       backgroundColor: getTimecodeCharacter(el.tcIdx)?.color,
-                      color: getCharacterTextColor(getTimecodeCharacter(el.tcIdx)),
+                      color: getContrastColor(getTimecodeCharacter(el.tcIdx)?.color || '#8455F6'),
                     }"
                     @mouseenter="hoveredCharacterIdx = el.tcIdx"
                     @mouseleave="hoveredCharacterIdx = null"
@@ -137,7 +131,7 @@
                         class="character-option"
                         :style="{
                           backgroundColor: character.color,
-                          color: getCharacterTextColor(character),
+                          color: getContrastColor(character.color),
                         }"
                         @click="changeTimecodeCharacter(el.tcIdx, character.id)"
                       >
@@ -171,28 +165,49 @@
                     🗑️
                   </button>
 
-                  <!-- Texte du timecode avec support des segments (pipes) -->
-                  <div
-                    class="timecode-text-segments"
-                    :style="{
-                      display: 'flex',
-                      alignItems: 'center',
-                      width: '100%',
-                      height: '100%'
-                    }"
-                  >
-                    <template v-for="(segment, segIdx) in getTextSegments(el.tcIdx)" :key="segIdx">
-                      <span
-                        :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
-                        :style="{
-                          ...getSegmentStyle(segment),
-                          color: getCharacterTextColor(getTimecodeCharacter(el.tcIdx)) || 'inherit',
-                        }"
-                      >
-                        {{ segment.text }}
-                      </span>
-                    </template>
-                  </div>
+                  <!-- Texte du timecode coloré selon le personnage -->
+                  <template v-if="hasSeparator(el.text)">
+                    <!-- Texte avec séparateur(s) -->
+                    <div class="split-text-container">
+                      <template v-for="(segment, segIdx) in getTextSegments(el.tcIdx)" :key="`segment-${el.tcIdx}-${segIdx}`">
+                        <div
+                          class="text-segment-wrapper"
+                          :style="{ flex: getSegmentFlex(el.tcIdx, segIdx) }"
+                        >
+                          <span
+                            class="distort-text"
+                            :style="{
+                              ...getSegmentDistortStyle(el.tcIdx, segIdx),
+                              color: getTimecodeTextColor(el.tcIdx),
+                            }"
+                          >
+                            {{ segment }}
+                          </span>
+                        </div>
+                        <div
+                          v-if="segIdx < getTextSegments(el.tcIdx).length - 1"
+                          class="text-separator"
+                          :class="{ 'separator-dragging': resizingSeparatorIdx === el.tcIdx && resizingSeparatorSubIdx === segIdx }"
+                          @mousedown="onSeparatorResizeStart(el.tcIdx, segIdx, $event)"
+                        >
+                          <div class="separator-line"></div>
+                          <div class="separator-handle"></div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <!-- Texte normal sans séparateur -->
+                    <span
+                      class="distort-text"
+                      :style="{
+                        ...getDistortStyle(el.tcIdx),
+                        color: getTimecodeTextColor(el.tcIdx),
+                      }"
+                    >
+                      {{ el.text }}
+                    </span>
+                  </template>
                 </template>
               </div>
 
@@ -232,32 +247,20 @@
             class="character-tag"
             :style="{
               backgroundColor: dragOverlayCharacter.color,
-              color: getCharacterTextColor(dragOverlayCharacter),
+              color: getContrastColor(dragOverlayCharacter.color || '#8455F6'),
             }"
           >
             {{ dragOverlayCharacter.name }}
           </div>
-          <div
-            class="timecode-text-segments"
+          <span
+            class="distort-text"
             :style="{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              height: '100%'
+              ...dragOverlayTextStyle,
+              color: dragOverlayCharacter?.text_color || (dragOverlayCharacter ? getContrastColor(dragOverlayCharacter.color) : 'inherit'),
             }"
           >
-            <template v-for="(segment, segIdx) in getDragOverlayTextSegments()" :key="segIdx">
-              <span
-                :class="segment.isFixed ? 'fixed-space' : 'distort-text'"
-                :style="{
-                  ...getSegmentStyle(segment),
-                  color: getCharacterTextColor(dragOverlayCharacter) || 'inherit',
-                }"
-              >
-                {{ segment.text }}
-              </span>
-            </template>
-          </div>
+            {{ dragOverlayText }}
+          </span>
         </div>
 
         <!-- Overlay de déplacement des scene changes -->
@@ -483,14 +486,135 @@ const props = defineProps<{
   sceneChangeHoverState?: SceneChangeHoverState | null
   characters?: Character[]
   selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
-  disableSelection?: boolean // Désactive les effets visuels de sélection
 }>()
 
 const isHovered = ref(false)
 
+// --- Gestion de la séparation de texte ---
+// Map<timecodeIdx, array de flex values pour chaque segment>
+const segmentFlexValues = ref<Map<number, number[]>>(new Map())
+const resizingSeparatorIdx = ref<number | null>(null)
+const resizingSeparatorSubIdx = ref<number | null>(null)
+const separatorResizeStartX = ref(0)
+const separatorResizeStartFlexes = ref<number[]>([])
 
+// Vérifie si un texte contient le séparateur |
+function hasSeparator(text: string): boolean {
+  return text.includes('|')
+}
 
-// Calcule les positions X (en px) des changements de plan
+// Divise le texte en segments basés sur le séparateur |
+function getTextSegments(idx: number): string[] {
+  const tc = effectiveTimecodes.value[idx]
+  if (!tc) return []
+  return tc.text.split('|')
+}
+
+// Récupère la valeur flex pour un segment
+function getSegmentFlex(idx: number, segmentIdx: number): number {
+  const segments = getTextSegments(idx)
+  if (!segments.length) return 1
+
+  // Récupère les valeurs flex personnalisées ou utilise des valeurs par défaut
+  let flexes = segmentFlexValues.value.get(idx)
+
+  if (!flexes || flexes.length !== segments.length) {
+    // Initialise avec des valeurs égales pour tous les segments
+    flexes = new Array(segments.length).fill(1)
+    segmentFlexValues.value.set(idx, flexes)
+  }
+
+  return flexes[segmentIdx] || 1
+}
+
+// Calcule le style de distorsion pour un segment
+function getSegmentDistortStyle(idx: number, segmentIdx: number): CSSProperties {
+  const segments = getTextSegments(idx)
+  if (!segments[segmentIdx]) return {}
+
+  const text = segments[segmentIdx]
+  const blockWidth = getBlockWidth(idx)
+  const totalFlexes = segments.reduce((sum, _, i) => sum + getSegmentFlex(idx, i), 0)
+  const segmentFlex = getSegmentFlex(idx, segmentIdx)
+  const separatorWidth = 12 // Largeur d'un séparateur
+  const totalSeparatorsWidth = (segments.length - 1) * separatorWidth
+
+  // Calcule la largeur disponible pour ce segment
+  const availableWidth = ((blockWidth - totalSeparatorsWidth) * segmentFlex) / totalFlexes
+
+  return computeDistortStyle(text, Math.max(20, availableWidth), '2.1rem')
+}
+
+// Commence le redimensionnement du séparateur
+function onSeparatorResizeStart(idx: number, separatorIdx: number, event: MouseEvent) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  resizingSeparatorIdx.value = idx
+  resizingSeparatorSubIdx.value = separatorIdx
+  separatorResizeStartX.value = event.clientX
+
+  // Sauvegarde les flex values actuelles
+  const segments = getTextSegments(idx)
+  separatorResizeStartFlexes.value = []
+  for (let i = 0; i < segments.length; i++) {
+    separatorResizeStartFlexes.value.push(getSegmentFlex(idx, i))
+  }
+
+  document.addEventListener('mousemove', onSeparatorResizeMove)
+  document.addEventListener('mouseup', onSeparatorResizeEnd)
+  document.body.style.cursor = 'ew-resize'
+}
+
+// Met à jour la position du séparateur pendant le drag
+function onSeparatorResizeMove(event: MouseEvent) {
+  if (resizingSeparatorIdx.value === null || resizingSeparatorSubIdx.value === null) return
+
+  const idx = resizingSeparatorIdx.value
+  const sepIdx = resizingSeparatorSubIdx.value
+  const blockWidth = getBlockWidth(idx)
+  const deltaX = event.clientX - separatorResizeStartX.value
+
+  const segments = getTextSegments(idx)
+  const totalSeparatorsWidth = (segments.length - 1) * 12
+  const availableWidth = blockWidth - totalSeparatorsWidth
+
+  // Calculer la somme des flex des deux segments adjacents
+  const totalFlexStart = separatorResizeStartFlexes.value.reduce((sum, flex) => sum + flex, 0)
+  const leftFlexStart = separatorResizeStartFlexes.value[sepIdx]
+  const rightFlexStart = separatorResizeStartFlexes.value[sepIdx + 1]
+  const adjacentFlexSum = leftFlexStart + rightFlexStart
+
+  // Largeur réelle occupée par les deux segments adjacents au début
+  const adjacentWidthStart = (availableWidth * adjacentFlexSum) / totalFlexStart
+
+  // Calculer la nouvelle distribution en pixels
+  const leftWidthStart = (adjacentWidthStart * leftFlexStart) / adjacentFlexSum
+  const leftWidthNew = Math.max(20, Math.min(adjacentWidthStart - 20, leftWidthStart + deltaX))
+  const rightWidthNew = adjacentWidthStart - leftWidthNew
+
+  // Convertir en flex values (proportions)
+  const leftFlexNew = (leftWidthNew / adjacentWidthStart) * adjacentFlexSum
+  const rightFlexNew = (rightWidthNew / adjacentWidthStart) * adjacentFlexSum
+
+  const newFlexes = [...separatorResizeStartFlexes.value]
+
+  // Ajuste uniquement les deux segments adjacents, les autres restent inchangés
+  newFlexes[sepIdx] = Math.max(0.3, leftFlexNew)
+  newFlexes[sepIdx + 1] = Math.max(0.3, rightFlexNew)
+
+  segmentFlexValues.value.set(idx, newFlexes)
+}
+
+// Termine le redimensionnement du séparateur
+function onSeparatorResizeEnd() {
+  resizingSeparatorIdx.value = null
+  resizingSeparatorSubIdx.value = null
+
+  document.removeEventListener('mousemove', onSeparatorResizeMove)
+  document.removeEventListener('mouseup', onSeparatorResizeEnd)
+  document.body.style.cursor = ''
+}// Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
   if (!props.sceneChanges || !props.sceneChanges.length) return []
   return props.sceneChanges.map((sc) => ({
@@ -585,9 +709,9 @@ const dragOverlayStyle = computed<CSSProperties>(() => {
   if (!shouldRenderDragOverlay.value || !props.dragState) return {}
 
   const x = props.dragState.newStart * PX_PER_SEC + computedVisibleWidth.value / 2
-  const backgroundColor = props.dragState.timecode.character?.color || '#3b82f6'
+  const character = dragOverlayCharacter.value
 
-  return {
+  const baseStyles: CSSProperties = {
     left: `${x}px`,
     width: `${dragOverlayWidth.value}px`,
     height: '100%',
@@ -601,9 +725,18 @@ const dragOverlayStyle = computed<CSSProperties>(() => {
     position: 'absolute',
     pointerEvents: 'none',
     zIndex: 5,
-    background: backgroundColor,
-    border: `1px solid ${backgroundColor}`,
   }
+
+  // Si un personnage est assigné, appliquer sa couleur
+  if (character) {
+    return {
+      ...baseStyles,
+      background: character.color,
+      border: `1px solid ${character.color}`,
+    }
+  }
+
+  return baseStyles
 })
 
 const dragOverlayText = computed(() => props.dragState?.timecode.text || '')
@@ -614,7 +747,10 @@ const dragOverlayCharacterVisible = computed(() => {
   return dragOverlayWidth.value >= 100
 })
 
-
+const dragOverlayTextStyle = computed(() => {
+  if (!props.dragState) return {}
+  return computeDistortStyle(dragOverlayText.value, dragOverlayWidth.value)
+})
 
 // Scene Change Drag Overlay
 const shouldRenderSceneChangeDragOverlay = computed(() => {
@@ -703,6 +839,20 @@ function getTimecodeCharacter(idx: number): Character | null {
 function shouldShowCharacter(idx: number): boolean {
   const tc = effectiveTimecodes.value[idx]
   return !!(tc?.character && tc?.show_character !== false)
+}
+
+// Récupère la couleur de texte appropriée pour un timecode
+function getTimecodeTextColor(idx: number): string {
+  const character = getTimecodeCharacter(idx)
+  if (!character) return 'inherit'
+
+  // Si le personnage a une couleur de texte définie, l'utiliser
+  if (character.text_color) {
+    return character.text_color
+  }
+
+  // Sinon, calculer automatiquement le contraste
+  return getContrastColor(character.color)
 }
 
 // Fonction pour ouvrir/fermer le dropdown de personnages
@@ -817,47 +967,11 @@ function getSceneChangeDragTime(): number {
   // Utiliser le temps actuel de l'état partagé
   return props.sceneChangeDragState.currentTime
 }
-// Fonction pour obtenir la couleur de texte d'un personnage (utilise text_color ou calcule automatiquement)
-function getCharacterTextColor(character: Character | null): string {
-  if (!character) return '#FFFFFF'
-
-  // Si une couleur de texte personnalisée est définie, l'utiliser
-  if (character.text_color) {
-    return character.text_color
-  }
-
-  // Sinon, calculer automatiquement basé sur la couleur de fond
-  return getContrastColor(character.color || '#8455F6')
-}
-
-function getAbsoluteBlockStyle(el: BandBlock) {
+function getAbsoluteBlockStyle(el: BandBlock): CSSProperties {
   const character = getTimecodeCharacter(el.tcIdx)
-  const isActive = el.tcIdx === activeIdx.value
 
-  let backgroundColor: string
-  let borderColor: string
-  let boxShadow = 'none'
-
-  if (character?.color) {
-    // Si un personnage avec couleur est défini
-    backgroundColor = character.color
-    borderColor = character.color
-
-    if (isActive) {
-      // Effet de luminosité pour le bloc actif
-      boxShadow = `0 0 12px ${character.color}80` // 80 = 50% opacité en hex
-    }
-  } else {
-    // Couleur par défaut si pas de personnage
-    backgroundColor = isActive ? '#10b981' : '#3b82f6'
-    borderColor = isActive ? '#10b981' : 'rgba(59, 130, 246, 0.3)'
-
-    if (isActive) {
-      boxShadow = '0 0 12px rgba(16, 185, 129, 0.4)'
-    }
-  }
-
-  return {
+  // Styles de base
+  const baseStyles: CSSProperties = {
     left: el.x + 'px',
     width: el.width + 'px',
     height: '100%',
@@ -869,10 +983,18 @@ function getAbsoluteBlockStyle(el: BandBlock) {
     borderRadius: '4px',
     margin: '0',
     position: 'absolute',
-    background: backgroundColor,
-    border: `1px solid ${borderColor}`,
-    boxShadow: boxShadow,
   }
+
+  // Si un personnage est assigné, appliquer sa couleur de fond
+  if (character) {
+    return {
+      ...baseStyles,
+      background: character.color,
+      border: `1px solid ${character.color}`,
+    }
+  }
+
+  return baseStyles
 }
 
 const activeIdx = computed(() => {
@@ -881,111 +1003,7 @@ const activeIdx = computed(() => {
   return effectiveTimecodes.value.findIndex((tc) => t >= tc.start && t < tc.end)
 })
 
-// Interface pour les segments de texte avec largeurs fixes
-interface TextSegment {
-  text: string
-  width: number
-  isFixed: boolean // true si c'est un espace fixe (|), false si c'est du texte à redimensionner
-  relativeWeight?: number // poids relatif pour le redimensionnement
-}
-
-function parseTextWithPipes(text: string, totalWidth: number): TextSegment[] {
-  const segments: TextSegment[] = []
-  const parts = text.split('|')
-
-  if (parts.length === 1) {
-    // Pas de pipes, retour au comportement normal
-    return [{
-      text: text,
-      width: totalWidth,
-      isFixed: false,
-      relativeWeight: 1
-    }]
-  }
-
-  // Largeur fixe pour chaque espace (pipe transformé) - configurable
-  const PIPE_SPACE_WIDTH = 20 // pixels
-
-  // Parse les segments et leurs poids relatifs
-  const textSegments: Array<{ text: string; weight: number }> = []
-  let totalRelativeWeight = 0
-  let spacesCount = 0
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i].trim()
-
-    if (part === '') {
-      // Pipe vide = espace fixe
-      spacesCount++
-      continue
-    }
-
-    // Vérifier si c'est un nombre (poids relatif)
-    const weight = parseFloat(part)
-    if (!isNaN(weight) && weight > 0) {
-      // C'est un multiplicateur de poids pour le segment précédent
-      if (textSegments.length > 0) {
-        textSegments[textSegments.length - 1].weight = weight
-        totalRelativeWeight += weight - 1 // Ajuster le total (on avait déjà compté 1)
-      }
-      spacesCount++ // Le multiplicateur compte comme un espace
-    } else {
-      // C'est du texte normal
-      textSegments.push({ text: part, weight: 1 })
-      totalRelativeWeight += 1
-      if (i > 0) spacesCount++ // Espace avant ce segment (sauf le premier)
-    }
-  }
-
-  // Calculer la largeur disponible pour le texte
-  const totalFixedWidth = spacesCount * PIPE_SPACE_WIDTH
-  const availableTextWidth = totalWidth - totalFixedWidth
-
-  // Calculer les largeurs basées sur les poids relatifs
-  const unitWidth = availableTextWidth / totalRelativeWeight
-
-  // Construire les segments finaux
-  let isFirstSegment = true
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i].trim()
-
-    if (part === '' || (!isNaN(parseFloat(part)) && parseFloat(part) > 0)) {
-      // Pipe vide ou multiplicateur = espace fixe
-      if (!isFirstSegment) {
-        segments.push({
-          text: ' ',
-          width: PIPE_SPACE_WIDTH,
-          isFixed: true
-        })
-      }
-      continue
-    }
-
-    // Ajouter un espace avant ce segment (sauf le premier)
-    if (!isFirstSegment) {
-      segments.push({
-        text: ' ',
-        width: PIPE_SPACE_WIDTH,
-        isFixed: true
-      })
-    }
-
-    // Trouver le poids de ce segment dans textSegments
-    const segmentIndex = textSegments.findIndex(ts => ts.text === part)
-    const weight = segmentIndex >= 0 ? textSegments[segmentIndex].weight : 1
-
-    segments.push({
-      text: part,
-      width: Math.max(10, unitWidth * weight),
-      isFixed: false,
-      relativeWeight: weight
-    })
-
-    isFirstSegment = false
-  }
-
-  return segments
-}function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
+function computeDistortStyle(text: string, width: number, fontSize = '2.1rem'): CSSProperties {
   const span = document.createElement('span')
   span.style.visibility = 'hidden'
   span.style.position = 'absolute'
@@ -1000,43 +1018,19 @@ function parseTextWithPipes(text: string, totalWidth: number): TextSegment[] {
 
   return {
     transform: `scaleX(${scaleX})`,
+    transformOrigin: 'center center',
     width: '100%',
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale',
+    backfaceVisibility: 'hidden',
+    willChange: 'transform',
   }
 }
 
-
-
-// Nouvelle fonction pour obtenir les segments de texte avec pipes
-function getTextSegments(idx: number): TextSegment[] {
+function getDistortStyle(idx: number) {
   const width = getBlockWidth(idx)
   const text = effectiveTimecodes.value[idx].text || ''
-  return parseTextWithPipes(text, width)
-}
-
-// Fonction pour calculer le style d'un segment spécifique
-function getSegmentStyle(segment: TextSegment): CSSProperties {
-  if (segment.isFixed) {
-    // Espace fixe - pas de déformation
-    return {
-      width: `${segment.width}px`,
-      flexShrink: 0,
-      textAlign: 'center' as const,
-    }
-  } else {
-    // Texte à redimensionner
-    return {
-      ...computeDistortStyle(segment.text, segment.width),
-      width: `${segment.width}px`,
-      flexShrink: 0,
-    }
-  }
-}
-
-// Fonction pour obtenir les segments pour l'overlay de déplacement
-function getDragOverlayTextSegments(): TextSegment[] {
-  if (!props.dragState || !dragOverlayWidth.value) return []
-  const text = dragOverlayText.value
-  return parseTextWithPipes(text, dragOverlayWidth.value)
+  return computeDistortStyle(text, width)
 }
 
 function isBlockBeingDragged(idx: number) {
@@ -1474,6 +1468,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onMoveEnd)
   document.removeEventListener('mousemove', onSceneChangeDragMove)
   document.removeEventListener('mouseup', onSceneChangeDragEnd)
+  document.removeEventListener('mousemove', onSeparatorResizeMove)
+  document.removeEventListener('mouseup', onSeparatorResizeEnd)
   document.removeEventListener('click', handleGlobalClick)
   document.body.style.cursor = ''
 })
@@ -1593,7 +1589,7 @@ function onMoveEnd() {
 .rythmo-ticks {
   position: absolute;
   left: 0;
-  bottom: -2rem;
+  bottom: 0;
   width: 100%;
   height: 2rem;
   pointer-events: none;
@@ -1601,7 +1597,7 @@ function onMoveEnd() {
 }
 .rythmo-tick {
   position: absolute;
-  top: 0;
+  bottom: 0%;
   width: 2px;
   height: 45%;
   background: #aaa;
@@ -1722,8 +1718,6 @@ function onMoveEnd() {
   word-break: break-all;
 }
 .rythmo-band {
-  position: relative;
-  user-select: none;
   width: 100%;
   overflow: visible;
   background: #1f2937;
@@ -1734,12 +1728,6 @@ function onMoveEnd() {
   align-items: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.rythmo-band.selected {
-  border: 1px solid #8455F6;
-  box-shadow: 0 4px 12px rgba(132, 85, 246, 0.3), 0 0 0 1px rgba(132, 85, 246, 0.2);
 }
 .rythmo-track-container {
   position: relative;
@@ -1787,17 +1775,21 @@ function onMoveEnd() {
 }
 .rythmo-block {
   position: relative;
-  /* Couleur par défaut si pas de personnage (remplacée par JavaScript si personnage) */
+  /* Le background est appliqué via inline style si personnage, sinon par défaut */
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border: 1px solid rgba(59, 130, 246, 0.3);
   z-index: 4; /* Blocs de texte toujours devant les gaps */
 }
+
 .rythmo-block.active {
-  /* Styles par défaut pour les blocs actifs sans personnage (remplacés par JavaScript si personnage) */
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  /* Le background actif est appliqué conditionnellement */
+}
+
+/* Si pas de personnage, appliquer le style actif vert */
+.rythmo-block.active:not([style*="background"]) {
   background: linear-gradient(135deg, #10b981, #059669);
   border: 1px solid #10b981;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
-  /* z-index: 5; Bloc actif encore plus devant */
 }
 .rythmo-block-gap {
   background: var(--agfa-gray) !important;
@@ -1821,40 +1813,15 @@ function onMoveEnd() {
   flex-grow: 1;
   width: 100%;
   white-space: pre;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Styles pour les espaces fixes (pipes transformés) */
-.fixed-space {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  margin: 0;
-  opacity: 0.6;
-  background: none;
-  border-radius: 3px;
-  font-size: 1.8rem;
-  font-weight: 600;
-  overflow: visible;
-  white-space: pre;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-}
-
-/* Container pour les segments de texte */
-.timecode-text-segments {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  transform-origin: center center;
 }
 .rythmo-block.active .distort-text {
   opacity: 1;
   color: #ffffff;
   /* font-weight: bold; */
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .character-tag {
@@ -2213,7 +2180,7 @@ function onMoveEnd() {
   border: 1px solid rgba(132, 85, 246, 0.4);
   border-radius: 4px;
   padding: 4px 8px;
-  backdrop-filter: blur(8px);
+  /* backdrop-filter: blur(8px); */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   font-size: 0.7rem;
   white-space: nowrap;
@@ -2318,5 +2285,100 @@ function onMoveEnd() {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
   }
+}
+
+/* Styles pour la séparation de texte */
+.split-text-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  height: 100%;
+  width: 100%;
+  overflow: visible;
+  padding: 0;
+  margin: 0;
+  gap: 0; /* Pas d'espace entre les éléments */
+}
+
+.text-segment-wrapper {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  height: 100%;
+  overflow: visible;
+  position: relative;
+  min-width: 0; /* Important pour permettre le shrink */
+  padding: 0;
+  margin: 0;
+}
+
+.text-segment-wrapper .distort-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  text-align: center;
+  transform-origin: center center; /* Important pour éviter le flou */
+  padding: 0;
+  margin: 0;
+}
+
+.text-separator {
+  position: relative;
+  height: 100%;
+  width: 12px;
+  flex-shrink: 0;
+  z-index: 25;
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+}
+
+.text-separator:hover .separator-line,
+.separator-dragging .separator-line {
+  background: rgba(132, 85, 246, 0.9);
+  width: 3px;
+  box-shadow: 0 0 10px rgba(132, 85, 246, 0.7);
+}
+
+.text-separator:hover .separator-handle,
+.separator-dragging .separator-handle {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.separator-line {
+  position: absolute;
+  width: 2px;
+  height: 90%;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+.separator-handle {
+  position: absolute;
+  width: 10px;
+  height: 20px;
+  background: linear-gradient(135deg, rgba(132, 85, 246, 0.95), rgba(99, 102, 241, 0.95));
+  border: 1px solid rgba(132, 85, 246, 0.8);
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.separator-dragging {
+  z-index: 30;
 }
 </style>
