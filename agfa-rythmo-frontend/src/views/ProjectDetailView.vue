@@ -320,6 +320,7 @@ function toggleTimecodesPanel() {
 import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useProjectSettingsStore } from '@/stores/projectSettings'
 import api from '../api/axios'
 import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
@@ -414,6 +415,7 @@ import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 
 const route = useRoute()
 const router = useRouter()
+const settingsStore = useProjectSettingsStore()
 
 // Fonction de retour aux projets
 function goBack() {
@@ -432,6 +434,7 @@ function goToFinalPreview() {
     query: {
       video: getVideoUrl(project.value.video_path),
       rythmo: JSON.stringify(compatibleTimecodes.value),
+      rythmoLinesCount: String(project.value.rythmo_lines_count || 1),
     },
   })
 }
@@ -1107,6 +1110,10 @@ onMounted(async () => {
       videoFps.value = data.fps
     }
     project.value = data
+
+    // Charger les paramètres du projet depuis l'API
+    await settingsStore.loadSettings(data.id)
+
     // Récupère les changements de plan
     const scRes = await api.get(`/projects/${data.id}/scene-changes`)
     sceneChanges.value = Array.isArray(scRes.data) ? scRes.data : []

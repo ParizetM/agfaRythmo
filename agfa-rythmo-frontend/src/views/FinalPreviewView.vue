@@ -43,6 +43,7 @@
           v-if="videoWidth && videoHeight && projectSettings.overlayPosition === 'under'"
           class="preview-rythmo below-mode"
           :style="{
+            height: rythmoBarHeight + 'px'
           }"
         >
           <MultiRythmoBand
@@ -71,9 +72,9 @@ const settingsStore = useProjectSettingsStore()
 const projectSettings = computed(() => settingsStore.settings)
 
 const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
-// Détermine le nombre de lignes rythmo à partir des données
-const getRythmoLinesCount = Array.isArray(rythmoData)
-  ? Math.max(1, ...rythmoData.map(tc => tc.line_number || 1))
+// Récupère le nombre de lignes depuis les paramètres de la route (configuré dans le projet)
+const getRythmoLinesCount = route.query.rythmoLinesCount
+  ? parseInt(route.query.rythmoLinesCount as string, 10)
   : 1
 
 const video = ref<HTMLVideoElement | null>(null)
@@ -87,6 +88,7 @@ const videoDuration = ref<number>(0)
 const playError = ref('')
 const videoReady = ref(false)
 const rythmoBarWidth = ref<number>(0)
+const rythmoBarHeight = ref<number>(0)
 let interval: number
 let rafId: number
 
@@ -150,8 +152,18 @@ function updateRythmoBarWidth() {
   }
 }
 
+function updateRythmoBarHeight() {
+  // Calculer la hauteur de la bande rythmo depuis les settings du projet
+  const heightPerLine = projectSettings.value.bandHeight || 80
+  rythmoBarHeight.value = heightPerLine * getRythmoLinesCount
+  console.log('[updateRythmoBarHeight] hauteur bande rythmo:', rythmoBarHeight.value, 'px (', heightPerLine, 'px × ', getRythmoLinesCount, 'lignes)')
+}
+
 watch([videoWidth, videoHeight, videoReady, started, countdown], () => {
-  setTimeout(updateRythmoBarWidth, 50)
+  setTimeout(() => {
+    updateRythmoBarWidth()
+    updateRythmoBarHeight()
+  }, 50)
 })
 
 onMounted(() => {
@@ -254,7 +266,6 @@ onUnmounted(() => {
 /* Mode avec bande sous la vidéo : ajuster le conteneur */
 .video-wrapper.with-band-below {
   justify-content: flex-start;
-  padding-top: 2vh;
 }
 
 .video-container {
@@ -273,7 +284,7 @@ onUnmounted(() => {
 
 /* Mode below : la vidéo laisse de la place pour la bande */
 .video-wrapper.with-band-below .video-container {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - v-bind(rythmoBarHeight + 'px'));
 }
 
 .preview-video {

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\ProjectCollaboratorController;
 use App\Http\Controllers\Api\ProjectInvitationController;
+use App\Http\Controllers\Api\SettingsPresetController;
 
 // Routes publiques (pas d'authentification requise)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Projets
     Route::apiResource('projects', ProjectController::class);
     Route::patch('/projects/{project}/rythmo-lines', [ProjectController::class, 'updateRythmoLinesCount']);
+    Route::patch('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
 
     // Vidéos
     Route::post('/videos/upload', [VideoController::class, 'upload'])->name('videos.upload');
@@ -54,6 +56,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/characters/{character}', [CharacterController::class, 'destroy']);
     Route::post('/characters/clone', [CharacterController::class, 'clone']);
     Route::get('/characters/for-cloning', [CharacterController::class, 'getForCloning']);
+
+    // Settings Presets (max 5 par utilisateur)
+    Route::get('/settings-presets', [SettingsPresetController::class, 'index']);
+    Route::post('/settings-presets', [SettingsPresetController::class, 'store']);
+    Route::put('/settings-presets/{preset}', [SettingsPresetController::class, 'update']);
+    Route::delete('/settings-presets/{preset}', [SettingsPresetController::class, 'destroy']);
 
     // Collaboration sur les projets
     Route::get('/projects/{project}/collaborators', [ProjectCollaboratorController::class, 'index']);

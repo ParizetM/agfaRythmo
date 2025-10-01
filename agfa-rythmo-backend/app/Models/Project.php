@@ -15,10 +15,12 @@ class Project extends Model
         'json_path',
         'rythmo_lines_count',
         'user_id',
+        'project_settings',
     ];
 
     protected $casts = [
         'rythmo_lines_count' => 'integer',
+        'project_settings' => 'array',
     ];
 
     public function sceneChanges()

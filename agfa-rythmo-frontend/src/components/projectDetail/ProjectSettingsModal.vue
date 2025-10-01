@@ -23,13 +23,35 @@
           </button>
 
           <!-- Titre principal -->
-          <div class="text-center mb-8">
+          <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-white mb-2">Paramètres du Projet</h1>
             <p class="text-gray-400">Personnalisez l'apparence des bandes rythmo</p>
           </div>
 
-          <!-- Layout en 2 colonnes : Formulaire à gauche, Aperçu à droite -->
-          <div class="grid grid-cols-2 gap-8">
+          <!-- Onglets -->
+          <div class="tabs-container mb-6">
+            <button
+              @click="activeTab = 'settings'"
+              :class="['tab', { 'tab-active': activeTab === 'settings' }]"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+              </svg>
+              Paramètres
+            </button>
+            <button
+              @click="activeTab = 'presets'"
+              :class="['tab', { 'tab-active': activeTab === 'presets' }]"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+              </svg>
+              Mes Presets ({{ userPresets.length }}/5)
+            </button>
+          </div>
+
+          <!-- Contenu de l'onglet Paramètres -->
+          <div v-show="activeTab === 'settings'" class="grid grid-cols-2 gap-8">
             <!-- Colonne Formulaire -->
             <div class="space-y-6">
               <!-- Hauteur de la bande -->
@@ -256,6 +278,11 @@
               </div>
             </div>
           </div>
+
+          <!-- Contenu de l'onglet Presets -->
+          <div v-show="activeTab === 'presets'">
+            <PresetsManager @preset-applied="onPresetApplied" />
+          </div>
         </div>
       </div>
     </div>
@@ -263,9 +290,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
 import { POPULAR_FONTS, type GoogleFont } from '../../services/googleFonts'
+import PresetsManager from './PresetsManager.vue'
 
 interface Props {
   show: boolean
@@ -279,18 +307,26 @@ const emit = defineEmits<{
 
 const settingsStore = useProjectSettingsStore()
 
+// Onglet actif ('settings' ou 'presets')
+const activeTab = ref<'settings' | 'presets'>('settings')
+
 // Paramètres locaux (copie pour modification avant application)
 const localSettings = ref({ ...settingsStore.settings })
 
 // Polices disponibles
 const availableFonts = ref<GoogleFont[]>(POPULAR_FONTS)
 
+// Presets utilisateur
+const userPresets = computed(() => settingsStore.userPresets)
+
 // Synchroniser les paramètres locaux quand la modal s'ouvre
 watch(() => props.show, (isVisible) => {
   if (isVisible) {
+    activeTab.value = 'settings'
     localSettings.value = { ...settingsStore.settings }
-    // Charger les polices si nécessaire
+    // Charger les polices et les presets
     loadFonts()
+    settingsStore.loadUserPresets()
   }
 })
 
@@ -315,6 +351,12 @@ function applySettings() {
 function resetToDefaults() {
   settingsStore.resetSettings()
   localSettings.value = { ...settingsStore.settings }
+}
+
+// Quand un preset est appliqué, recharger les paramètres locaux
+function onPresetApplied() {
+  localSettings.value = { ...settingsStore.settings }
+  activeTab.value = 'settings'
 }
 
 // Gestion des raccourcis clavier pour fermer le modal
@@ -345,6 +387,43 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #374151;
+  padding-bottom: 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: transparent;
+  color: #9ca3af;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: #d1d5db;
+  background-color: rgba(132, 85, 246, 0.1);
+}
+
+.tab-active {
+  color: #8455F6;
+  border-bottom-color: #8455F6;
+}
+
+.tab-active:hover {
+  color: #9d6fff;
+}
+
 .setting-group {
   display: flex;
   flex-direction: column;

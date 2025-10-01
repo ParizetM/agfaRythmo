@@ -133,6 +133,30 @@ class ProjectController extends Controller
     }
 
     /**
+     * Update the project settings (bandHeight, fontSize, etc.).
+     */
+    public function updateSettings(Request $request, Project $project)
+    {
+        // Vérifier les permissions d'écriture
+        if (!$project->canModify(Auth::user())) {
+            return response()->json(['message' => 'Droits insuffisants'], 403);
+        }
+
+        $validated = $request->validate([
+            'project_settings' => 'required|array',
+            'project_settings.bandHeight' => 'required|numeric|min:40|max:200',
+            'project_settings.fontSize' => 'required|numeric|min:1.0|max:3.5',
+            'project_settings.fontFamily' => 'required|string|max:255',
+            'project_settings.bandBackgroundColor' => 'required|string|max:7',
+            'project_settings.sceneChangeColor' => 'required|string|max:7',
+            'project_settings.overlayPosition' => 'required|in:under,over',
+        ]);
+
+        $project->update(['project_settings' => $validated['project_settings']]);
+        return response()->json($project);
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Project $project)
