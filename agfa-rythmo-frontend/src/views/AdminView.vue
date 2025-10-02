@@ -268,12 +268,21 @@
                   <span class="text-xs text-gray-500 dark:text-gray-400">
                     Créé le {{ new Date(project.created_at).toLocaleDateString('fr-FR') }}
                   </span>
-                  <router-link
-                    :to="`/projects/${project.id}`"
-                    class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
-                  >
-                    Voir →
-                  </router-link>
+                  <div class="flex items-center space-x-2">
+                    <router-link
+                      :to="`/projects/${project.id}`"
+                      class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
+                    >
+                      Voir
+                    </router-link>
+                    <button
+                      @click="deleteProject(project)"
+                      class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                      title="Supprimer le projet"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -585,6 +594,22 @@ const deleteUser = async (user: UserWithStats) => {
   } catch (error) {
     console.error('Erreur lors de la suppression:', error)
     alert('Erreur lors de la suppression de l\'utilisateur')
+  }
+}
+
+// Fonction pour supprimer un projet
+const deleteProject = async (project: Project) => {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${project.name}" ?`)) {
+    return
+  }
+
+  try {
+    await adminService.deleteProject(project.id)
+    await loadProjects()
+    await loadStats()
+  } catch (error) {
+    console.error('Erreur lors de la suppression du projet:', error)
+    alert('Erreur lors de la suppression du projet')
   }
 }
 </script>

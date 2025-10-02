@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/users/{user}/change-password', [AdminUserController::class, 'changePassword']);
         Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy']);
         Route::get('/admin/projects', [AdminUserController::class, 'allProjects']);
+        Route::delete('/admin/projects/{project}', [AdminUserController::class, 'destroyProject']);
         Route::get('/admin/stats', [AdminUserController::class, 'stats']);
     });
 });

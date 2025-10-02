@@ -94,6 +94,11 @@ class AdminService {
     const response = await axios.get<PaginatedResponse<Project>>('/admin/projects', { params })
     return response.data
   }
+
+  async deleteProject(id: number): Promise<{ message: string }> {
+    const response = await axios.delete<{ message: string }>(`/admin/projects/${id}`)
+    return response.data
+  }
 }
 
 export default new AdminService()

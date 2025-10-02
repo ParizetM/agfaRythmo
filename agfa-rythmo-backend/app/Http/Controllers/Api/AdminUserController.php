@@ -168,6 +168,27 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Supprimer un projet (vue admin)
+     */
+    public function destroyProject(Project $project)
+    {
+        // Supprimer le fichier vidéo associé s'il existe
+        if ($project->video_path) {
+            $videoPath = storage_path('app/public/videos/' . basename($project->video_path));
+            if (file_exists($videoPath)) {
+                unlink($videoPath);
+            }
+        }
+
+        // Supprimer le projet (les relations seront supprimées en cascade)
+        $project->delete();
+
+        return response()->json([
+            'message' => 'Projet supprimé avec succès'
+        ]);
+    }
+
+    /**
      * Obtenir les statistiques globales
      */
     public function stats()
