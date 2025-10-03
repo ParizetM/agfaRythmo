@@ -102,7 +102,7 @@
             class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-64 max-w-full flex flex-col pr-2 pointer-events-none"
           >
             <SceneChangesList
-              :sceneChanges="sceneChanges.map(sc => sc.timecode)"
+              :sceneChanges="uniqueSceneChangeTimecodes"
               :selected="selectedSceneChangeIdx ?? undefined"
               @select="onSelectSceneChange"
               @edit="onEditSceneChange"
@@ -183,7 +183,7 @@
           :currentTime="currentTime"
           :videoDuration="videoDuration"
           :timecodes="compatibleTimecodes"
-          :sceneChanges="sceneChanges.map(sc => sc.timecode)"
+          :sceneChanges="uniqueSceneChangeTimecodes"
           :isVideoPaused="isVideoPaused"
           :rythmoLinesCount="project.rythmo_lines_count"
           @seek="onNavigationSeek"
@@ -197,7 +197,7 @@
           v-if="project"
           :key="rythmoReloadKey"
           :timecodes="compatibleTimecodes"
-          :sceneChanges="sceneChanges"
+          :sceneChanges="uniqueSceneChanges"
           :currentTime="currentTime"
           :videoDuration="videoDuration"
           :instant="instantRythmoScroll"
@@ -427,6 +427,13 @@ function goBack() {
 type SceneChange = sceneChangesApi.SceneChange
 const sceneChanges = ref<SceneChange[]>([])
 
+// Computed pour s'assurer que sceneChanges n'a pas de doublons
+const uniqueSceneChanges = computed(() => {
+  return sceneChanges.value.filter((sc, index, array) =>
+    array.findIndex(s => s.id === sc.id) === index
+  )
+})
+
 function goToFinalPreview() {
   if (!project.value || !project.value.video_path || compatibleTimecodes.value.length === 0) return
   router.push({
@@ -483,7 +490,8 @@ let focusInHandler: ((e: Event) => void) | null = null
 let focusOutHandler: ((e: Event) => void) | null = null
 
 // Clé pour forcer la reconstruction complète du composant MultiRythmoBand
-const rythmoReloadKey = ref(0)
+const generateRythmoKey = () => `rythmo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+const rythmoReloadKey = ref(generateRythmoKey())
 
 // Timecodes multi-lignes (nouvelle API)
 const allTimecodes = ref<ApiTimecode[]>([])
@@ -504,6 +512,93 @@ const selectedLineNumber = ref<number>(1)
 
 // Store d'authentification
 const authStore = useAuthStore()
+
+// Computed pour les timecodes de scene changes uniques
+const uniqueSceneChangeTimecodes = computed(() => {
+  // Utilise un Set pour éliminer les doublons, puis convertit en array
+  const uniqueTimecodes = [...new Set(uniqueSceneChanges.value.map(sc => sc.timecode))]
+  return uniqueTimecodes.sort((a, b) => a - b)
+})
+
+// Fonction pour trouver une position libre pour un nouveau timecode
+function findFreeTimecodePosition(
+  preferredStart: number,
+  duration: number,
+  lineNumber: number
+): { start: number; end: number } {
+  const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
+
+  // Récupère tous les timecodes de la même ligne, triés par ordre de début
+  const sameLineTimecodes = allTimecodes.value
+    .filter(tc => tc.line_number === lineNumber)
+    .sort((a, b) => a.start - b.start)
+
+  // Si pas de timecodes sur cette ligne, utiliser la position préférée
+  if (sameLineTimecodes.length === 0) {
+    return { start: preferredStart, end: preferredStart + duration }
+  }
+
+  // Cherche le dernier timecode et place le nouveau après
+  const lastTimecode = sameLineTimecodes[sameLineTimecodes.length - 1]
+  const newStart = lastTimecode.end + MARGIN
+
+  return { start: newStart, end: newStart + duration }
+}
+
+// Fonction pour ajuster les bornes d'un timecode modifié
+function adjustTimecodeForModal(
+  newStart: number,
+  newEnd: number,
+  lineNumber: number,
+  excludeTimecodeId?: number
+): { start: number; end: number } {
+  const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
+
+  // Récupère tous les timecodes de la même ligne, sauf celui qu'on exclut
+  const sameLineTimecodes = allTimecodes.value
+    .filter(tc => tc.line_number === lineNumber && tc.id !== excludeTimecodeId)
+    .sort((a, b) => a.start - b.start)
+
+  let adjustedStart = newStart
+  let adjustedEnd = newEnd
+
+  // Trouve les timecodes qui pourraient être en conflit
+  const conflictingBefore = sameLineTimecodes.filter(tc => tc.end > adjustedStart - MARGIN && tc.start < adjustedStart)
+  const conflictingAfter = sameLineTimecodes.filter(tc => tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd)
+
+  // Ajuster le début si conflit avec un timecode précédent
+  if (conflictingBefore.length > 0) {
+    const lastConflict = conflictingBefore[conflictingBefore.length - 1]
+    adjustedStart = lastConflict.end + MARGIN
+  }
+
+  // Ajuster la fin si conflit avec un timecode suivant
+  if (conflictingAfter.length > 0) {
+    const firstConflict = conflictingAfter[0]
+    adjustedEnd = firstConflict.start - MARGIN
+  }
+
+  // Recalculer la fin selon le nouveau début si nécessaire
+  const originalDuration = newEnd - newStart
+  if (adjustedStart !== newStart) {
+    adjustedEnd = adjustedStart + originalDuration
+
+    // Vérifier à nouveau les conflits après
+    const stillConflictingAfter = sameLineTimecodes.find(tc =>
+      tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd
+    )
+    if (stillConflictingAfter) {
+      adjustedEnd = stillConflictingAfter.start - MARGIN
+    }
+  }
+
+  // S'assurer que start < end avec une durée minimale
+  if (adjustedStart >= adjustedEnd) {
+    adjustedEnd = adjustedStart + Math.max(0.5, originalDuration)
+  }
+
+  return { start: adjustedStart, end: adjustedEnd }
+}
 
 // Vérifier si l'utilisateur a accès au projet (lecture)
 const hasProjectAccess = computed(() => {
@@ -551,9 +646,16 @@ const canManageProject = computed(() => {
 
 // Conversion temporaire des anciens timecodes en format compatible
 const compatibleTimecodes = computed(() => {
+  // Protection contre les états de chargement
+  if (loading.value) return []
+
   // Utilise d'abord les nouveaux timecodes de l'API
   if (allTimecodes.value.length > 0) {
-    return allTimecodes.value
+    // Filtrer les doublons par ID au cas où il y en aurait
+    const uniqueTimecodes = allTimecodes.value.filter((tc, index, array) =>
+      tc.id != null && array.findIndex(t => t.id === tc.id) === index
+    )
+    return uniqueTimecodes
   }
 
   // Fallback sur les anciens timecodes (JSON) s'il n'y en a pas dans la nouvelle table
@@ -577,14 +679,23 @@ const compatibleTimecodes = computed(() => {
   }
 
   // Convertit en format ApiTimecode avec line_number = 1 par défaut
-  return oldTimecodes.map((tc, index) => ({
-    id: index + 1000, // ID temporaire
-    project_id: project.value!.id,
-    line_number: 1, // Tous sur la ligne 1 par défaut
-    start: tc.start,
-    end: tc.end,
-    text: tc.text
-  }))
+  return oldTimecodes.map((tc, index) => {
+    // Crée un ID temporaire vraiment unique basé sur les propriétés du timecode
+    const hash = Math.abs(
+      (project.value!.id * 1000000) +
+      (index * 10000) +
+      (Math.round(tc.start * 100)) +
+      (Math.round(tc.end * 100))
+    )
+    return {
+      id: hash + 100000, // Décale pour éviter les conflits avec les vrais IDs
+      project_id: project.value!.id,
+      line_number: 1, // Tous sur la ligne 1 par défaut
+      start: tc.start,
+      end: tc.end,
+      text: tc.text
+    }
+  })
 })
 
 // Fonctions pour les timecodes multi-lignes
@@ -956,10 +1067,17 @@ async function onAddTimecode() {
   if (!project.value) return
 
   try {
+    // Trouver une position libre pour le nouveau timecode
+    const freePosition = findFreeTimecodePosition(
+      currentTime.value,
+      6, // durée de 6 secondes
+      selectedLineNumber.value
+    )
+
     // Créer un nouveau timecode de 6 secondes directement dans la base
     const newTimecodeData = {
-      start: currentTime.value,
-      end: currentTime.value + 6,
+      start: freePosition.start,
+      end: freePosition.end,
       text: 'Insérer du texte ici',
       line_number: selectedLineNumber.value, // Utilise la ligne actuellement sélectionnée
       character_id: activeCharacter.value?.id || null,
@@ -999,7 +1117,21 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
   if (editTimecodeIdx.value !== null) {
     const tc = compatibleTimecodes.value[editTimecodeIdx.value]
     if (tc?.id) {
-      timecodeApi.update(project.value.id, tc.id, data).then(() => {
+      // Ajuster les bornes pour éviter les superpositions
+      const adjustedBounds = adjustTimecodeForModal(
+        data.start,
+        data.end,
+        data.line_number,
+        tc.id
+      )
+
+      const adjustedData = {
+        ...data,
+        start: adjustedBounds.start,
+        end: adjustedBounds.end
+      }
+
+      timecodeApi.update(project.value.id, tc.id, adjustedData).then(() => {
         loadTimecodes()
         closeTimecodeModal()
       })
@@ -1007,8 +1139,21 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
     return
   }
 
+  // Pour la création, trouver une position libre
+  const freePosition = findFreeTimecodePosition(
+    data.start,
+    data.end - data.start,
+    data.line_number
+  )
+
+  const adjustedData = {
+    ...data,
+    start: freePosition.start,
+    end: freePosition.end
+  }
+
   // Sinon on crée un nouveau timecode
-  timecodeApi.create(project.value.id, data).then(() => {
+  timecodeApi.create(project.value.id, adjustedData).then(() => {
     loadTimecodes()
     closeTimecodeModal()
   })

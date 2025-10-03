@@ -1124,11 +1124,20 @@ const bandElements = computed<BandElement[]>(() => {
 // Génère une clé unique et stable pour chaque élément de la bande
 function getElementKey(el: BandElement, idx: number): string {
   if (el.type === 'block') {
-    // Pour les blocs, utiliser l'ID du timecode qui est stable
-    return `block-${el.tcIdx}-${effectiveTimecodes.value[el.tcIdx]?.id || idx}`
+    // Pour les blocs, utiliser l'ID du timecode s'il existe, sinon une combinaison unique et stable
+    const timecode = effectiveTimecodes.value[el.tcIdx]
+    if (timecode?.id) {
+      return `block-L${props.lineNumber}-ID${timecode.id}`
+    } else {
+      // Fallback stable basé sur les propriétés du timecode et sa position
+      const hash = timecode ?
+        `${timecode.start.toFixed(3)}-${timecode.end.toFixed(3)}-${el.tcIdx}` :
+        `empty-${idx}`
+      return `block-L${props.lineNumber}-${hash}`
+    }
   } else {
-    // Pour les gaps, utiliser leur position arrondie qui est relativement stable
-    return `gap-${Math.round(el.x)}-${Math.round(el.width)}`
+    // Pour les gaps, créer une clé stable basée sur la position et l'index
+    return `gap-L${props.lineNumber}-${el.x.toFixed(2)}-${idx}`
   }
 }
 
@@ -1178,6 +1187,90 @@ const emit = defineEmits<{
   (e: 'scene-change-hover-start', payload: { sceneChangeId: number; index: number }): void
   (e: 'scene-change-hover-end'): void
 }>()
+
+// Fonction pour ajuster la position d'un timecode lors du déplacement
+function adjustTimecodePosition(
+  newStart: number,
+  duration: number,
+  lineNumber: number,
+  excludeTimecodeId?: number
+): { start: number; end: number } {
+  const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
+
+  // Récupère tous les timecodes de la même ligne, sauf celui qu'on exclut
+  const sameLineTimecodes = props.timecodes
+    .filter(tc => tc.line_number === lineNumber && tc.id !== excludeTimecodeId)
+    .sort((a, b) => a.start - b.start)
+
+  let adjustedStart = newStart
+  const adjustedEnd = adjustedStart + duration
+
+  // Trouve le timecode qui pourrait être en conflit
+  const conflictingTimecode = sameLineTimecodes.find(tc =>
+    (adjustedStart < tc.end + MARGIN && adjustedEnd > tc.start - MARGIN)
+  )
+
+  if (conflictingTimecode) {
+    // Se positionner à la suite du timecode en conflit
+    adjustedStart = conflictingTimecode.end + MARGIN
+  }
+
+  return {
+    start: adjustedStart,
+    end: adjustedStart + duration
+  }
+}
+
+// Fonction pour ajuster les bornes lors du redimensionnement
+function adjustTimecodeResize(
+  currentStart: number,
+  newStart: number,
+  newEnd: number,
+  lineNumber: number,
+  excludeTimecodeId?: number
+): { start: number; end: number } {
+  const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
+
+  // Récupère tous les timecodes de la même ligne, sauf celui qu'on exclut
+  const sameLineTimecodes = props.timecodes
+    .filter(tc => tc.line_number === lineNumber && tc.id !== excludeTimecodeId)
+    .sort((a, b) => a.start - b.start)
+
+  let adjustedStart = newStart
+  let adjustedEnd = newEnd
+
+  // Vérifie les conflits avec les timecodes précédents (quand on étend vers la gauche)
+  if (adjustedStart < currentStart) {
+    const prevTimecode = sameLineTimecodes
+      .filter(tc => tc.end <= currentStart)
+      .pop() // Le dernier (le plus proche)
+
+    if (prevTimecode && adjustedStart < prevTimecode.end + MARGIN) {
+      adjustedStart = prevTimecode.end + MARGIN
+    }
+  }
+
+  // Vérifie les conflits avec les timecodes suivants (quand on étend vers la droite)
+  if (adjustedEnd > currentStart) {
+    const nextTimecode = sameLineTimecodes
+      .find(tc => tc.start >= currentStart)
+
+    if (nextTimecode && adjustedEnd > nextTimecode.start - MARGIN) {
+      adjustedEnd = nextTimecode.start - MARGIN
+    }
+  }
+
+  // S'assurer que start < end
+  if (adjustedStart >= adjustedEnd) {
+    adjustedEnd = adjustedStart + 0.5 // Durée minimale de 0.5s
+  }
+
+  return {
+    start: adjustedStart,
+    end: adjustedEnd
+  }
+}
+
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
     emit('seek', effectiveTimecodes.value[idx].start)
@@ -1440,11 +1533,20 @@ function onResizeEnd() {
   const finalTimecode = localTimecodes.value[resizingIdx.value]
   const originalTimecode = props.timecodes[resizingIdx.value]
 
-  // Émission de l'événement de mise à jour seulement à la fin
+  // Ajuster les bornes pour éviter les superpositions
+  const adjustedBounds = adjustTimecodeResize(
+    originalTimecode.start,
+    finalTimecode.start,
+    finalTimecode.end,
+    props.lineNumber,
+    originalTimecode.id
+  )
+
+  // Émission de l'événement de mise à jour avec les bornes ajustées
   emit('update-timecode-bounds', {
     timecode: originalTimecode,
-    start: finalTimecode.start,
-    end: finalTimecode.end,
+    start: adjustedBounds.start,
+    end: adjustedBounds.end,
   })
 
   resizingIdx.value = null
@@ -1565,10 +1667,19 @@ function onMoveEnd() {
   const targetLineNumber = moveCurrentTargetLine.value || props.lineNumber
 
   if (finalTimecode && originalTimecode) {
-    // Émission de l'événement de déplacement
+    // Ajuster la position pour éviter les superpositions
+    const duration = originalTimecode.end - originalTimecode.start
+    const adjustedPosition = adjustTimecodePosition(
+      finalTimecode.start,
+      duration,
+      targetLineNumber,
+      originalTimecode.id
+    )
+
+    // Émission de l'événement de déplacement avec la position ajustée
     emit('move-timecode', {
       timecode: originalTimecode,
-      newStart: finalTimecode.start,
+      newStart: adjustedPosition.start,
       newLineNumber: targetLineNumber,
     })
 

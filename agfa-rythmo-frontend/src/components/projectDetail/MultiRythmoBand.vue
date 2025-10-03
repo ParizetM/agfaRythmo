@@ -37,7 +37,7 @@
     <div class="rythmo-bands-container">
       <div v-for="lineNumber in localRythmoLinesCount" :key="lineNumber" class="rythmo-line-wrapper">
         <RythmoBandSingle
-          :key="`line-${lineNumber}-${lineReloadKeys[lineNumber] || 0}`"
+          :key="`line-${lineNumber}-reload-${lineReloadKeys[lineNumber] || lineNumber}`"
           :timecodes="getTimecodesForLine(Number(lineNumber))"
           :currentTime="currentTime"
           :videoDuration="videoDuration"

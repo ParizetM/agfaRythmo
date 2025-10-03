@@ -6,7 +6,7 @@
       <div class="space-y-1">
         <div
           v-for="(time, idx) in sceneChanges"
-          :key="idx"
+          :key="`scene-${Math.round(time * 10000)}-${idx}`"
           :class="[
             'flex items-center justify-between p-2 rounded transition-colors group',
             'hover:bg-gray-700',
