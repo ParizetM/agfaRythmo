@@ -474,6 +474,13 @@ const videoDuration = ref(0)
 const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
+// Flag global indiquant qu'on est dans un champ texte (désactive les raccourcis)
+const isEditingText = ref(false)
+// Pour savoir si on doit reprendre la lecture après édition
+let resumePlaybackAfterEdit = false
+// Stockage des handlers focus pour cleanup (références module-level)
+let focusInHandler: ((e: Event) => void) | null = null
+let focusOutHandler: ((e: Event) => void) | null = null
 
 // Clé pour forcer la reconstruction complète du composant MultiRythmoBand
 const rythmoReloadKey = ref(0)
@@ -1039,6 +1046,8 @@ function closeSceneChangeModal() {
 
 // Gestion des raccourcis clavier globaux
 function handleGlobalKeydown(event: KeyboardEvent) {
+  // Si on édite du texte, on ignore tous les raccourcis globaux
+  if (isEditingText.value) return
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const cmdKey = isMac ? event.metaKey : event.ctrlKey
 
@@ -1151,6 +1160,49 @@ onMounted(async () => {
 
   // Ajouter les gestionnaires de raccourcis clavier
   window.addEventListener('keydown', handleGlobalKeydown)
+
+  // Gestion focus/blur pour désactivation des raccourcis
+  const onFocusIn = (ev: Event) => {
+    const target = ev.target as HTMLElement | null
+    if (!target) return
+    if (target.matches('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]')) {
+      if (!isEditingText.value) {
+        isEditingText.value = true
+        // Pause vidéo si en lecture
+        const videoEl = document.querySelector('video') as HTMLVideoElement | null
+        if (videoEl && !videoEl.paused) {
+          videoEl.pause()
+          resumePlaybackAfterEdit = true
+        } else {
+          resumePlaybackAfterEdit = false
+        }
+      }
+    }
+  }
+  const onFocusOut = () => {
+    // Attendre fin de boucle pour voir si nouveau focus est toujours dans un champ
+    requestAnimationFrame(() => {
+      const active = document.activeElement as HTMLElement | null
+      if (active && (active.matches('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]'))) {
+        return // toujours dans un champ
+      }
+      if (isEditingText.value) {
+        isEditingText.value = false
+        // Reprendre la lecture si nécessaire
+        if (resumePlaybackAfterEdit) {
+          const videoEl = document.querySelector('video') as HTMLVideoElement | null
+          if (videoEl) {
+            videoEl.play().catch(() => {})
+          }
+          resumePlaybackAfterEdit = false
+        }
+      }
+    })
+  }
+  window.addEventListener('focusin', onFocusIn)
+  window.addEventListener('focusout', onFocusOut)
+  focusInHandler = onFocusIn
+  focusOutHandler = onFocusOut
 })
 
 // Nettoyage des événements
@@ -1158,6 +1210,8 @@ import { onUnmounted } from 'vue'
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  if (focusInHandler) window.removeEventListener('focusin', focusInHandler)
+  if (focusOutHandler) window.removeEventListener('focusout', focusOutHandler)
 })
 
 

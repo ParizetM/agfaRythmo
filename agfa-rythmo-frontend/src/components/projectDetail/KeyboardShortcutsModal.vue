@@ -133,7 +133,7 @@
           <!-- Note simple -->
           <div class="text-center mt-6">
             <p class="text-xs text-gray-500">
-              * Personnages et lignes : hors champs de saisie uniquement
+              * Pendant la saisie (input / texte), tous les raccourcis sont désactivés. La lecture est mise en pause et reprend automatiquement quand vous quittez le champ.
             </p>
           </div>
         </div>
