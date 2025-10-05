@@ -198,6 +198,7 @@
                   </template>
                   <template v-else>
                     <!-- Texte normal sans séparateur -->
+                     <div class="overflow-hidden w-full h-full flex items-center justify-center">
                     <span
                       class="distort-text"
                       :style="{
@@ -207,6 +208,7 @@
                     >
                       {{ el.text }}
                     </span>
+                    </div>
                   </template>
                 </template>
               </div>
@@ -1121,23 +1123,27 @@ const bandElements = computed<BandElement[]>(() => {
   return arr
 })
 
+// Compteur global pour générer des IDs uniques
+let keyCounter = 0
+
 // Génère une clé unique et stable pour chaque élément de la bande
 function getElementKey(el: BandElement, idx: number): string {
   if (el.type === 'block') {
-    // Pour les blocs, utiliser l'ID du timecode s'il existe, sinon une combinaison unique et stable
+    // Pour les blocs, utiliser l'ID du timecode s'il existe, sinon une combinaison unique
     const timecode = effectiveTimecodes.value[el.tcIdx]
     if (timecode?.id) {
       return `block-L${props.lineNumber}-ID${timecode.id}`
     } else {
-      // Fallback stable basé sur les propriétés du timecode et sa position
+      // Fallback avec un hash unique basé sur les propriétés du timecode
       const hash = timecode ?
-        `${timecode.start.toFixed(3)}-${timecode.end.toFixed(3)}-${el.tcIdx}` :
-        `empty-${idx}`
-      return `block-L${props.lineNumber}-${hash}`
+        `${Math.round(timecode.start * 10000)}-${Math.round(timecode.end * 10000)}-${timecode.text?.length || 0}` :
+        `fallback-${++keyCounter}`
+      return `block-L${props.lineNumber}-TC${el.tcIdx}-H${hash}`
     }
   } else {
-    // Pour les gaps, créer une clé stable basée sur la position et l'index
-    return `gap-L${props.lineNumber}-${el.x.toFixed(2)}-${idx}`
+    // Pour les gaps, créer une clé basée sur la position exacte
+    const hash = `${Math.round(el.x * 10000)}-${Math.round(el.width * 10000)}`
+    return `gap-L${props.lineNumber}-P${hash}-I${idx}`
   }
 }
 
@@ -2413,7 +2419,7 @@ function onMoveEnd() {
   justify-content: stretch;
   height: 100%;
   width: 100%;
-  overflow: visible;
+  overflow: hidden;
   padding: 0;
   margin: 0;
   gap: 0; /* Pas d'espace entre les éléments */
@@ -2424,7 +2430,7 @@ function onMoveEnd() {
   align-items: stretch;
   justify-content: stretch;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   min-width: 0; /* Important pour permettre le shrink */
   padding: 0;
@@ -2443,7 +2449,6 @@ function onMoveEnd() {
   padding: 0;
   margin: 0;
 }
-
 .text-separator {
   position: relative;
   height: 100%;
