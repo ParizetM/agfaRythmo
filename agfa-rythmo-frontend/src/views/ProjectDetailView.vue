@@ -214,6 +214,7 @@
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
           @update-timecode-character="onUpdateTimecodeCharacter"
+          @update-timecode-separator-positions="onUpdateTimecodeSeparatorPositions"
           @delete-timecode="onDeleteTimecode"
           @add-timecode-to-line="onAddTimecodeToLine"
           @update-lines-count="onUpdateLinesCount"
@@ -941,6 +942,24 @@ async function onUpdateTimecodeCharacter({ timecode, characterId }: { timecode: 
     }
   } catch (error) {
     console.error('Erreur lors de la mise à jour du personnage du timecode:', error)
+  }
+}
+
+// Nouvelle fonction pour sauvegarder les positions des séparateurs
+async function onUpdateTimecodeSeparatorPositions({ timecode, separatorPositions }: { timecode: ApiTimecode | Timecode; separatorPositions: Record<number, number> }) {
+  const tc = timecode as ApiTimecode
+  if (!tc.id || !project.value) return
+
+  try {
+    await timecodeApi.update(project.value.id, tc.id, { separator_positions: separatorPositions })
+
+    // Met à jour localement
+    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    if (index >= 0) {
+      allTimecodes.value[index].separator_positions = separatorPositions
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des positions des séparateurs:', error)
   }
 }
 

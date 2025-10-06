@@ -28,6 +28,7 @@ class TimecodeController extends Controller
             'text' => 'required|string',
             'character_id' => 'nullable|exists:characters,id',
             'show_character' => 'nullable|boolean',
+            'separator_positions' => 'nullable|array',
         ]);
 
         // Si aucun character_id n'est fourni ou est null, ne pas forcer l'assignation
@@ -66,6 +67,7 @@ class TimecodeController extends Controller
             'text' => 'sometimes|string',
             'character_id' => 'sometimes|nullable|exists:characters,id',
             'show_character' => 'sometimes|boolean',
+            'separator_positions' => 'sometimes|nullable|array',
         ]);
 
         $timecode->update($validated);

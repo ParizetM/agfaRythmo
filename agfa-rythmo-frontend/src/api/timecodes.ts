@@ -1,5 +1,6 @@
 import api from './axios'
 import type { Character } from './characters'
+import type { SeparatorPositions } from '../utils/separatorEncoding'
 
 export interface Timecode {
   id?: number
@@ -11,6 +12,7 @@ export interface Timecode {
   character_id?: number | null
   character?: Character
   show_character?: boolean
+  separator_positions?: SeparatorPositions | null
   created_at?: string
   updated_at?: string
 }
@@ -22,6 +24,7 @@ export interface CreateTimecodeData {
   text: string
   character_id?: number | null
   show_character?: boolean
+  separator_positions?: SeparatorPositions | null
 }
 
 export interface UpdateTimecodeData {
@@ -31,6 +34,7 @@ export interface UpdateTimecodeData {
   text?: string
   character_id?: number | null
   show_character?: boolean
+  separator_positions?: SeparatorPositions | null
 }
 
 export const timecodeApi = {

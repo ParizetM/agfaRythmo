@@ -415,6 +415,13 @@ import { useSmoothScroll } from './useSmoothScroll'
 import { type Character } from '../../api/characters'
 import { getContrastColor } from '../../utils/colorUtils'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
+import {
+  decodeTextWithPositions,
+  convertPositionsToFlexValues,
+  convertFlexValuesToPositions,
+  validatePositions,
+  type SeparatorPositions
+} from '../../utils/separatorEncoding'
 
 interface Timecode {
   id?: number
@@ -425,6 +432,7 @@ interface Timecode {
   character_id?: number | null
   character?: Character
   show_character?: boolean
+  separator_positions?: SeparatorPositions | null
 }
 
 interface SceneChange {
@@ -505,19 +513,63 @@ const resizingSeparatorSubIdx = ref<number | null>(null)
 const separatorResizeStartX = ref(0)
 const separatorResizeStartFlexes = ref<number[]>([])
 
+// Initialise les flex values depuis les positions sauvegardées en base
+function initializeFlexValuesFromDatabase() {
+  // Vérification de sécurité pour éviter les erreurs lors du rendu
+  if (!effectiveTimecodes.value || effectiveTimecodes.value.length === 0) {
+    return
+  }
+
+  const newFlexMap = new Map<number, number[]>()
+
+  effectiveTimecodes.value.forEach((tc, idx) => {
+    if (!tc || !tc.text) return // Protection supplémentaire
+    
+    if (hasSeparator(tc.text)) {
+      const segments = getTextSegments(idx)
+      if (segments.length < 2) return // Pas assez de segments
+      
+      const flexValues: number[] = new Array(segments.length).fill(1)
+
+      // Si des positions sont sauvegardées, les utiliser
+      if (tc.separator_positions) {
+        const positions = validatePositions(tc.separator_positions)
+        Object.entries(positions).forEach(([sepIndex, position]) => {
+          const sepIdx = parseInt(sepIndex)
+          if (sepIdx >= 0 && sepIdx < segments.length - 1) {
+            flexValues[sepIdx] = position
+            // Ajuster le segment suivant pour maintenir l'équilibre
+            if (sepIdx + 1 < flexValues.length) {
+              flexValues[sepIdx + 1] = Math.max(0.3, 2 - position)
+            }
+          }
+        })
+      }
+
+      newFlexMap.set(idx, flexValues)
+    }
+  })
+
+  segmentFlexValues.value = newFlexMap
+}
+
 // Vérifie si un texte contient le séparateur |
 function hasSeparator(text: string): boolean {
-  return text.includes('|')
+  if (!text || typeof text !== 'string') return false
+  // Décoder le texte pour vérifier correctement la présence de séparateurs
+  const { text: decodedText } = decodeTextWithPositions(text)
+  return decodedText.includes('|')
 }
 
 // Divise le texte en segments basés sur le séparateur |
 function getTextSegments(idx: number): string[] {
   const tc = effectiveTimecodes.value[idx]
-  if (!tc) return []
-  return tc.text.split('|')
-}
-
-// Récupère la valeur flex pour un segment
+  if (!tc || !tc.text || typeof tc.text !== 'string') return []
+  
+  // Décoder le texte pour retirer les positions encodées
+  const { text } = decodeTextWithPositions(tc.text)
+  return text.split('|')
+}// Récupère la valeur flex pour un segment
 function getSegmentFlex(idx: number, segmentIdx: number): number {
   const segments = getTextSegments(idx)
   if (!segments.length) return 1
@@ -615,12 +667,40 @@ function onSeparatorResizeMove(event: MouseEvent) {
 
 // Termine le redimensionnement du séparateur
 function onSeparatorResizeEnd() {
+  if (resizingSeparatorIdx.value !== null) {
+    // Sauvegarder les nouvelles positions
+    saveSeparatorPositions(resizingSeparatorIdx.value)
+  }
+
   resizingSeparatorIdx.value = null
   resizingSeparatorSubIdx.value = null
 
   document.removeEventListener('mousemove', onSeparatorResizeMove)
   document.removeEventListener('mouseup', onSeparatorResizeEnd)
   document.body.style.cursor = ''
+}
+
+// Sauvegarde les positions des séparateurs pour un timecode
+function saveSeparatorPositions(timecodeIdx: number) {
+  const timecode = effectiveTimecodes.value[timecodeIdx]
+  if (!timecode || !timecode.id || !timecode.text.includes('|')) {
+    return
+  }
+
+  const flexValues = segmentFlexValues.value.get(timecodeIdx)
+  if (!flexValues) {
+    return
+  }
+
+  // Convertir les flex values en positions à sauvegarder
+  const positions = convertFlexValuesToPositions(flexValues)
+  const validatedPositions = validatePositions(positions)
+
+  // Émettre l'événement pour sauvegarder les positions
+  emit('update-timecode-separator-positions', {
+    timecode: timecode,
+    separatorPositions: validatedPositions,
+  })
 }// Calcule les positions X (en px) des changements de plan
 const sceneChangePositions = computed(() => {
   if (!props.sceneChanges || !props.sceneChanges.length) return []
@@ -802,12 +882,21 @@ const sceneChangeDragOverlayStyle = computed<CSSProperties>(() => {
 // Données locales pour le redimensionnement en temps réel
 const localTimecodes = ref<Timecode[]>([])
 
+// Variable pour vérifier si le composant est monté
+const isMounted = ref(false)
+
 // Synchronise les timecodes locaux avec les props
 watch(
   () => props.timecodes,
   (newTimecodes) => {
-    if (resizingIdx.value === null && movingIdx.value === null) {
+    if (resizingIdx.value === null && movingIdx.value === null && Array.isArray(newTimecodes)) {
       localTimecodes.value = [...newTimecodes]
+      // Initialiser les flex values depuis la base de données seulement si le composant est monté
+      if (isMounted.value) {
+        nextTick(() => {
+          initializeFlexValuesFromDatabase()
+        })
+      }
     }
   },
   { immediate: true, deep: true },
@@ -1177,6 +1266,10 @@ const emit = defineEmits<{
   (
     e: 'update-timecode-character',
     payload: { timecode: Timecode; characterId: number | null },
+  ): void
+  (
+    e: 'update-timecode-separator-positions',
+    payload: { timecode: Timecode; separatorPositions: SeparatorPositions },
   ): void
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode'): void
@@ -1574,10 +1667,14 @@ function handleGlobalClick() {
 
 onMounted(() => {
   document.addEventListener('click', handleGlobalClick)
+  // Marquer le composant comme monté et initialiser les flex values
+  isMounted.value = true
+  initializeFlexValuesFromDatabase()
 })
 
 // Nettoyer les événements en cas de démontage du composant
 onBeforeUnmount(() => {
+  isMounted.value = false
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
   document.removeEventListener('mousemove', onMoveMove)

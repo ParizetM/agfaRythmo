@@ -57,6 +57,7 @@
           @move-timecode="onMoveTimecode"
           @update-timecode-show-character="onUpdateTimecodeShowCharacter"
           @update-timecode-character="onUpdateTimecodeCharacter"
+          @update-timecode-separator-positions="onUpdateTimecodeSeparatorPositions"
           @delete-timecode="onDeleteTimecode"
           @reload-lines="onReloadLines"
           @dragging-start="onDragStart"
@@ -91,6 +92,7 @@ import RythmoBandSingle from './RythmoBandSingle.vue'
 import CharactersList from './CharactersList.vue'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import { type Character } from '../../api/characters'
+import { type SeparatorPositions } from '../../utils/separatorEncoding'
 
 interface Timecode {
   id?: number
@@ -171,6 +173,7 @@ const emit = defineEmits<{
   (e: 'move-timecode', payload: { timecode: Timecode; newStart: number; newLineNumber: number }): void
   (e: 'update-timecode-show-character', payload: { timecode: Timecode; showCharacter: boolean }): void
   (e: 'update-timecode-character', payload: { timecode: Timecode; characterId: number | null }): void
+  (e: 'update-timecode-separator-positions', payload: { timecode: Timecode; separatorPositions: SeparatorPositions }): void
   (e: 'delete-timecode', payload: { timecode: Timecode }): void
   (e: 'add-timecode-to-line', lineNumber: number): void
   (e: 'update-lines-count', count: number): void
@@ -233,6 +236,10 @@ function onUpdateTimecodeShowCharacter(payload: { timecode: Timecode; showCharac
 
 function onUpdateTimecodeCharacter(payload: { timecode: Timecode; characterId: number | null }) {
   emit('update-timecode-character', payload)
+}
+
+function onUpdateTimecodeSeparatorPositions(payload: { timecode: Timecode; separatorPositions: SeparatorPositions }) {
+  emit('update-timecode-separator-positions', payload)
 }
 
 function onReloadLines(payload: { sourceLineNumber: number; targetLineNumber: number }) {

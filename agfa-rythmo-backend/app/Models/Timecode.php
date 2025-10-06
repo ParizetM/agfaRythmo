@@ -17,6 +17,7 @@ class Timecode extends Model
         'text',
         'character_id',
         'show_character',
+        'separator_positions',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class Timecode extends Model
         'end' => 'float',
         'line_number' => 'integer',
         'show_character' => 'boolean',
+        'separator_positions' => 'array',
     ];
 
     public function project()
