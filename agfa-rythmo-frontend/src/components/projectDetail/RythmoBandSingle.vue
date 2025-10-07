@@ -1,5 +1,5 @@
 <template>
-  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick">
+  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick" @wheel="onWheelScroll">
     <!-- Triangle de sélection de ligne -->
     <div
       v-if="props.selectedLine === props.lineNumber"
@@ -1387,6 +1387,33 @@ const onDeleteClick = (idx: number) => {
 const onBandClick = () => {
   // Toujours sélectionner la ligne, peu importe où on clique
   emit('line-selected', props.lineNumber)
+}
+
+// Gestionnaire du scroll horizontal sur la bande rythmo
+const onWheelScroll = (event: WheelEvent) => {
+  // Vérifie si c'est un scroll horizontal (Shift + scroll ou trackpad horizontal)
+  if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
+    event.preventDefault()
+
+    // Calcule le déplacement en pixels
+    const deltaX = event.deltaX !== 0 ? event.deltaX : event.deltaY
+
+    // Convertit les pixels en secondes (PX_PER_SEC = 80px/seconde)
+    const deltaTime = deltaX / PX_PER_SEC
+
+    // Calcule le nouveau temps
+    let newTime = props.currentTime + deltaTime
+
+    // Borne le temps entre 0 et la durée de la vidéo
+    if (props.videoDuration) {
+      newTime = Math.max(0, Math.min(props.videoDuration, newTime))
+    } else {
+      newTime = Math.max(0, newTime)
+    }
+
+    // Émet l'événement seek vers le parent
+    emit('seek', newTime)
+  }
 }
 
 // --- Fonctions pour l'interaction avec les scene changes ---
