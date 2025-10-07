@@ -23,8 +23,16 @@ body {
   background: linear-gradient(135deg, var(--agfa-dark) 0%, #374151 50%, var(--agfa-gray) 100%);
   min-height: 100vh;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+  background-color: var(--agfa-dark);
+  overscroll-behavior: contain;
 
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
 /* Animations personnalisées */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }

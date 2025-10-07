@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col items-center bg-gray-900 min-h-screen p-0 m-0">
     <!-- Header Panel -->
-    <header class="w-full relative flex items-center justify-between bg-agfa-dark shadow-lg mb-6 py-5 px-6">
+    <header class="w-full flex items-center justify-between bg-agfa-dark shadow-lg py-2 px-6">
       <button
         class="flex items-center gap-2 bg-transparent border-none text-white text-lg font-medium cursor-pointer px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors duration-300"
         @click="goBack"
@@ -83,7 +83,7 @@
     </div>
 
     <!-- Main Grid -->
-  <div v-else class="w-full relative flex flex-row items-start justify-center lg:flex-col lg:gap-2 overflow-x-hidden">
+  <div v-else class="w-full flex flex-row items-start justify-center lg:flex-col overflow-x-hidden overflow-y-visible h-fit">
   <!-- Overlay Left Panel - Timecodes -->
       <!-- Overlay Right Panel - Scene Changes -->
       <div>
@@ -145,7 +145,7 @@
       </div>
 
       <!-- Center Panel - Video and Controls -->
-      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg p-4 shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1">
+      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2">
         <VideoPlayer
           v-if="project && project.video_path"
           :src="getVideoUrl(project.video_path)"
