@@ -524,11 +524,11 @@ function initializeFlexValuesFromDatabase() {
 
   effectiveTimecodes.value.forEach((tc, idx) => {
     if (!tc || !tc.text) return // Protection supplémentaire
-    
+
     if (hasSeparator(tc.text)) {
       const segments = getTextSegments(idx)
       if (segments.length < 2) return // Pas assez de segments
-      
+
       const flexValues: number[] = new Array(segments.length).fill(1)
 
       // Si des positions sont sauvegardées, les utiliser
@@ -565,7 +565,7 @@ function hasSeparator(text: string): boolean {
 function getTextSegments(idx: number): string[] {
   const tc = effectiveTimecodes.value[idx]
   if (!tc || !tc.text || typeof tc.text !== 'string') return []
-  
+
   // Décoder le texte pour retirer les positions encodées
   const { text } = decodeTextWithPositions(tc.text)
   return text.split('|')

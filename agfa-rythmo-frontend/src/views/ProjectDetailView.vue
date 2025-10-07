@@ -190,6 +190,8 @@
           @seekDelta="seek"
           @seekFrame="seekFrame"
           @togglePlayPause="updatePlayPauseState"
+          @navigateSceneChange="onNavigateSceneChange"
+          @navigateTimecode="onNavigateTimecode"
         />
 
         <!-- Configuration multi-lignes et bandes rythmo -->
@@ -1208,6 +1210,105 @@ function closeSceneChangeModal() {
   editSceneChangeIdx.value = null
 }
 
+// Navigation entre changements de plan
+function goToNextSceneChange() {
+  if (!uniqueSceneChangeTimecodes.value.length) return
+
+  const sortedSceneChanges = [...uniqueSceneChangeTimecodes.value].sort((a, b) => a - b)
+  const currentIdx = sortedSceneChanges.findIndex(sc => sc > currentTime.value)
+
+  if (currentIdx !== -1) {
+    // Aller au prochain changement de plan
+    seekToTime(sortedSceneChanges[currentIdx])
+  } else if (sortedSceneChanges.length > 0) {
+    // Si on est après le dernier, aller au premier
+    seekToTime(sortedSceneChanges[0])
+  }
+}
+
+function goToPreviousSceneChange() {
+  if (!uniqueSceneChangeTimecodes.value.length) return
+
+  const sortedSceneChanges = [...uniqueSceneChangeTimecodes.value].sort((a, b) => a - b)
+  // Trouver le dernier changement de plan avant le temps actuel (alternative à findLastIndex)
+  let currentIdx = -1
+  for (let i = sortedSceneChanges.length - 1; i >= 0; i--) {
+    if (sortedSceneChanges[i] < currentTime.value) {
+      currentIdx = i
+      break
+    }
+  }
+
+  if (currentIdx !== -1) {
+    // Aller au changement de plan précédent
+    seekToTime(sortedSceneChanges[currentIdx])
+  } else if (sortedSceneChanges.length > 0) {
+    // Si on est avant le premier, aller au dernier
+    seekToTime(sortedSceneChanges[sortedSceneChanges.length - 1])
+  }
+}
+
+// Navigation entre timecodes
+function goToNextTimecode() {
+  if (!allTimecodes.value.length) return
+
+  const sortedTimecodes = [...allTimecodes.value].sort((a, b) => a.start - b.start)
+  const currentIdx = sortedTimecodes.findIndex(tc => tc.start > currentTime.value)
+
+  if (currentIdx !== -1) {
+    // Aller au prochain timecode
+    seekToTime(sortedTimecodes[currentIdx].start)
+  } else if (sortedTimecodes.length > 0) {
+    // Si on est après le dernier, aller au premier
+    seekToTime(sortedTimecodes[0].start)
+  }
+}
+
+function goToPreviousTimecode() {
+  if (!allTimecodes.value.length) return
+
+  const sortedTimecodes = [...allTimecodes.value].sort((a, b) => a.start - b.start)
+  // Trouver le dernier timecode avant le temps actuel (alternative à findLastIndex)
+  let currentIdx = -1
+  for (let i = sortedTimecodes.length - 1; i >= 0; i--) {
+    if (sortedTimecodes[i].start < currentTime.value) {
+      currentIdx = i
+      break
+    }
+  }
+
+  if (currentIdx !== -1) {
+    // Aller au timecode précédent
+    seekToTime(sortedTimecodes[currentIdx].start)
+  } else if (sortedTimecodes.length > 0) {
+    // Si on est avant le premier, aller au dernier
+    seekToTime(sortedTimecodes[sortedTimecodes.length - 1].start)
+  }
+}
+
+// Fonction helper pour seek
+function seekToTime(time: number) {
+  currentTime.value = time
+  lastSeekFromTimecode = true
+}
+
+// Gestionnaires pour les événements de navigation depuis VideoNavigationBar
+function onNavigateSceneChange(direction: 'next' | 'previous') {
+  if (direction === 'next') {
+    goToNextSceneChange()
+  } else {
+    goToPreviousSceneChange()
+  }
+}
+
+function onNavigateTimecode(direction: 'next' | 'previous') {
+  if (direction === 'next') {
+    goToNextTimecode()
+  } else {
+    goToPreviousTimecode()
+  }
+}
+
 // Gestion des raccourcis clavier globaux
 function handleGlobalKeydown(event: KeyboardEvent) {
   // Si on édite du texte, on ignore tous les raccourcis globaux
@@ -1261,6 +1362,32 @@ function handleGlobalKeydown(event: KeyboardEvent) {
       event.preventDefault()
       goToFinalPreview()
     }
+    return
+  }
+
+  // Navigation entre changements de plan avec Shift + flèches gauche/droite
+  if (event.shiftKey && event.key === 'ArrowLeft' && !cmdKey && !event.altKey) {
+    event.preventDefault()
+    goToPreviousSceneChange()
+    return
+  }
+
+  if (event.shiftKey && event.key === 'ArrowRight' && !cmdKey && !event.altKey) {
+    event.preventDefault()
+    goToNextSceneChange()
+    return
+  }
+
+  // Navigation entre timecodes avec flèches haut/bas
+  if (event.key === 'ArrowUp' && !cmdKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    goToPreviousTimecode()
+    return
+  }
+
+  if (event.key === 'ArrowDown' && !cmdKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    goToNextTimecode()
     return
   }
 }

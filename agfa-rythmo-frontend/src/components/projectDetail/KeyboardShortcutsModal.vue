@@ -48,6 +48,22 @@
                   <span class="desc">+1 sec</span>
                 </div>
                 <div class="shortcut-row">
+                  <kbd class="key">↑</kbd>
+                  <span class="desc">Timecode précédent</span>
+                </div>
+                <div class="shortcut-row">
+                  <kbd class="key">↓</kbd>
+                  <span class="desc">Timecode suivant</span>
+                </div>
+                <div class="shortcut-row">
+                  <kbd class="key">Shift+←</kbd>
+                  <span class="desc">Scène précédente</span>
+                </div>
+                <div class="shortcut-row">
+                  <kbd class="key">Shift+→</kbd>
+                  <span class="desc">Scène suivante</span>
+                </div>
+                <div class="shortcut-row">
                   <kbd class="key">Q</kbd>
                   <span class="desc">-1 frame</span>
                 </div>

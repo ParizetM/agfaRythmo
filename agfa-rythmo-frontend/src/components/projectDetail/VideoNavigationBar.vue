@@ -91,6 +91,49 @@
 
       <!-- Contrôles vidéo -->
       <div class="video-controls">
+        <!-- Navigation entre changements de plan -->
+        <div class="control-group scene-controls">
+          <button
+            @click="emit('navigateSceneChange', 'previous')"
+            title="← Changement de plan précédent (Shift + ←)"
+            class="control-button scene-button"
+            :class="{ 'pressed': pressedKey === 'scene-previous' }"
+            :disabled="!props.sceneChanges || props.sceneChanges.length === 0"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="control-label">Plan</span>
+          </button>
+
+          <button
+            @click="emit('navigateSceneChange', 'next')"
+            title="→ Changement de plan suivant (Shift + →)"
+            class="control-button scene-button"
+            :class="{ 'pressed': pressedKey === 'scene-next' }"
+            :disabled="!props.sceneChanges || props.sceneChanges.length === 0"
+          >
+            <span class="control-label">Plan</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Séparateur -->
+        <div class="control-separator"></div>
+
+        <!-- Navigation frame par frame -->
+        <button
+          @click="emit('seekFrame', -1)"
+          title="← 1 frame (Q)"
+          class="control-button"
+          :class="{ 'pressed': pressedKey === 'frame-left' }"
+        >
+          -1f
+        </button>
+
+        <!-- Navigation secondes -->
         <button
           @click="emit('seekDelta', -1)"
           title="← 1s (Flèche gauche)"
@@ -100,15 +143,7 @@
           -1s
         </button>
 
-        <button
-          @click="emit('seekFrame', -1)"
-          title="← 1 frame (A)"
-          class="control-button"
-          :class="{ 'pressed': pressedKey === 'frame-left' }"
-        >
-          -1f
-        </button>
-
+        <!-- Bouton play/pause -->
         <button
           @click="emit('seekDelta', 0)"
           title="Lecture/Pause (Espace)"
@@ -138,6 +173,17 @@
           </svg>
         </button>
 
+        <!-- Navigation secondes -->
+        <button
+          @click="emit('seekDelta', 1)"
+          title="→ 1s (Flèche droite)"
+          class="control-button"
+          :class="{ 'pressed': pressedKey === 'seek-right' }"
+        >
+          +1s
+        </button>
+
+        <!-- Navigation frame par frame -->
         <button
           @click="emit('seekFrame', 1)"
           title="→ 1 frame (E)"
@@ -147,14 +193,37 @@
           +1f
         </button>
 
-        <button
-          @click="emit('seekDelta', 1)"
-          title="→ 1s (Flèche droite)"
-          class="control-button"
-          :class="{ 'pressed': pressedKey === 'seek-right' }"
-        >
-          +1s
-        </button>
+        <!-- Séparateur -->
+        <div class="control-separator"></div>
+
+        <!-- Navigation entre timecodes -->
+        <div class="control-group timecode-controls">
+          <button
+            @click="emit('navigateTimecode', 'previous')"
+            title="↑ Timecode précédent (↑)"
+            class="control-button timecode-button"
+            :class="{ 'pressed': pressedKey === 'timecode-previous' }"
+            :disabled="!props.timecodes || props.timecodes.length === 0"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M18 15L12 9L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="control-label">TC</span>
+          </button>
+
+          <button
+            @click="emit('navigateTimecode', 'next')"
+            title="↓ Timecode suivant (↓)"
+            class="control-button timecode-button"
+            :class="{ 'pressed': pressedKey === 'timecode-next' }"
+            :disabled="!props.timecodes || props.timecodes.length === 0"
+          >
+            <span class="control-label">TC</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
 
@@ -199,6 +268,8 @@ const emit = defineEmits<{
   (e: 'seekFrame', delta: number): void
   (e: 'seekDelta', delta: number): void
   (e: 'togglePlayPause'): void
+  (e: 'navigateSceneChange', direction: 'next' | 'previous'): void
+  (e: 'navigateTimecode', direction: 'next' | 'previous'): void
 }>()
 
 // Refs
@@ -473,50 +544,79 @@ function onKeyDown(event: KeyboardEvent) {
 
   let keyPressed = ''
 
-  switch (event.code) {
-    case 'KeyQ': // Touche Q (position A sur AZERTY)
-      keyPressed = 'frame-left'
-      emit('seekFrame', -1)
-      event.preventDefault()
-      break
-    case 'KeyE': // Touche E (même position sur AZERTY et QWERTY)
-      keyPressed = 'frame-right'
-      emit('seekFrame', 1)
-      event.preventDefault()
-      break
-    case 'ArrowLeft':
-      keyPressed = 'seek-left'
-      emit('seekDelta', -1)
-      event.preventDefault()
-      break
-    case 'ArrowRight':
-      keyPressed = 'seek-right'
-      emit('seekDelta', 1)
-      event.preventDefault()
-      break
-    case 'Space':
-      keyPressed = 'play-pause'
-
-      const video = document.querySelector('video')
-      if (video) {
-        if (video.paused) {
-          video.play()
-        } else {
-          video.pause()
+  // Navigation entre changements de plan avec Shift + flèches
+  if (event.shiftKey && event.key === 'ArrowLeft') {
+    keyPressed = 'scene-previous'
+    emit('navigateSceneChange', 'previous')
+    event.preventDefault()
+  } else if (event.shiftKey && event.key === 'ArrowRight') {
+    keyPressed = 'scene-next'
+    emit('navigateSceneChange', 'next')
+    event.preventDefault()
+  }
+  // Navigation entre timecodes avec flèches haut/bas
+  else if (event.key === 'ArrowUp' && !event.shiftKey) {
+    keyPressed = 'timecode-previous'
+    emit('navigateTimecode', 'previous')
+    event.preventDefault()
+  } else if (event.key === 'ArrowDown' && !event.shiftKey) {
+    keyPressed = 'timecode-next'
+    emit('navigateTimecode', 'next')
+    event.preventDefault()
+  }
+  // Contrôles vidéo existants
+  else {
+    switch (event.code) {
+      case 'KeyQ': // Touche Q (position A sur AZERTY)
+        keyPressed = 'frame-left'
+        emit('seekFrame', -1)
+        event.preventDefault()
+        break
+      case 'KeyE': // Touche E (même position sur AZERTY et QWERTY)
+        keyPressed = 'frame-right'
+        emit('seekFrame', 1)
+        event.preventDefault()
+        break
+      case 'ArrowLeft':
+        if (!event.shiftKey) { // Évite le conflit avec navigation des changements de plan
+          keyPressed = 'seek-left'
+          emit('seekDelta', -1)
+          event.preventDefault()
         }
-        emit('togglePlayPause')
-      }
-      event.preventDefault()
-      break
-    default:
-      return
+        break
+      case 'ArrowRight':
+        if (!event.shiftKey) { // Évite le conflit avec navigation des changements de plan
+          keyPressed = 'seek-right'
+          emit('seekDelta', 1)
+          event.preventDefault()
+        }
+        break
+      case 'Space':
+        keyPressed = 'play-pause'
+
+        const video = document.querySelector('video')
+        if (video) {
+          if (video.paused) {
+            video.play()
+          } else {
+            video.pause()
+          }
+          emit('togglePlayPause')
+        }
+        event.preventDefault()
+        break
+      default:
+        return
+    }
   }
 
-  // Animation visuelle
-  pressedKey.value = keyPressed
-  setTimeout(() => {
-    pressedKey.value = null
-  }, 150) // Animation de 150ms
+  // Animation visuelle si une touche a été détectée
+  if (keyPressed) {
+    pressedKey.value = keyPressed
+    setTimeout(() => {
+      pressedKey.value = null
+    }, 150) // Animation de 150ms
+  }
 }// Écouteurs d'événements clavier
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
@@ -846,7 +946,85 @@ onUnmounted(() => {
   padding: 0.375rem 0.5rem;
 }
 
+/* Groupes de contrôles */
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 0.375rem;
+  padding: 0.125rem;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+}
 
+/* Séparateur entre groupes */
+.control-separator {
+  width: 1px;
+  height: 1.5rem;
+  background: #4b5563;
+  margin: 0 0.5rem;
+}
+
+/* Boutons de navigation spécialisés */
+.scene-button, .timecode-button {
+  min-width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.scene-button {
+  background: rgba(101, 115, 144, 0.2);
+  border-color: rgba(101, 115, 144, 0.4);
+}
+
+.scene-button:hover {
+  background: rgba(101, 115, 144, 0.4);
+  border-color: rgba(101, 115, 144, 0.6);
+}
+
+.scene-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(75, 85, 99, 0.2);
+}
+
+.timecode-button {
+  background: rgba(132, 85, 246, 0.2);
+  border-color: rgba(132, 85, 246, 0.4);
+}
+
+.timecode-button:hover {
+  background: rgba(132, 85, 246, 0.4);
+  border-color: rgba(132, 85, 246, 0.6);
+}
+
+.timecode-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(75, 85, 99, 0.2);
+}
+
+.control-label {
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* Animations pour les boutons de navigation */
+.scene-button.pressed,
+.timecode-button.pressed {
+  transform: scale(0.95);
+  box-shadow: 0 0 0 3px rgba(132, 85, 246, 0.3);
+}
+
+.scene-button.pressed {
+  box-shadow: 0 0 0 3px rgba(101, 115, 144, 0.3);
+}
 
 /* Scrollbar personnalisée pour le container si nécessaire */
 .progress-container::-webkit-scrollbar {
