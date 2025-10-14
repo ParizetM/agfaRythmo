@@ -485,6 +485,10 @@ const videoDuration = ref(0)
 const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
+
+// Constantes pour le décalage de synchronisation
+const FRAME_OFFSET = 8 // Décalage de 8 frames
+const FPS = 25 // Frames par seconde
 // Flag global indiquant qu'on est dans un champ texte (désactive les raccourcis)
 const isEditingText = ref(false)
 // Pour savoir si on doit reprendre la lecture après édition
@@ -587,7 +591,19 @@ function findFreeTimecodePosition(
     return { start: preferredStart, end: preferredStart + duration }
   }
 
-  // Cherche le dernier timecode et place le nouveau après
+  // Vérifie si l'espace au curseur (position préférée) est libre
+  const preferredEnd = preferredStart + duration
+  const hasConflictAtPreferred = sameLineTimecodes.some(tc => {
+    // Il y a conflit si les plages se chevauchent (avec marge)
+    return !(preferredEnd + MARGIN <= tc.start || preferredStart >= tc.end + MARGIN)
+  })
+
+  // Si l'espace au curseur est libre, l'utiliser
+  if (!hasConflictAtPreferred) {
+    return { start: preferredStart, end: preferredEnd }
+  }
+
+  // Sinon, cherche le dernier timecode et place le nouveau après
   const lastTimecode = sameLineTimecodes[sameLineTimecodes.length - 1]
   const newStart = lastTimecode.end + MARGIN
 
@@ -808,10 +824,13 @@ function deleteTimecode(timecode: Timecode) {
 
 function addTimecodeToLine(lineNumber: number) {
   // Ouvre le modal avec la ligne pré-sélectionnée
+  // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
+  const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+
   editTimecodeIdx.value = null
   Object.assign(modalTimecode, {
-    start: currentTime.value,
-    end: currentTime.value + 2,
+    start: adjustedTime,
+    end: adjustedTime + 2,
     text: '',
     line_number: lineNumber,
     character_id: activeCharacter.value?.id || null
@@ -1020,7 +1039,9 @@ async function onUpdateTimecodeSeparatorPositions({ timecode, separatorPositions
 // Ajout d'un changement de plan au timecode courant
 async function addSceneChange() {
   if (!project.value) return
-  const t = Math.round(currentTime.value * 100) / 100
+  // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
+  const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+  const t = Math.round(adjustedTime * 100) / 100
   // Vérifie si déjà présent (tolérance 0.01s)
   if (sceneChanges.value.some(sc => Math.abs(sc.timecode - t) < 0.01)) return
   try {
@@ -1140,9 +1161,12 @@ async function onAddTimecode() {
   if (!project.value) return
 
   try {
+    // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
+    const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+
     // Trouver une position libre pour le nouveau timecode
     const freePosition = findFreeTimecodePosition(
-      currentTime.value,
+      adjustedTime,
       6, // durée de 6 secondes
       selectedLineNumber.value
     )
