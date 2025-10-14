@@ -417,7 +417,6 @@ import { getContrastColor } from '../../utils/colorUtils'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
 import {
   decodeTextWithPositions,
-  convertPositionsToFlexValues,
   convertFlexValuesToPositions,
   validatePositions,
   type SeparatorPositions
@@ -923,12 +922,6 @@ function getBlockWidth(idx: number) {
   return Math.max(MIN_BLOCK_WIDTH, (tc.end - tc.start) * PX_PER_SEC)
 }
 
-// Nouvelle fonction : calcule la position x (en px) d'un timecode
-function getBlockX(idx: number) {
-  const tc = effectiveTimecodes.value[idx]
-  return tc.start * PX_PER_SEC + computedVisibleWidth.value / 2
-}
-
 function getTimecodeCharacter(idx: number): Character | null {
   const tc = effectiveTimecodes.value[idx]
   return tc?.character || null
@@ -1165,47 +1158,86 @@ function getAbsoluteGapStyle(el: BandGap) {
     position: 'absolute',
   }
 }
+
+// Cache des timecodes triés pour optimisation
+const sortedTimecodesCache = ref<{ timecodes: Timecode[], sorted: Timecode[] } | null>(null)
+
+// Fonction optimisée pour obtenir les timecodes triés (avec cache)
+function getSortedTimecodes(tcs: Timecode[]): Timecode[] {
+  // Si le cache existe et pointe vers les mêmes timecodes (même référence), le réutiliser
+  if (sortedTimecodesCache.value && sortedTimecodesCache.value.timecodes === tcs) {
+    return sortedTimecodesCache.value.sorted
+  }
+
+  // Vérifier si les timecodes sont déjà triés (optimisation)
+  let isSorted = true
+  for (let i = 1; i < tcs.length; i++) {
+    if (tcs[i].start < tcs[i - 1].start) {
+      isSorted = false
+      break
+    }
+  }
+
+  // Si déjà triés, pas besoin de copier/trier
+  const sorted = isSorted ? tcs : [...tcs].sort((a, b) => a.start - b.start)
+
+  // Mettre en cache
+  sortedTimecodesCache.value = { timecodes: tcs, sorted }
+
+  return sorted
+}
+
 // Génère la liste des éléments (blocs et gaps) avec coordonnées précises
 const bandElements = computed<BandElement[]>(() => {
   const arr: BandElement[] = []
   const tcs = effectiveTimecodes.value
   if (!tcs.length) return arr
+
+  // Obtenir les timecodes triés (avec cache)
+  const sortedTcs = getSortedTimecodes(tcs)
+
   // Gap avant le premier timecode
-  if (tcs[0].start > 0.2) {
+  if (sortedTcs[0].start > 0.2) {
     const x = getGapX(0)
-    const width = getGapWidth(0, tcs[0].start)
+    const width = getGapWidth(0, sortedTcs[0].start)
     arr.push({
       type: 'gap',
       x,
       width,
-      label: tcs[0].start >= 1 ? tcs[0].start.toFixed(2) + 's' : '',
+      label: sortedTcs[0].start >= 1 ? sortedTcs[0].start.toFixed(2) + 's' : '',
     })
   }
+
   // Blocs + gaps intermédiaires
-  for (let i = 0; i < tcs.length; i++) {
+  for (let i = 0; i < sortedTcs.length; i++) {
+    // Retrouver l'index original pour tcIdx (seulement si nécessaire)
+    const originalIdx = sortedTcs === tcs ? i : tcs.findIndex(tc => tc === sortedTcs[i])
+
     // Bloc
-    const x = getBlockX(i)
-    const width = getBlockWidth(i)
-    arr.push({ type: 'block', x, width, text: tcs[i].text, tcIdx: i })
+    const x = sortedTcs[i].start * PX_PER_SEC + computedVisibleWidth.value / 2
+    const width = Math.max(MIN_BLOCK_WIDTH, (sortedTcs[i].end - sortedTcs[i].start) * PX_PER_SEC)
+    arr.push({ type: 'block', x, width, text: sortedTcs[i].text, tcIdx: originalIdx })
+
     // Gap après ce bloc (si trou)
-    if (i < tcs.length - 1 && tcs[i].end < tcs[i + 1].start) {
-      const gapX = getGapX(tcs[i].end)
-      const gapWidth = getGapWidth(tcs[i].end, tcs[i + 1].start)
+    if (i < sortedTcs.length - 1 && sortedTcs[i].end < sortedTcs[i + 1].start) {
+      const gapX = sortedTcs[i].end * PX_PER_SEC + computedVisibleWidth.value / 2
+      const gapWidth = getGapWidth(sortedTcs[i].end, sortedTcs[i + 1].start)
       arr.push({
         type: 'gap',
         x: gapX,
         width: gapWidth,
         label:
-          tcs[i + 1].start - tcs[i].end >= 1
-            ? (tcs[i + 1].start - tcs[i].end).toFixed(2) + 's'
+          sortedTcs[i + 1].start - sortedTcs[i].end >= 1
+            ? (sortedTcs[i + 1].start - sortedTcs[i].end).toFixed(2) + 's'
             : '',
       })
     }
   }
+
   // Gap après le dernier timecode
-  const last = tcs[tcs.length - 1]
+  const last = sortedTcs[sortedTcs.length - 1]
   if (Math.round((totalDuration.value - last.end) * 100) / 100 >= 0.5) {
-    const x = getGapX(last.end)
+    const x = last.end * PX_PER_SEC + computedVisibleWidth.value / 2
     const width = getGapWidth(last.end, totalDuration.value)
     arr.push({ type: 'gap', x, width, label: (totalDuration.value - last.end).toFixed(2) + 's' })
   }
