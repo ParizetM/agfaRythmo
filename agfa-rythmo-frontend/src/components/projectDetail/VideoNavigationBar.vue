@@ -278,6 +278,10 @@ const isDragging = ref(false)
 const hoverTime = ref<number | null>(null)
 const pressedKey = ref<string | null>(null)
 
+// Constantes pour la compensation de décalage (identique à RythmoBandSingle)
+const FRAME_OFFSET = 8 // Décalage de 8 frames
+const FPS = 25 // 25 frames par seconde
+
 // Computed
 const linesCount = computed(() => {
   return Math.max(1, Math.min(6, props.rythmoLinesCount || 1))
@@ -458,11 +462,17 @@ function isTimecodeActive(timecode: Timecode): boolean {
 }
 
 function seekToTimecode(timecode: Timecode) {
-  emit('seek', timecode.start)
+  // Le timecode a été créé avec un décalage de -FRAME_OFFSET/FPS
+  // On compense pour que la vidéo en pause s'affiche correctement
+  const targetTime = timecode.start + (FRAME_OFFSET / FPS)
+  emit('seek', Math.max(0, targetTime))
 }
 
 function seekToSceneChange(sceneChangeTime: number) {
-  emit('seek', sceneChangeTime)
+  // Le scene change a été créé avec un décalage de -FRAME_OFFSET/FPS
+  // On compense pour que la vidéo en pause s'affiche correctement
+  const targetTime = sceneChangeTime + (FRAME_OFFSET / FPS)
+  emit('seek', Math.max(0, targetTime))
 }
 
 function getTimeFromPosition(clientX: number): number {

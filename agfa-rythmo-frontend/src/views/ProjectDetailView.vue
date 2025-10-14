@@ -1362,9 +1362,11 @@ function goToPreviousTimecode() {
   }
 }
 
-// Fonction helper pour seek
+// Fonction helper pour seek avec compensation
 function seekToTime(time: number) {
-  currentTime.value = time
+  // Appliquer la compensation FRAME_OFFSET pour la synchronisation
+  const compensatedTime = time + (FRAME_OFFSET / FPS)
+  currentTime.value = Math.max(0, compensatedTime)
   lastSeekFromTimecode = true
 }
 

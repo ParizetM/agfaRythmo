@@ -293,6 +293,7 @@
             :style="{ left: sceneChange.x + 'px' }"
             @mouseenter="onSceneChangeHover(idx)"
             @mouseleave="onSceneChangeLeave()"
+            @click="onSceneChangeClick(sceneChange, $event)"
           >
             <!-- Zone de grab visible uniquement sur la ligne 1 -->
             <div
@@ -1432,7 +1433,11 @@ function adjustTimecodeResize(
 
 const onBlockClick = (idx: number) => {
   if (effectiveTimecodes.value[idx]) {
-    emit('seek', effectiveTimecodes.value[idx].start)
+    // Le timecode a été créé avec un décalage de -FRAME_OFFSET/FPS
+    // Donc pour que la vidéo en pause s'affiche correctement (elle applique aussi -FRAME_OFFSET/FPS),
+    // on doit chercher à la position originale + FRAME_OFFSET/FPS pour compenser
+    const targetTime = effectiveTimecodes.value[idx].start + (FRAME_OFFSET / FPS)
+    emit('seek', Math.max(0, targetTime))
   }
 }
 
@@ -1499,6 +1504,20 @@ function onSceneChangeLeave() {
   if (props.lineNumber === 1 || props.isLastLine) {
     emit('scene-change-hover-end')
   }
+}
+
+function onSceneChangeClick(sceneChange: { id: number; timecode: number; x: number }, event: MouseEvent) {
+  // Ne pas déclencher si on clique sur le bouton de suppression ou la zone de grab
+  const target = event.target as HTMLElement
+  if (target.classList.contains('scene-change-delete-btn') ||
+      target.classList.contains('scene-change-grab-handle')) {
+    return
+  }
+
+  // Le scene change a été créé avec un décalage de -FRAME_OFFSET/FPS
+  // Donc pour que la vidéo en pause s'affiche correctement, on compense
+  const targetTime = sceneChange.timecode + (FRAME_OFFSET / FPS)
+  emit('seek', Math.max(0, targetTime))
 }
 
 function onSceneChangeDelete(sceneChangeId: number) {
