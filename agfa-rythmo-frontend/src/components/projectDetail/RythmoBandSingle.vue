@@ -1237,18 +1237,46 @@ function getElementKey(el: BandElement, idx: number): string {
 }
 
 const noTransition = ref(false)
+// Décalage de compensation à la pause (2 frames)
+const FRAME_OFFSET = 8
+const FPS = 25 // Peut être rendu dynamique si besoin
 const targetScroll = computed(() => {
   const maxScroll = Math.max(0, bandWidth.value + computedVisibleWidth.value)
-  // Si la bande est plus courte que la fenêtre, scroll=0
   if (bandWidth.value <= computedVisibleWidth.value) return 0
-  // Sinon, scroll jusqu'à la toute fin
-  return Math.min(props.currentTime * PX_PER_SEC, maxScroll)
+  let time = props.currentTime
+  // Si on est en pause, on applique un léger recul
+  if (instantRef.value) {
+    time = Math.max(0, time - FRAME_OFFSET / FPS)
+  }
+  return Math.min(time * PX_PER_SEC, maxScroll)
 })
 const instantRef = computed(() => {
   if (isRef(props.instant)) return props.instant.value
   return !!props.instant
 })
 const smoothScroll = useSmoothScroll(() => targetScroll.value, instantRef)
+
+// Désactiver la transition CSS quand instant est true (pause)
+watch(instantRef, (isInstant) => {
+  if (isInstant) {
+    noTransition.value = true
+  } else {
+    noTransition.value = false
+  }
+})
+
+// Désactive aussi la transition si le scroll saute brutalement (seek)
+watch(smoothScroll, (val, oldVal) => {
+  if (Math.abs(val - oldVal) > 40) {
+    noTransition.value = true
+    setTimeout(() => {
+      // Ne remettre la transition que si on n'est pas en pause
+      if (!instantRef.value) {
+        noTransition.value = false
+      }
+    }, 40)
+  }
+})
 
 // Désactive la transition si le scroll saute brutalement (seek, pause/play)
 const emit = defineEmits<{
@@ -1511,15 +1539,6 @@ function onSceneChangeDragEnd() {
   document.removeEventListener('mouseup', onSceneChangeDragEnd)
   document.body.style.cursor = ''
 }
-
-watch(smoothScroll, (val, oldVal) => {
-  if (Math.abs(val - oldVal) > 40) {
-    noTransition.value = true
-    setTimeout(() => {
-      noTransition.value = false
-    }, 40)
-  }
-})
 
 // --- Edition du texte d'un bloc ---
 const editingIdx = ref<number | null>(null)

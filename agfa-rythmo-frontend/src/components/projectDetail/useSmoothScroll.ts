@@ -17,22 +17,47 @@ export function useSmoothScroll(targetScroll: () => number, instant?: Ref<boolea
 
   function animate() {
     if (instant && instant.value) {
+      // Mode instantané : snap immédiatement sans animation
       smoothScroll.value = targetScroll();
       rafId = null;
       return;
     }
-    const diff = targetScroll() - smoothScroll.value;
-    if (Math.abs(diff) > 0.1) {
-      smoothScroll.value += diff * 0.05;
+    const target = targetScroll();
+    const diff = target - smoothScroll.value;
+
+    // Seuil beaucoup plus strict pour éviter les micro-saccades
+    if (Math.abs(diff) > 0.01) {
+      // Interpolation plus douce avec easing
+      smoothScroll.value += diff * 0.08;
       rafId = requestAnimationFrame(animate);
     } else {
-      smoothScroll.value = targetScroll();
+      // Snap précis à la valeur cible pour éviter les oscillations
+      smoothScroll.value = target;
       rafId = null;
     }
   }
 
-  // Watch sur la cible ET sur le mode instantané
-  watch([targetScroll, instant ?? ref(false)], () => {
+  // Watch séparé sur instant pour réagir immédiatement au passage en mode pause
+  watch(instant ?? ref(false), (isInstant, wasInstant) => {
+    if (isInstant && !wasInstant) {
+      // Passage de smooth à instant (pause) : arrêt immédiat
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      smoothScroll.value = targetScroll();
+    } else if (!isInstant && wasInstant) {
+      // Passage de instant à smooth (play) : relancer l'animation
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      animate();
+    }
+  }, { immediate: false });
+
+  // Watch sur la cible pour relancer l'animation
+  watch(targetScroll, () => {
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
