@@ -1,113 +1,134 @@
 <template>
   <div class="characters-panel">
-    <div class="flex flex-wrap gap-2">
+    <div class="characters-scroll flex gap-2 pb-2 flex-row">
       <div
         v-for="character in characters"
         :key="character.id"
-        @click="selectCharacter(character)"
-        @mouseenter="hoveredCharacter = character"
-        @mouseleave="hoveredCharacter = null"
-        class="relative flex items-center space-x-2 px-3 py-2 rounded-lg border-2 cursor-pointer transition-all duration-200 min-w-0"
-        :class="{
-          'border-blue-500 bg-blue-900/30': activeCharacter?.id === character.id,
-          'border-gray-600 bg-agfa-button hover:border-gray-400':
-            activeCharacter?.id !== character.id,
-        }"
+        class="character-item group flex flex-col items-center min-w-[72px] max-w-[110px] flex-shrink-0 relative"
       >
-        <!-- Couleur du personnage -->
-        <div
-          class="w-4 h-4 rounded-full border border-white/50 flex-shrink-0"
-          :style="{ backgroundColor: character.color }"
-        ></div>
-
-        <!-- Nom du personnage avec raccourci clavier -->
-        <div class="flex items-center gap-1 min-w-0 flex-1">
+        <!-- Bouton principal du personnage -->
+        <button
+          class="w-full flex flex-col items-center px-2 py-1 border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs md:rounded-md md:group-hover:rounded-t-md md:group-hover:rounded-b-none rounded-t-md rounded-b-none relative"
+          :class="{
+            'border-blue-500 bg-blue-900/30': activeCharacter?.id === character.id,
+            'border-gray-600 bg-agfa-button hover:border-gray-400':
+              activeCharacter?.id !== character.id,
+          }"
+          @click="selectCharacter(character)"
+        >
+          <!-- Badge du raccourci clavier (PC seulement) -->
           <span
-            class="text-white font-medium text-sm truncate"
+            v-if="getCharacterKeyIndex(character) !== -1"
+            class="absolute top-0.5 right-0.5 text-[9px] w-4 h-4 items-center justify-center bg-gray-700/80 text-gray-300 font-mono rounded-full hidden md:flex"
+          >
+            {{
+              getCharacterKeyIndex(character) === 9
+                ? '0'
+                : (getCharacterKeyIndex(character) + 1).toString()
+            }}
+          </span>
+
+          <span
+            class="truncate font-medium w-full text-center"
             :style="{
               backgroundColor: character.color,
               color: character.text_color || getContrastColor(character.color),
               padding: '2px 6px',
-              borderRadius: '4px'
-            }">
+              borderRadius: '4px',
+              fontSize: '0.95em',
+              marginBottom: '2px',
+              width: '100%',
+            }"
+          >
             {{ character.name }}
           </span>
-          <span
-            v-if="getCharacterKeyIndex(character) !== -1"
-            class="text-xs px-1 rounded bg-gray-700/50 text-gray-300 font-mono flex-shrink-0"
-          >
-            {{ getCharacterKeyIndex(character) === 9 ? '0' : (getCharacterKeyIndex(character) + 1).toString() }}
-          </span>
-        </div>
+        </button>
 
-        <!-- Menu contextuel au hover -->
+        <!-- Boutons d'action intégrés -->
         <div
-          v-if="hoveredCharacter?.id === character.id"
-          class="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10 min-w-max"
-          @click.stop
+          class="w-full flex border-2 border-t-0 rounded-b-md overflow-hidden transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100"
+          :class="{
+            'border-blue-500': activeCharacter?.id === character.id,
+            'border-gray-600': activeCharacter?.id !== character.id,
+          }"
         >
           <button
-            @click="$emit('edit-character', character)"
-            class="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-t-lg"
+            @click.stop="$emit('edit-character', character)"
+            class="flex-1 px-1 py-1 text-xs bg-agfa-button hover:bg-gray-600 text-gray-300 hover:text-white transition-colors focus:outline-none focus:bg-gray-600"
+            title="Modifier"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              ></path>
+              />
             </svg>
-            <span>Modifier</span>
           </button>
+          <div class="w-px bg-gray-600">
+
+          </div>
           <button
-            @click="handleDeleteCharacter(character)"
-            class="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-gray-700 rounded-b-lg"
+            @click.stop="handleDeleteCharacter(character)"
+            class="flex-1 px-1 py-1 text-xs bg-agfa-button hover:bg-red-600 text-gray-300 hover:text-white transition-colors focus:outline-none focus:bg-red-600"
+            title="Supprimer"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              ></path>
+              />
             </svg>
-            <span>Supprimer</span>
           </button>
+
         </div>
       </div>
-      <button
-        @click="$emit('add-character')"
-        class="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-colors"
-        title="Ajouter un personnage"
+      <!-- Bouton ajouter -->
+      <div
+        class="character-item flex flex-col items-center min-w-[72px] max-w-[110px] flex-shrink-0"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-      </button>
+        <button
+          @click="$emit('add-character')"
+          class="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          title="Ajouter un personnage"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Modal de confirmation de suppression -->
     <div
       v-if="showDeleteModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-auto"
     >
       <div class="bg-agfa-dark rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
         <h3 class="text-xl font-semibold text-white mb-4">Supprimer le personnage</h3>
-
         <p class="text-gray-300 mb-4">
           Êtes-vous sûr de vouloir supprimer le personnage
           <span
             class="font-semibold px-2 py-1 rounded"
             :style="{
               backgroundColor: characterToDelete?.color,
-              color: characterToDelete?.text_color || getContrastColor(characterToDelete?.color || '#FFFFFF')
-            }">
+              color:
+                characterToDelete?.text_color ||
+                getContrastColor(characterToDelete?.color || '#FFFFFF'),
+            }"
+          >
             "{{ characterToDelete?.name }}"
           </span>
           ?
         </p>
-
         <div class="mb-4">
           <label class="flex items-center space-x-2 text-gray-300">
             <input
@@ -121,7 +142,6 @@
             Si décoché, les timecodes deviendront "sans personnage"
           </p>
         </div>
-
         <div class="flex space-x-3">
           <button
             @click="cancelDelete"
@@ -139,7 +159,6 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -160,7 +179,6 @@ const emit = defineEmits<{
   (e: 'character-deleted', characterId: number): void
 }>()
 
-const hoveredCharacter = ref<Character | null>(null)
 const showDeleteModal = ref(false)
 const characterToDelete = ref<Character | null>(null)
 const deleteTimecodes = ref(false)
@@ -168,7 +186,7 @@ const isDeleting = ref(false)
 
 // Fonction pour obtenir l'index du personnage dans la liste (pour les raccourcis clavier)
 function getCharacterKeyIndex(character: Character): number {
-  const index = props.characters.findIndex(c => c.id === character.id)
+  const index = props.characters.findIndex((c) => c.id === character.id)
   return index < 10 ? index : -1 // Seulement les 10 premiers (1-0)
 }
 
@@ -186,16 +204,27 @@ function onKeyDown(event: KeyboardEvent) {
 
   // Gestion des touches 1-9 et 0
   const keyMap = {
-    'Digit1': 0, 'Numpad1': 0,
-    'Digit2': 1, 'Numpad2': 1,
-    'Digit3': 2, 'Numpad3': 2,
-    'Digit4': 3, 'Numpad4': 3,
-    'Digit5': 4, 'Numpad5': 4,
-    'Digit6': 5, 'Numpad6': 5,
-    'Digit7': 6, 'Numpad7': 6,
-    'Digit8': 7, 'Numpad8': 7,
-    'Digit9': 8, 'Numpad9': 8,
-    'Digit0': 9, 'Numpad0': 9
+    Digit1: 0,
+    Numpad1: 0,
+    Digit2: 1,
+    Numpad2: 1,
+    Digit3: 2,
+    Numpad3: 2,
+    Digit4: 3,
+    Numpad4: 3,
+    Digit5: 4,
+    Numpad5: 4,
+    Digit6: 5,
+    Numpad6: 5,
+    Digit7: 6,
+    Numpad7: 6,
+    Digit8: 7,
+    Numpad8: 7,
+
+    Digit9: 8,
+    Numpad9: 8,
+    Digit0: 9,
+    Numpad0: 9,
   } as const
 
   const characterIndex = keyMap[event.code as keyof typeof keyMap]
@@ -254,8 +283,35 @@ onUnmounted(() => {
   position: relative;
 }
 
-/* Assurer que le menu contextuel reste visible */
-.relative:hover .absolute {
-  display: block;
+.characters-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #222;
+}
+.characters-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.characters-scroll::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 4px;
+}
+.characters-scroll::-webkit-scrollbar-track {
+  background: #222;
+}
+
+.character-item {
+  min-width: 72px;
+  max-width: 110px;
+  margin-right: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .characters-scroll {
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .character-item {
+    min-width: 60px;
+    max-width: 90px;
+  }
 }
 </style>

@@ -1,11 +1,11 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-agfa-dark rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
-      <h2 class="text-xl font-semibold text-white mb-4">
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-agfa-dark rounded-lg p-4 sm:p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+      <h2 class="text-lg sm:text-xl font-semibold text-white mb-4">
         {{ editingCharacter ? 'Modifier le personnage' : 'Nouveau personnage' }}
       </h2>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form @submit.prevent="handleSubmit" class="space-y-3 sm:space-y-4">
         <!-- Nom du personnage -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -42,7 +42,7 @@
                 placeholder="rgba(132, 85, 246, 0.8)"
               />
             </div>
-            
+
             <!-- Couleurs prédéfinies -->
             <div class="flex flex-wrap gap-2">
               <button
@@ -55,7 +55,7 @@
                 :title="color"
               ></button>
             </div>
-            
+
             <!-- Slider d'opacité -->
             <div>
               <label class="block text-xs text-gray-400 mb-1">
@@ -166,7 +166,7 @@
         </div>
 
         <!-- Boutons -->
-        <div class="flex space-x-3 pt-4">
+        <div class="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             type="button"
             @click="$emit('close')"
@@ -250,7 +250,7 @@ function onColorTextChange() {
       const g = parseInt(colorMatch[2])
       const b = parseInt(colorMatch[3])
       const a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1
-      
+
       baseColor.value = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
       opacity.value = a
     }

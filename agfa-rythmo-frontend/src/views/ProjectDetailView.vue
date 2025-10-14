@@ -99,7 +99,7 @@
         <transition name="fade">
           <div
             v-if="!isSceneChangesCollapsed"
-            class="fixed top-[88px] right-0 z-40 h-[calc(100vh-88px)] w-64 max-w-full flex flex-col pr-2 pointer-events-none"
+            class="fixed top-[88px] right-0 z-40 h-fit w-64 max-w-full flex flex-col pr-2 "
           >
             <SceneChangesList
               :sceneChanges="uniqueSceneChangeTimecodes"
@@ -126,7 +126,7 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-[calc(100vh-88px)] w-80 max-w-full flex flex-col "
+            class="fixed top-[88px] left-0 z-40 h-fit w-80 max-w-full flex flex-col "
           >
                       <TimecodesListMultiLine
             :timecodes="compatibleTimecodes"

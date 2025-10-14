@@ -1,7 +1,7 @@
 <template>
   <div class="multi-rythmo-container">
     <!-- Configuration du nombre de lignes -->
-    <div v-if="!hideConfig" class="rythmo-config mb-3">
+    <div v-if="!hideConfig" class="rythmo-config mb-3 overflow-x-auto">
       <div class="flex items-center space-x-4 w-full">
         <!-- Characters list placé à gauche du select -->
         <div class="flex-shrink-0">
@@ -422,6 +422,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .multi-rythmo-container {
+  padding-bottom: 20px;
   width: 100%;
 }
 

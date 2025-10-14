@@ -83,14 +83,14 @@
     </div>
 
     <!-- Contrôles vidéo -->
-    <div class="controls-container">
+    <div class="controls-container flex flex-col items-center gap-2 md:flex-row md:relative md:justify-center">
       <!-- Indicateur de durée vidéo -->
-      <div class="duration-indicator">
+      <div class="duration-indicator md:absolute md:left-0 md:top-1/2 md:-translate-y-1/2">
         {{ formatTime(props.currentTime) }} / {{ formatTime(props.videoDuration) }}
       </div>
 
       <!-- Contrôles vidéo -->
-      <div class="video-controls">
+      <div class="video-controls flex-wrap justify-center">
         <!-- Navigation entre changements de plan -->
         <div class="control-group scene-controls">
           <button
@@ -103,7 +103,7 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span class="control-label">Plan</span>
+            <span class="control-label hidden sm:inline">Plan</span>
           </button>
 
           <button
@@ -113,7 +113,7 @@
             :class="{ 'pressed': pressedKey === 'scene-next' }"
             :disabled="!props.sceneChanges || props.sceneChanges.length === 0"
           >
-            <span class="control-label">Plan</span>
+            <span class="control-label hidden sm:inline">Plan</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -121,7 +121,7 @@
         </div>
 
         <!-- Séparateur -->
-        <div class="control-separator"></div>
+        <div class="control-separator hidden md:block"></div>
 
         <!-- Navigation frame par frame -->
         <button
@@ -194,7 +194,7 @@
         </button>
 
         <!-- Séparateur -->
-        <div class="control-separator"></div>
+        <div class="control-separator hidden md:block"></div>
 
         <!-- Navigation entre timecodes -->
         <div class="control-group timecode-controls">
@@ -208,7 +208,7 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M18 15L12 9L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span class="control-label">TC</span>
+            <span class="control-label hidden sm:inline">TC</span>
           </button>
 
           <button
@@ -218,7 +218,7 @@
             :class="{ 'pressed': pressedKey === 'timecode-next' }"
             :disabled="!props.timecodes || props.timecodes.length === 0"
           >
-            <span class="control-label">TC</span>
+            <span class="control-label hidden sm:inline">TC</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -874,17 +874,17 @@ onUnmounted(() => {
 .controls-container {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* justify-content: center; */ /* Géré par Tailwind */
   gap: 1rem;
   margin-top: 0.75rem;
-  position: relative;
+  /* position: relative; */ /* Géré par Tailwind */
 }
 
 .duration-indicator {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  /* position: absolute; */ /* Géré par Tailwind */
+  /* left: 0; */ /* Géré par Tailwind */
+  /* top: 50%; */ /* Géré par Tailwind */
+  /* transform: translateY(-50%); */ /* Géré par Tailwind */
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 0.75rem;
   font-weight: 600;
