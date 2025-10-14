@@ -81,7 +81,8 @@
           </label>
           <div class="flex items-center space-x-3">
             <input
-              v-model="formData.text_color"
+              :value="formData.text_color || suggestTextColor(formData.color)"
+              @input="formData.text_color = ($event.target as HTMLInputElement).value"
               type="color"
               class="w-12 h-10 rounded border border-gray-600 bg-agfa-button cursor-pointer"
             />
@@ -190,7 +191,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
-import { suggestTextColor, predefinedColors, toRGBA, withOpacity } from '../../utils/colorUtils'
+import { suggestTextColor, predefinedColors, toRGBA } from '../../utils/colorUtils'
 
 const props = defineProps<{
   projectId: number
@@ -251,11 +252,15 @@ function onColorTextChange() {
       const b = parseInt(colorMatch[3])
       const a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1
 
-      baseColor.value = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-      opacity.value = a
+      const hexColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+      // S'assurer que la couleur hexadécimale est valide
+      if (hexColor.match(/^#[0-9A-Fa-f]{6}$/)) {
+        baseColor.value = hexColor
+        opacity.value = a
+      }
     }
   } catch {
-    // Ignorer les erreurs de parsing
+    // Ignorer les erreurs de parsing et garder les valeurs par défaut
   }
 }
 

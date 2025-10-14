@@ -324,6 +324,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectSettingsStore } from '@/stores/projectSettings'
+import { useCollaborativeRefresh } from '@/composables/useCollaborativeRefresh'
 import api from '../api/axios'
 import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
@@ -496,6 +497,11 @@ let focusOutHandler: ((e: Event) => void) | null = null
 const generateRythmoKey = () => `rythmo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 const rythmoReloadKey = ref(generateRythmoKey())
 
+// Fonction centralisée pour rafraîchir les bandes rythmo
+function refreshRythmoBands() {
+  rythmoReloadKey.value = generateRythmoKey()
+}
+
 // Timecodes multi-lignes (nouvelle API)
 const allTimecodes = ref<ApiTimecode[]>([])
 
@@ -515,6 +521,46 @@ const selectedLineNumber = ref<number>(1)
 
 // Store d'authentification
 const authStore = useAuthStore()
+
+// Computed pour vérifier s'il y a des collaborateurs actifs
+const hasActiveCollaborators = computed(() => {
+  if (!project.value?.collaborators) return false
+  return project.value.collaborators.length > 0
+})
+
+// Computed pour l'ID du projet (pour le composable)
+const projectId = computed(() => project.value?.id ?? null)
+
+// Fonction de synchronisation pour le polling collaboratif
+async function syncCollaborativeData() {
+  if (!project.value?.id) return
+
+  try {
+    // Recharger les timecodes
+    await loadTimecodes()
+
+    // Recharger les personnages
+    await loadCharacters()
+
+    // Recharger les scene changes (sans /api car déjà dans baseURL)
+    const scResponse = await api.get(`/projects/${project.value.id}/scene-changes`)
+    sceneChanges.value = scResponse.data
+
+    // Rafraîchir les bandes rythmo
+    refreshRythmoBands()
+  } catch (error) {
+    console.error('Erreur lors de la synchronisation collaborative:', error)
+  }
+}
+
+// Initialiser le polling collaboratif
+useCollaborativeRefresh({
+  projectId,
+  hasCollaborators: hasActiveCollaborators,
+  isEditingContent: computed(() => isEditingText.value || !isVideoPaused.value), // Ne pas synchro si édition OU vidéo en lecture
+  onRefresh: syncCollaborativeData,
+  intervalMs: 4000 // Sync toutes les 4 secondes
+})
 
 // Computed pour les timecodes de scene changes uniques
 const uniqueSceneChangeTimecodes = computed(() => {
@@ -819,6 +865,12 @@ function onCharacterSaved(character: Character) {
   if (!activeCharacter.value || allCharacters.value.length === 1) {
     activeCharacter.value = character
   }
+
+  // Recharger les timecodes pour mettre à jour les références des personnages
+  loadTimecodes().then(() => {
+    // Rafraîchir les bandes rythmo pour afficher les nouvelles couleurs
+    refreshRythmoBands()
+  })
 }
 
 function onCharacterDeleted(characterId: number) {
