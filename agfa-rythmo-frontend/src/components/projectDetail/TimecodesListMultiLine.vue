@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-agfa-dark rounded-xl p-6 min-w-56 max-w-96 text-white shadow-lg overflow-y-auto">
+  <div class="bg-agfa-dark rounded-xl p-6 min-w-56 max-w-96 text-white shadow-lg max-h-[90vh] overflow-y-auto">
     <h3 class="text-xl font-bold mb-4 text-white">Timecodes</h3>
 
     <!-- Groupés par ligne -->
@@ -92,13 +92,6 @@
       </ul>
     </div>
 
-    <!-- Bouton d'ajout global -->
-    <button
-      @click="emit('add')"
-      class="w-full bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg py-2 px-4 cursor-pointer text-sm font-medium transition-colors duration-300"
-    >
-      Ajouter un timecode
-    </button>
   </div>
 </template>
 

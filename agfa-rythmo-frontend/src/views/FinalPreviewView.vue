@@ -1,19 +1,52 @@
 <template>
   <div class="final-preview" @click="exitPreview">
+    <!-- Écran de chargement de la vidéo -->
+    <div v-if="isVideoLoading" class="loading-overlay">
+      <div class="flex flex-col items-center justify-center space-y-6">
+        <!-- Spinner personnalisé -->
+        <div class="relative">
+          <div class="w-24 h-24 border-8 border-gray-700 rounded-full"></div>
+          <div class="w-24 h-24 border-8 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+        </div>
+
+        <!-- Message de chargement -->
+        <div class="text-center mt-8">
+          <p class="text-xl text-white font-medium mb-2">Chargement de la vidéo...</p>
+          <p class="text-sm text-gray-400">Veuillez patienter</p>
+        </div>
+
+        <!-- Barre de progression stylisée -->
+        <div class="w-64 h-1 bg-gray-700 rounded-full mt-4 overflow-hidden">
+          <div class="h-full bg-blue-500 animate-pulse rounded-full" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="!started" class="start-overlay">
       <button class="start-btn" @click.stop="startPreview">Appuyer pour démarrer</button>
     </div>
     <div v-else-if="countdown > 0" class="countdown">
       <span>{{ countdown }}</span>
     </div>
-    <div v-else class="preview-content">
-      <div class="video-wrapper" :class="{ 'with-band-below': projectSettings.overlayPosition === 'under' }">
+
+    <!-- Contenu vidéo toujours présent pour permettre le chargement -->
+    <div class="preview-content" :class="{ 'content-hidden': !started || countdown > 0 }">
+      <div
+        class="video-wrapper"
+        :class="{
+          'with-band-below': projectSettings.overlayPosition === 'under-full' || projectSettings.overlayPosition === 'under-video-width',
+          'contained-16-9': projectSettings.overlayPosition === 'contained-16-9'
+        }"
+      >
         <div class="video-container">
           <video
             ref="video"
             :src="videoSrc"
             class="preview-video"
             @loadedmetadata="onLoadedMetadata"
+            @error="(e) => console.error('[video] Erreur chargement:', e)"
+            @canplay="() => console.log('[video] canplay event')"
+            @loadstart="() => console.log('[video] loadstart event')"
             @click="playError && video && video.play()"
             tabindex="0"
           />
@@ -40,8 +73,13 @@
 
         <!-- Bande rythmo sous la vidéo (ne chevauche pas) -->
         <div
-          v-if="videoWidth && videoHeight && projectSettings.overlayPosition === 'under'"
+          v-if="videoWidth && videoHeight && (projectSettings.overlayPosition === 'under-full' || projectSettings.overlayPosition === 'under-video-width' || projectSettings.overlayPosition === 'contained-16-9')"
           class="preview-rythmo below-mode"
+          :class="{
+            'full-width': projectSettings.overlayPosition === 'under-full',
+            'video-width': projectSettings.overlayPosition === 'under-video-width',
+            'contained-width': projectSettings.overlayPosition === 'contained-16-9'
+          }"
           :style="{
             height: rythmoBarHeight + 'px'
           }"
@@ -87,6 +125,7 @@ const videoHeight = ref<number>(0)
 const videoDuration = ref<number>(0)
 const playError = ref('')
 const videoReady = ref(false)
+const isVideoLoading = ref(true)
 const rythmoBarWidth = ref<number>(0)
 const rythmoBarHeight = ref<number>(0)
 let interval: number
@@ -98,11 +137,17 @@ function onLoadedMetadata() {
     videoHeight.value = video.value.videoHeight
     videoDuration.value = video.value.duration
     videoReady.value = true
+    // Ne mettre à false que si c'est actuellement true
+    if (isVideoLoading.value) {
+      isVideoLoading.value = false
+    }
     console.log(
       '[onLoadedMetadata] video readyState:',
       video.value.readyState,
       'duration:',
       video.value.duration,
+      'isVideoLoading:',
+      isVideoLoading.value
     )
   }
 }
@@ -167,6 +212,12 @@ watch([videoWidth, videoHeight, videoReady, started, countdown], () => {
 })
 
 onMounted(() => {
+  console.log('[onMounted] isVideoLoading:', isVideoLoading.value, 'videoDuration:', videoDuration.value)
+  // Si la vidéo s'est déjà chargée avant le onMounted, mettre isVideoLoading à false
+  if (videoDuration.value > 0) {
+    isVideoLoading.value = false
+    console.log('[onMounted] Vidéo déjà chargée, isVideoLoading set to false')
+  }
   window.addEventListener('resize', updateRythmoBarWidth)
 })
 
@@ -213,6 +264,22 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
 }
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.content-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .start-overlay {
   position: absolute;
   inset: 0;
@@ -238,10 +305,17 @@ onUnmounted(() => {
   background: #225ea8;
 }
 .countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 8vw;
   color: #fff;
   font-weight: bold;
   user-select: none;
+  z-index: 50;
+  background: #000c;
 }
 .preview-content {
   width: 100vw;
@@ -268,6 +342,15 @@ onUnmounted(() => {
   justify-content: flex-start;
 }
 
+/* Mode contained 16:9 : le wrapper entier a un ratio 16:9 */
+.video-wrapper.contained-16-9 {
+  aspect-ratio: 16 / 9;
+  max-width: 100vw;
+  max-height: 100vh;
+  height: auto;
+  width: auto;
+}
+
 .video-container {
   position: relative;
   display: flex;
@@ -285,6 +368,13 @@ onUnmounted(() => {
 /* Mode below : la vidéo laisse de la place pour la bande */
 .video-wrapper.with-band-below .video-container {
   max-height: calc(100vh - v-bind(rythmoBarHeight + 'px'));
+}
+
+/* Mode contained 16:9 : la vidéo s'adapte à l'espace restant */
+.video-wrapper.contained-16-9 .video-container {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .preview-video {
@@ -316,6 +406,19 @@ onUnmounted(() => {
   margin-top: 0;
   pointer-events: none;
   z-index: 2;
+}
+
+/* Modes de largeur pour la bande en dessous */
+.preview-rythmo.below-mode.full-width {
+  width: 100vw;
+}
+
+.preview-rythmo.below-mode.video-width {
+  width: v-bind(rythmoBarWidth + 'px');
+}
+
+.preview-rythmo.below-mode.contained-width {
+  width: 100%;
 }
 .play-error {
   position: absolute;

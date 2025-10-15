@@ -126,7 +126,7 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-fit w-80 max-w-full flex flex-col "
+            class="fixed top-[88px] left-0 z-40 h-fit w-80 max-w-full flex flex-col overflow-y-auto"
           >
                       <TimecodesListMultiLine
             :timecodes="compatibleTimecodes"

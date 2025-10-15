@@ -147,30 +147,61 @@
               <!-- Position de l'overlay -->
               <div class="setting-group">
                 <label class="setting-label">Position dans l'aperçu final</label>
-                <div class="flex gap-4">
-                  <button
-                    @click="localSettings.overlayPosition = 'under'"
-                    :class="[
-                      'flex-1 px-4 py-3 rounded-lg border-2 transition-all duration-200',
-                      localSettings.overlayPosition === 'under'
-                        ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white'
-                        : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500'
-                    ]"
-                  >
-                    <div class="font-semibold mb-1">Sous la vidéo</div>
-                    <div class="text-xs">Bande en bas</div>
-                  </button>
+                <div class="grid grid-cols-2 gap-3">
+                  <!-- Mode Over -->
                   <button
                     @click="localSettings.overlayPosition = 'over'"
                     :class="[
-                      'flex-1 px-4 py-3 rounded-lg border-2 transition-all duration-200',
+                      'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
                       localSettings.overlayPosition === 'over'
                         ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white'
                         : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500'
                     ]"
                   >
-                    <div class="font-semibold mb-1">Par-dessus la vidéo</div>
-                    <div class="text-xs">Overlay transparent</div>
+                    <div class="font-semibold mb-1 text-sm">Par-dessus la vidéo</div>
+                    <div class="text-xs opacity-80">Overlay transparent en bas</div>
+                  </button>
+
+                  <!-- Mode Under Full -->
+                  <button
+                    @click="localSettings.overlayPosition = 'under-full'"
+                    :class="[
+                      'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                      localSettings.overlayPosition === 'under-full'
+                        ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white'
+                        : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500'
+                    ]"
+                  >
+                    <div class="font-semibold mb-1 text-sm">Sous - Pleine largeur</div>
+                    <div class="text-xs opacity-80">Bande 100% largeur écran</div>
+                  </button>
+
+                  <!-- Mode Under Video Width -->
+                  <button
+                    @click="localSettings.overlayPosition = 'under-video-width'"
+                    :class="[
+                      'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                      localSettings.overlayPosition === 'under-video-width'
+                        ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white'
+                        : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500'
+                    ]"
+                  >
+                    <div class="font-semibold mb-1 text-sm">Sous - Largeur vidéo</div>
+                    <div class="text-xs opacity-80">Bande alignée sur vidéo</div>
+                  </button>
+
+                  <!-- Mode Contained 16:9 -->
+                  <button
+                    @click="localSettings.overlayPosition = 'contained-16-9'"
+                    :class="[
+                      'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                      localSettings.overlayPosition === 'contained-16-9'
+                        ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white'
+                        : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500'
+                    ]"
+                  >
+                    <div class="font-semibold mb-1 text-sm">Contenu 16:9</div>
+                    <div class="text-xs opacity-80">Vidéo + bande en 16:9 fixe</div>
                   </button>
                 </div>
               </div>
@@ -199,7 +230,14 @@
               </div>
 
               <!-- Container de l'aperçu avec ratio vidéo -->
-              <div class="preview-container" :class="{ 'with-band-below': localSettings.overlayPosition === 'under' }">
+              <div
+                class="preview-container"
+                :class="{
+                  'with-band-below': localSettings.overlayPosition === 'under-full' || localSettings.overlayPosition === 'under-video-width',
+                  'contained-mode': localSettings.overlayPosition === 'contained-16-9'
+                }"
+                :style="{ '--band-height': localSettings.bandHeight + 'px' }"
+              >
                 <div class="preview-video-area">
                   <div class="preview-video-placeholder">
                     <svg class="w-20 h-20 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,6 +250,12 @@
                   <!-- Bande rythmo preview -->
                   <div
                     class="preview-rythmo-band"
+                    :class="{
+                      'mode-over': localSettings.overlayPosition === 'over',
+                      'mode-under-full': localSettings.overlayPosition === 'under-full',
+                      'mode-under-video': localSettings.overlayPosition === 'under-video-width',
+                      'mode-contained': localSettings.overlayPosition === 'contained-16-9'
+                    }"
                     :style="{
                       height: localSettings.bandHeight + 'px',
                       backgroundColor: localSettings.bandBackgroundColor,
@@ -268,10 +312,22 @@
                 <!-- Description de l'aperçu -->
                 <div class="mt-4 p-4 bg-agfa-button rounded-lg">
                   <p class="text-sm text-gray-400">
-                    <strong class="text-white">Mode {{ localSettings.overlayPosition === 'under' ? 'Sous la vidéo' : 'Par-dessus' }}:</strong>
-                    {{ localSettings.overlayPosition === 'under'
-                      ? 'La bande rythmo sera affichée en dessous de la vidéo dans l\'aperçu final.'
-                      : 'La bande rythmo sera superposée transparente sur la vidéo dans l\'aperçu final.'
+                    <strong class="text-white">
+                      {{
+                        localSettings.overlayPosition === 'over' ? 'Par-dessus la vidéo' :
+                        localSettings.overlayPosition === 'under-full' ? 'Sous - Pleine largeur' :
+                        localSettings.overlayPosition === 'under-video-width' ? 'Sous - Largeur vidéo' :
+                        'Contenu 16:9'
+                      }}:
+                    </strong>
+                    {{
+                      localSettings.overlayPosition === 'over'
+                        ? 'La bande rythmo sera superposée transparente en bas de la vidéo.'
+                        : localSettings.overlayPosition === 'under-full'
+                        ? 'La bande rythmo sera affichée sous la vidéo avec une largeur de 100% de l\'écran.'
+                        : localSettings.overlayPosition === 'under-video-width'
+                        ? 'La bande rythmo sera affichée sous la vidéo, alignée sur sa largeur.'
+                        : 'La vidéo et la bande rythmo seront contenues dans un ratio 16:9 fixe.'
                     }}
                   </p>
                 </div>
@@ -544,6 +600,32 @@ onUnmounted(() => {
   width: 70%;
 }
 
+/* Mode "contained 16:9" : tout le container a un ratio 16:9 */
+.preview-container.contained-mode {
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* En mode contained, la zone vidéo doit laisser de la place pour la bande */
+.preview-container.contained-mode .preview-video-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.preview-container.contained-mode .preview-video-placeholder {
+  width: 100%;
+  /* Calculer la hauteur disponible en soustrayant la hauteur de la bande */
+  height: calc(100% - var(--band-height, 80px));
+  max-height: calc(100% - var(--band-height, 80px));
+  /* Réduire la hauteur pour tenir compte de la bande */
+  aspect-ratio: initial;
+  flex-shrink: 0;
+}
+
 .preview-rythmo-band {
   position: relative;
   left: 0;
@@ -555,14 +637,27 @@ onUnmounted(() => {
 }
 
 /* En mode "par-dessus", la bande est en position absolue au bas */
-.preview-container:not(.with-band-below) .preview-rythmo-band {
+.preview-rythmo-band.mode-over {
   position: absolute;
   bottom: 0;
 }
 
 /* En mode "sous", la bande suit le placeholder (flex) */
-.preview-container.with-band-below .preview-rythmo-band {
+.preview-rythmo-band.mode-under-full,
+.preview-rythmo-band.mode-under-video,
+.preview-rythmo-band.mode-contained {
   position: relative;
+}
+
+/* Mode under-video-width : bande alignée sur 70% comme la vidéo */
+.preview-container.with-band-below .preview-rythmo-band.mode-under-video {
+  width: 70%;
+  margin: 0 auto;
+}
+
+/* Mode contained : la bande prend toute la largeur du container */
+.preview-container.contained-mode .preview-rythmo-band.mode-contained {
+  width: 100%;
 }
 
 .preview-ticks {

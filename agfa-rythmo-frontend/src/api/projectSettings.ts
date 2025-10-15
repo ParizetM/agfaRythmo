@@ -6,7 +6,7 @@ export interface ProjectSettings {
   fontFamily: string
   bandBackgroundColor: string
   sceneChangeColor: string
-  overlayPosition: 'under' | 'over'
+  overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9'
 }
 
 /**
