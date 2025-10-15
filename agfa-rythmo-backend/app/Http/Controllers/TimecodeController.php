@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Timecode;
 use App\Models\Project;
+use App\Services\SrtParser;
 use Illuminate\Http\Request;
 
 class TimecodeController extends Controller
@@ -102,5 +103,53 @@ class TimecodeController extends Controller
         return response()->json([
             'timecodes' => $timecodes
         ]);
+    }
+
+    /**
+     * Importe un fichier SRT et crée des timecodes
+     */
+    public function importSrt(Request $request, Project $project)
+    {
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:srt,txt|max:10240', // Max 10MB
+            'line_number' => 'required|integer|between:1,' . ($project->rythmo_lines_count ?? 1),
+            'character_id' => 'nullable|exists:characters,id',
+        ]);
+
+        try {
+            // Lire le contenu du fichier
+            $content = file_get_contents($request->file('file')->getRealPath());
+
+            // Parser le fichier SRT
+            $parser = new SrtParser();
+            $parsedTimecodes = $parser->parse($content);
+
+            // Créer les timecodes en batch
+            $createdTimecodes = [];
+            foreach ($parsedTimecodes as $tc) {
+                $timecode = $project->timecodes()->create([
+                    'line_number' => $validated['line_number'],
+                    'start' => $tc['start'],
+                    'end' => $tc['end'],
+                    'text' => $tc['text'],
+                    'character_id' => $validated['character_id'] ?? null,
+                    'show_character' => false, // Par défaut
+                ]);
+
+                $createdTimecodes[] = $timecode;
+            }
+
+            return response()->json([
+                'message' => 'Timecodes importés avec succès',
+                'count' => count($createdTimecodes),
+                'timecodes' => $createdTimecodes
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de l\'import du fichier SRT',
+                'message' => $e->getMessage()
+            ], 422);
+        }
     }
 }

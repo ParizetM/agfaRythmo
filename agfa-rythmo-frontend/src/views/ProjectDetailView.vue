@@ -244,8 +244,11 @@
       :maxLines="project?.rythmo_lines_count || 1"
       :defaultLineNumber="modalTimecode.line_number"
       :currentTime="currentTime"
+      :projectId="project?.id"
+      :characters="allCharacters"
       @submit="onTimecodeModalSubmit"
       @close="closeTimecodeModal"
+      @srt-imported="onSrtImported"
     />
 
     <!-- Modal de gestion des personnages -->
@@ -1257,6 +1260,17 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
 }
 function closeTimecodeModal() {
   showTimecodeModal.value = false
+}
+
+// Gestionnaire pour l'import SRT réussi
+async function onSrtImported(count: number) {
+  console.log(`${count} timecode(s) importé(s) avec succès`)
+
+  // Recharger les timecodes depuis le backend
+  await loadTimecodes()
+
+  // Rafraîchir les bandes rythmo pour afficher les nouveaux timecodes
+  refreshRythmoBands()
 }
 
 // Gestion du modal de changement de plan

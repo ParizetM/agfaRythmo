@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Timecodes multi-lignes
     Route::get('/projects/{project}/timecodes', [TimecodeController::class, 'index']);
     Route::post('/projects/{project}/timecodes', [TimecodeController::class, 'store']);
+    Route::post('/projects/{project}/timecodes/import-srt', [TimecodeController::class, 'importSrt']);
     Route::get('/projects/{project}/timecodes/{timecode}', [TimecodeController::class, 'show']);
     Route::put('/projects/{project}/timecodes/{timecode}', [TimecodeController::class, 'update']);
     Route::delete('/projects/{project}/timecodes/{timecode}', [TimecodeController::class, 'destroy']);

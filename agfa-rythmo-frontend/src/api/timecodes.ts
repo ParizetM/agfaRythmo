@@ -66,5 +66,25 @@ export const timecodeApi = {
   // Récupérer un timecode spécifique
   getOne(projectId: number, timecodeId: number) {
     return api.get<{ timecode: Timecode }>(`/projects/${projectId}/timecodes/${timecodeId}`)
+  },
+
+  // Importer un fichier SRT
+  importSrt(projectId: number, file: File, lineNumber: number, characterId?: number | null) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('line_number', lineNumber.toString())
+    if (characterId) {
+      formData.append('character_id', characterId.toString())
+    }
+
+    return api.post<{ message: string; count: number; timecodes: Timecode[] }>(
+      `/projects/${projectId}/timecodes/import-srt`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
   }
 }
