@@ -51,6 +51,7 @@
           :characters="characters"
           :selectedLine="selectedLine"
           :disableSelection="disableSelection"
+          :hideConfig="hideConfig"
           @seek="$emit('seek', $event)"
           @update-timecode="onUpdateTimecode"
           @update-timecode-bounds="onUpdateTimecodeBounds"

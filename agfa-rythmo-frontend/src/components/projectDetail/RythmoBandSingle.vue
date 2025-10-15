@@ -2,7 +2,7 @@
   <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick" @wheel="onWheelScroll">
     <!-- Triangle de sélection de ligne -->
     <div
-      v-if="props.selectedLine === props.lineNumber"
+      v-if="props.selectedLine === props.lineNumber && !props.hideConfig"
       class="line-selector-triangle"
       :title="`Ligne ${props.lineNumber} sélectionnée`"
     >
@@ -190,8 +190,10 @@
                           :class="{ 'separator-dragging': resizingSeparatorIdx === el.tcIdx && resizingSeparatorSubIdx === segIdx }"
                           @mousedown="onSeparatorResizeStart(el.tcIdx, segIdx, $event)"
                         >
-                          <div class="separator-line"></div>
-                          <div class="separator-handle"></div>
+                          <template v-if="!props.hideConfig">
+                            <div class="separator-line"></div>
+                            <div class="separator-handle"></div>
+                          </template>
                         </div>
                       </template>
                     </div>
@@ -497,6 +499,7 @@ const props = defineProps<{
   sceneChangeHoverState?: SceneChangeHoverState | null
   characters?: Character[]
   selectedLine?: number | null // Ligne actuellement sélectionnée (1-6)
+  hideConfig?: boolean // Masquer les éléments de configuration (triangle de sélection, etc.)
 }>()
 
 // Store des paramètres de projet
@@ -999,7 +1002,7 @@ function formatTime(seconds: number): string {
 function getResizeTooltipStyle(): CSSProperties {
   if (resizingIdx.value === null || !resizeMode.value) return { display: 'none' }
 
-  // Position relative à la souris avec Y fixe
+  // Position relative à la souris avec Y fixée
   const containerRect = trackContainer.value?.getBoundingClientRect()
   if (!containerRect) return { display: 'none' }
 
