@@ -145,15 +145,41 @@
       </div>
 
       <!-- Center Panel - Video and Controls -->
-      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2">
+      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]">
+        <!-- Écran de chargement dans la zone vidéo -->
+        <div v-if="project && project.video_path && isVideoLoading" class="absolute inset-0 bg-gray-900 z-10 flex flex-col items-center justify-center rounded-lg h-full w-lvw">
+          <div class="flex flex-col items-center justify-center space-y-6">
+            <!-- Spinner personnalisé -->
+            <div class="relative">
+              <div class="w-24 h-24 border-8 border-gray-700 rounded-full"></div>
+              <div class="w-24 h-24 border-8 border-agfa-blue border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+
+            <!-- Message de chargement -->
+            <div class="text-center mt-8">
+              <p class="text-xl text-white font-medium mb-2">Chargement de la vidéo...</p>
+              <p class="text-sm text-gray-400">Veuillez patienter</p>
+            </div>
+
+            <!-- Barre de progression stylisée -->
+            <div class="w-64 h-1 bg-gray-700 rounded-full mt-4 overflow-hidden">
+              <div class="h-full bg-agfa-blue animate-pulse rounded-full" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lecteur vidéo (toujours présent dans le DOM pour charger, masqué si loading) -->
         <VideoPlayer
           v-if="project && project.video_path"
+          :class="{ 'opacity-0 pointer-events-none': isVideoLoading }"
           :src="getVideoUrl(project.video_path)"
           :currentTime="currentTime"
           @timeupdate="onVideoTimeUpdate"
           @loadedmetadata="onLoadedMetadata"
         />
-        <div v-else class="w-full max-w-3xl h-96 bg-gray-800 text-white flex items-center justify-center rounded-lg">
+
+        <!-- Message si pas de vidéo -->
+        <div v-if="!project || !project.video_path" class="w-full max-w-3xl h-96 bg-gray-800 text-white flex items-center justify-center rounded-lg">
           Aucune vidéo
         </div>
 
@@ -488,6 +514,7 @@ const videoDuration = ref(0)
 const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
+const isVideoLoading = ref(true) // Indique si la vidéo est en cours de chargement
 
 // Constantes pour le décalage de synchronisation
 const FRAME_OFFSET = 8 // Décalage de 8 frames
@@ -1090,6 +1117,10 @@ function onVideoTimeUpdate(time: number) {
 }
 function onLoadedMetadata(duration: number) {
   videoDuration.value = duration
+  // Ne mettre à false que si c'est actuellement true (évite les problèmes de timing)
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
+  }
 }
 
 function seek(delta: number) {
@@ -1515,6 +1546,15 @@ onMounted(async () => {
 
     // Charge les personnages
     await loadCharacters()
+
+    // Initialiser l'état de chargement vidéo APRÈS avoir chargé le projet
+    // Seulement si la vidéo n'est pas déjà chargée (loadedmetadata pas encore déclenché)
+    if (!project.value?.video_path) {
+      isVideoLoading.value = false
+    } else if (videoDuration.value === 0) {
+      // Si la durée est 0, c'est que loadedmetadata n'a pas encore été déclenché
+      isVideoLoading.value = true
+    }
   } catch (error) {
     // Vérifier si c'est une erreur d'accès refusé (403)
     if (error instanceof AxiosError && error.response?.status === 403) {
