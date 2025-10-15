@@ -61,6 +61,23 @@
                 {{ character.name }}
               </option>
             </select>
+
+            <!-- Sélecteur de ligne -->
+            <select
+              v-model="timecode.line_number"
+              class="text-xs border border-gray-600 rounded px-1 py-0.5 bg-gray-700 text-white"
+              @change="updateTimecodeLine(timecode)"
+              @click.stop
+              title="Changer la ligne"
+            >
+              <option
+                v-for="line in rythmoLinesCount"
+                :key="line"
+                :value="line"
+              >
+                L{{ line }}
+              </option>
+            </select>
           </div>
           <span class="flex-1 ml-2 text-sm text-white">
             {{ timecode.text }}
@@ -198,6 +215,21 @@ async function updateTimecodeCharacter(timecode: Timecode) {
       emit('updated')
     } catch (error) {
       console.error('Erreur lors de la mise à jour du personnage:', error)
+    }
+  }
+}
+
+// Fonction pour mettre à jour la ligne d'un timecode
+async function updateTimecodeLine(timecode: Timecode) {
+  if (timecode.id) {
+    try {
+      const updateData: UpdateTimecodeData = {
+        line_number: timecode.line_number,
+      }
+      await timecodeApi.update(props.projectId, timecode.id, updateData)
+      emit('updated')
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la ligne:', error)
     }
   }
 }
