@@ -22,12 +22,12 @@
             @change="onLinesCountChange"
             class="ml-2 bg-agfa-button text-white border border-gray-600 rounded px-2 py-1 text-sm"
           >
-            <option :value="1">1 ligne</option>
-            <option :value="2">2 lignes</option>
-            <option :value="3">3 lignes</option>
-            <option :value="4">4 lignes</option>
-            <option :value="5">5 lignes</option>
-            <option :value="6">6 lignes</option>
+            <option :value="1" style="background: #384152; color: #ffffff">1 ligne</option>
+            <option :value="2" style="background: #384152; color: #ffffff">2 lignes</option>
+            <option :value="3" style="background: #384152; color: #ffffff">3 lignes</option>
+            <option :value="4" style="background: #384152; color: #ffffff">4 lignes</option>
+            <option :value="5" style="background: #384152; color: #ffffff">5 lignes</option>
+            <option :value="6" style="background: #384152; color: #ffffff">6 lignes</option>
           </select>
         </label>
       </div>

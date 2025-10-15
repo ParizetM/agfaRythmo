@@ -101,7 +101,7 @@
                     v-for="font in availableFonts"
                     :key="font.family"
                     :value="font.family"
-                    :style="{ fontFamily: font.family }"
+                    :style="{ fontFamily: font.family, backgroundColor: '#384152', color: '#ffffff' }"
                   >
                     {{ font.family }} ({{ font.category }})
                   </option>
