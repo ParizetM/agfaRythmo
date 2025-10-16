@@ -43,6 +43,8 @@
             ref="video"
             :src="videoSrc"
             class="preview-video"
+            playsinline
+            webkit-playsinline
             @loadedmetadata="onLoadedMetadata"
             @error="(e) => console.error('[video] Erreur chargement:', e)"
             @canplay="() => console.log('[video] canplay event')"

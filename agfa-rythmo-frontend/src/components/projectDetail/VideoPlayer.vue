@@ -6,6 +6,8 @@
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
       class="w-full max-w-4xl rounded-lg bg-black shadow-xl max-h-[60vh] object-contain"
+      playsinline
+      webkit-playsinline
     />
   </div>
 </template>
