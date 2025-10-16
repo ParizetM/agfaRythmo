@@ -7,7 +7,7 @@
         @click="goBack"
         title="Retour aux projets"
       >
-        <BackSvg class="w-5 h-5"/>
+        <BackSvg class="w-5 h-5" />
         <span>Projets</span>
       </button>
 
@@ -28,8 +28,18 @@
           title="Paramètres du projet"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            ></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            ></path>
           </svg>
         </button>
 
@@ -40,7 +50,12 @@
           title="Raccourcis clavier (Cmd + ?)"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
           </svg>
         </button>
 
@@ -51,7 +66,7 @@
           @click="showCollaboratorsModal = true"
           title="Gérer les collaborateurs"
         >
-            <UsersIcon class="w-5 h-5" />
+          <UsersIcon class="w-5 h-5" />
         </button>
 
         <!-- Bouton aperçu final -->
@@ -67,7 +82,10 @@
     </header>
 
     <!-- Message d'erreur d'accès -->
-    <div v-if="project && !hasProjectAccess" class="w-full max-w-4xl mx-auto p-6 bg-red-600 text-white rounded-lg mb-6">
+    <div
+      v-if="project && !hasProjectAccess"
+      class="w-full max-w-4xl mx-auto p-6 bg-red-600 text-white rounded-lg mb-6"
+    >
       <div class="flex items-center justify-center">
         <div class="text-center">
           <h3 class="text-lg font-semibold mb-2">Accès refusé</h3>
@@ -83,15 +101,18 @@
     </div>
 
     <!-- Main Grid -->
-  <div v-else class="w-full flex flex-row items-start justify-center lg:flex-col overflow-x-hidden overflow-y-visible h-fit">
-  <!-- Overlay Left Panel - Timecodes -->
+    <div
+      v-else
+      class="w-full flex flex-row items-start justify-center lg:flex-col overflow-x-hidden overflow-y-visible h-fit"
+    >
+      <!-- Overlay Left Panel - Timecodes -->
       <!-- Overlay Right Panel - Scene Changes -->
       <div>
         <button
           class="fixed top-[88px] right-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-l-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
           @click="toggleSceneChangesPanel"
           :title="isSceneChangesCollapsed ? 'Déplier' : 'Replier'"
-          style="transition: right 0.2s;"
+          style="transition: right 0.2s"
         >
           <ArrowSvg :class="isSceneChangesCollapsed ? 'w-4 h-4 rotate-180' : 'w-4 h-4'" />
         </button>
@@ -99,7 +120,7 @@
         <transition name="fade">
           <div
             v-if="!isSceneChangesCollapsed"
-            class="fixed top-[88px] right-0 z-40 h-fit w-64 max-w-full flex flex-col pr-2 "
+            class="fixed top-[88px] right-0 z-40 h-fit w-64 max-w-full flex flex-col pr-2"
           >
             <SceneChangesList
               :sceneChanges="uniqueSceneChangeTimecodes"
@@ -118,7 +139,7 @@
           class="fixed top-[88px] left-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
           @click="toggleTimecodesPanel"
           :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'"
-          style="transition: left 0.2s;"
+          style="transition: left 0.2s"
         >
           <ArrowSvg :class="isTimecodesCollapsed ? 'w-4 h-4' : 'w-4 h-4 rotate-180'" />
         </button>
@@ -128,31 +149,38 @@
             v-if="!isTimecodesCollapsed"
             class="fixed top-[88px] left-0 z-40 h-fit w-80 max-w-full flex flex-col overflow-y-auto"
           >
-                      <TimecodesListMultiLine
-            :timecodes="compatibleTimecodes"
-            :rythmo-lines-count="project?.rythmo_lines_count || 1"
-            :selected="selectedTimecode || undefined"
-            :project-id="project?.id || 0"
-            @select="selectTimecode"
-            @edit="editTimecode"
-            @delete="deleteTimecode"
-            @add="onAddTimecode"
-            @add-to-line="addTimecodeToLine"
-            @updated="loadTimecodes"
-          />
+            <TimecodesListMultiLine
+              :timecodes="compatibleTimecodes"
+              :rythmo-lines-count="project?.rythmo_lines_count || 1"
+              :selected="selectedTimecode || undefined"
+              :project-id="project?.id || 0"
+              @select="selectTimecode"
+              @edit="editTimecode"
+              @delete="deleteTimecode"
+              @add="onAddTimecode"
+              @add-to-line="addTimecodeToLine"
+              @updated="loadTimecodes"
+            />
           </div>
         </transition>
       </div>
 
       <!-- Center Panel - Video and Controls -->
-      <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]">
+      <div
+        class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]"
+      >
         <!-- Écran de chargement dans la zone vidéo -->
-        <div v-if="project && project.video_path && isVideoLoading" class="absolute inset-0 bg-gray-900 z-30 flex flex-col items-center justify-center rounded-lg h-full w-lvw">
+        <div
+          v-if="project && project.video_path && isVideoLoading"
+          class="absolute inset-0 bg-gray-900 z-30 flex flex-col items-center justify-center rounded-lg h-full w-lvw"
+        >
           <div class="flex flex-col items-center justify-center space-y-6">
             <!-- Spinner personnalisé -->
             <div class="relative">
               <div class="w-24 h-24 border-8 border-gray-700 rounded-full"></div>
-              <div class="w-24 h-24 border-8 border-agfa-blue border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+              <div
+                class="w-24 h-24 border-8 border-agfa-blue border-t-transparent rounded-full animate-spin absolute top-0 left-0"
+              ></div>
             </div>
 
             <!-- Message de chargement -->
@@ -200,29 +228,48 @@
         />
 
         <!-- Message si pas de vidéo -->
-        <div v-if="!project || !project.video_path" class="w-full max-w-3xl h-96 bg-gray-800 text-white flex items-center justify-center rounded-lg">
+        <div
+          v-if="!project || !project.video_path"
+          class="w-full max-w-3xl h-96 bg-gray-800 text-white flex items-center justify-center rounded-lg"
+        >
           Aucune vidéo
         </div>
 
-
         <!-- Boutons ajout changement de plan et ajout timecode -->
-        <div class="flex flex-row gap-2 mt-4 mb-2">
+        <div class="flex flex-row gap-3 mt-4 mb-2 w-full max-w-3xl">
+          <!-- Bouton Ajouter un changement de plan -->
           <button
-            class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+            class="scene-button flex-1 flex items-center justify-center gap-2 text-white border rounded-lg px-4 py-3 font-semibold cursor-pointer shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 active:scale-95
+              bg-[rgba(101,115,144,0.2)] border-[rgba(101,115,144,0.4)]
+              hover:bg-[rgba(101,115,144,0.4)] hover:border-[rgba(101,115,144,0.6)]
+              disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-[rgba(75,85,99,0.2)]"
             @click="addSceneChange"
+            title="Ajouter un changement de plan (S)"
           >
-            Ajouter un changement de plan
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <line x1="12" y1="4" x2="12" y2="20" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="12" cy="4" r="2" fill="currentColor"/>
+            </svg>
+            <span>Changement de plan</span>
           </button>
+
+          <!-- Bouton Ajouter un timecode -->
           <button
-            class="bg-agfa-strong hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+            class="timecode-button flex-1 flex items-center justify-center gap-2 text-white border rounded-lg px-4 py-3 font-semibold cursor-pointer shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 active:scale-95
+              bg-[rgba(132,85,246,0.2)] border-[rgba(132,85,246,0.4)]
+              hover:bg-[rgba(132,85,246,0.4)] hover:border-[rgba(132,85,246,0.6)]"
             @click="onAddTimecode"
-            title="Ajouter un timecode"
+            title="Ajouter un timecode (T)"
           >
-            + Timecode
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="4" y="8" width="16" height="8" rx="2" stroke-width="2"/>
+              <path d="M8 11h8M8 13h6" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Timecode</span>
           </button>
         </div>
 
-  <!-- CharactersList moved inside MultiRythmoBand (forwarded props/events) -->
+        <!-- CharactersList moved inside MultiRythmoBand (forwarded props/events) -->
 
         <!-- Barre de navigation vidéo -->
         <VideoNavigationBar
@@ -272,9 +319,6 @@
           @delete-scene-change="onDeleteSceneChangeFromBand"
         />
 
-
-
-
         <!-- <RythmoControls
           :isVideoPaused="isVideoPaused"
           @seek="seek"
@@ -316,20 +360,19 @@
     />
 
     <!-- Modal des raccourcis clavier -->
-    <KeyboardShortcutsModal
-      :show="showKeyboardShortcuts"
-      @close="showKeyboardShortcuts = false"
-    />
+    <KeyboardShortcutsModal :show="showKeyboardShortcuts" @close="showKeyboardShortcuts = false" />
 
     <!-- Modal des paramètres du projet -->
-    <ProjectSettingsModal
-      :show="showProjectSettings"
-      @close="showProjectSettings = false"
-    />
+    <ProjectSettingsModal :show="showProjectSettings" @close="showProjectSettings = false" />
 
     <!-- Modal de gestion des collaborateurs -->
-    <div v-if="showCollaboratorsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+    <div
+      v-if="showCollaboratorsModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+      >
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">
             Gérer les collaborateurs
@@ -339,20 +382,20 @@
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
             </svg>
           </button>
         </div>
 
-        <CollaboratorsPanel
-          v-if="project"
-          :projectId="project.id"
-          :canManage="canManageProject"
-        />
+        <CollaboratorsPanel v-if="project" :projectId="project.id" :canManage="canManageProject" />
       </div>
     </div>
   </div>
-
 </template>
 
 <script setup lang="ts">
@@ -422,7 +465,11 @@ async function onDeleteSceneChange(idx: number) {
 }
 
 // Nouveaux gestionnaires pour les événements des bandes rythmo
-async function onUpdateSceneChangeFromBand(payload: { id: number; newTimecode: number; isPreview: boolean }) {
+async function onUpdateSceneChangeFromBand(payload: {
+  id: number
+  newTimecode: number
+  isPreview: boolean
+}) {
   if (payload.isPreview) {
     // Pour le preview, on peut juste retourner sans rien faire
     // Le feedback visuel est géré par le composant qui drag
@@ -431,11 +478,11 @@ async function onUpdateSceneChangeFromBand(payload: { id: number; newTimecode: n
 
   try {
     const updatedSceneChange = await sceneChangesApi.updateSceneChange(payload.id, {
-      timecode: payload.newTimecode
+      timecode: payload.newTimecode,
     })
 
     // Mettre à jour dans la liste locale
-    const index = sceneChanges.value.findIndex(sc => sc.id === payload.id)
+    const index = sceneChanges.value.findIndex((sc) => sc.id === payload.id)
     if (index !== -1) {
       sceneChanges.value[index] = updatedSceneChange
       // Retrier par timecode
@@ -452,7 +499,7 @@ async function onDeleteSceneChangeFromBand(payload: { id: number }) {
     await sceneChangesApi.deleteSceneChange(payload.id)
 
     // Retirer de la liste locale
-    const index = sceneChanges.value.findIndex(sc => sc.id === payload.id)
+    const index = sceneChanges.value.findIndex((sc) => sc.id === payload.id)
     if (index !== -1) {
       sceneChanges.value.splice(index, 1)
     }
@@ -483,8 +530,8 @@ const sceneChanges = ref<SceneChange[]>([])
 
 // Computed pour s'assurer que sceneChanges n'a pas de doublons
 const uniqueSceneChanges = computed(() => {
-  return sceneChanges.value.filter((sc, index, array) =>
-    array.findIndex(s => s.id === sc.id) === index
+  return sceneChanges.value.filter(
+    (sc, index, array) => array.findIndex((s) => s.id === sc.id) === index,
   )
 })
 
@@ -519,10 +566,10 @@ interface Project {
   user_id?: number
   owner?: { id: number; name: string; email: string }
   collaborators?: Array<{
-    id: number;
-    name: string;
-    email: string;
-    permission?: string;
+    id: number
+    name: string
+    email: string
+    permission?: string
     pivot?: { permission: string; created_at: string }
   }>
 }
@@ -620,13 +667,13 @@ useCollaborativeRefresh({
   hasCollaborators: hasActiveCollaborators,
   isEditingContent: computed(() => isEditingText.value || !isVideoPaused.value), // Ne pas synchro si édition OU vidéo en lecture
   onRefresh: syncCollaborativeData,
-  intervalMs: 4000 // Sync toutes les 4 secondes
+  intervalMs: 4000, // Sync toutes les 4 secondes
 })
 
 // Computed pour les timecodes de scene changes uniques
 const uniqueSceneChangeTimecodes = computed(() => {
   // Utilise un Set pour éliminer les doublons, puis convertit en array
-  const uniqueTimecodes = [...new Set(uniqueSceneChanges.value.map(sc => sc.timecode))]
+  const uniqueTimecodes = [...new Set(uniqueSceneChanges.value.map((sc) => sc.timecode))]
   return uniqueTimecodes.sort((a, b) => a - b)
 })
 
@@ -634,13 +681,13 @@ const uniqueSceneChangeTimecodes = computed(() => {
 function findFreeTimecodePosition(
   preferredStart: number,
   duration: number,
-  lineNumber: number
+  lineNumber: number,
 ): { start: number; end: number } {
   const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
 
   // Récupère tous les timecodes de la même ligne, triés par ordre de début
   const sameLineTimecodes = allTimecodes.value
-    .filter(tc => tc.line_number === lineNumber)
+    .filter((tc) => tc.line_number === lineNumber)
     .sort((a, b) => a.start - b.start)
 
   // Si pas de timecodes sur cette ligne, utiliser la position préférée
@@ -650,7 +697,7 @@ function findFreeTimecodePosition(
 
   // Vérifie si l'espace au curseur (position préférée) est libre
   const preferredEnd = preferredStart + duration
-  const hasConflictAtPreferred = sameLineTimecodes.some(tc => {
+  const hasConflictAtPreferred = sameLineTimecodes.some((tc) => {
     // Il y a conflit si les plages se chevauchent (avec marge)
     return !(preferredEnd + MARGIN <= tc.start || preferredStart >= tc.end + MARGIN)
   })
@@ -672,21 +719,25 @@ function adjustTimecodeForModal(
   newStart: number,
   newEnd: number,
   lineNumber: number,
-  excludeTimecodeId?: number
+  excludeTimecodeId?: number,
 ): { start: number; end: number } {
   const MARGIN = 0.1 // Marge de sécurité de 0.1 seconde
 
   // Récupère tous les timecodes de la même ligne, sauf celui qu'on exclut
   const sameLineTimecodes = allTimecodes.value
-    .filter(tc => tc.line_number === lineNumber && tc.id !== excludeTimecodeId)
+    .filter((tc) => tc.line_number === lineNumber && tc.id !== excludeTimecodeId)
     .sort((a, b) => a.start - b.start)
 
   let adjustedStart = newStart
   let adjustedEnd = newEnd
 
   // Trouve les timecodes qui pourraient être en conflit
-  const conflictingBefore = sameLineTimecodes.filter(tc => tc.end > adjustedStart - MARGIN && tc.start < adjustedStart)
-  const conflictingAfter = sameLineTimecodes.filter(tc => tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd)
+  const conflictingBefore = sameLineTimecodes.filter(
+    (tc) => tc.end > adjustedStart - MARGIN && tc.start < adjustedStart,
+  )
+  const conflictingAfter = sameLineTimecodes.filter(
+    (tc) => tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd,
+  )
 
   // Ajuster le début si conflit avec un timecode précédent
   if (conflictingBefore.length > 0) {
@@ -706,8 +757,8 @@ function adjustTimecodeForModal(
     adjustedEnd = adjustedStart + originalDuration
 
     // Vérifier à nouveau les conflits après
-    const stillConflictingAfter = sameLineTimecodes.find(tc =>
-      tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd
+    const stillConflictingAfter = sameLineTimecodes.find(
+      (tc) => tc.start < adjustedEnd + MARGIN && tc.end > adjustedEnd,
     )
     if (stillConflictingAfter) {
       adjustedEnd = stillConflictingAfter.start - MARGIN
@@ -734,9 +785,7 @@ const hasProjectAccess = computed(() => {
 
   // Collaborateur a accès
   if (project.value.collaborators && authStore.user) {
-    return project.value.collaborators.some(
-      collab => collab.id === authStore.user!.id
-    )
+    return project.value.collaborators.some((collab) => collab.id === authStore.user!.id)
   }
 
   return false
@@ -754,7 +803,7 @@ const canManageProject = computed(() => {
   // Collaborateur avec permission 'admin'
   if (project.value.collaborators && authStore.user) {
     const userCollaborator = project.value.collaborators.find(
-      collab => collab.id === authStore.user!.id
+      (collab) => collab.id === authStore.user!.id,
     )
     if (userCollaborator) {
       // Support des deux structures possibles: permission directe ou dans pivot
@@ -774,8 +823,8 @@ const compatibleTimecodes = computed(() => {
   // Utilise d'abord les nouveaux timecodes de l'API
   if (allTimecodes.value.length > 0) {
     // Filtrer les doublons par ID au cas où il y en aurait
-    const uniqueTimecodes = allTimecodes.value.filter((tc, index, array) =>
-      tc.id != null && array.findIndex(t => t.id === tc.id) === index
+    const uniqueTimecodes = allTimecodes.value.filter(
+      (tc, index, array) => tc.id != null && array.findIndex((t) => t.id === tc.id) === index,
     )
     return uniqueTimecodes
   }
@@ -804,10 +853,10 @@ const compatibleTimecodes = computed(() => {
   return oldTimecodes.map((tc, index) => {
     // Crée un ID temporaire vraiment unique basé sur les propriétés du timecode
     const hash = Math.abs(
-      (project.value!.id * 1000000) +
-      (index * 10000) +
-      (Math.round(tc.start * 100)) +
-      (Math.round(tc.end * 100))
+      project.value!.id * 1000000 +
+        index * 10000 +
+        Math.round(tc.start * 100) +
+        Math.round(tc.end * 100),
     )
     return {
       id: hash + 100000, // Décale pour éviter les conflits avec les vrais IDs
@@ -815,7 +864,7 @@ const compatibleTimecodes = computed(() => {
       line_number: 1, // Tous sur la ligne 1 par défaut
       start: tc.start,
       end: tc.end,
-      text: tc.text
+      text: tc.text,
     }
   })
 })
@@ -856,9 +905,10 @@ const selectedTimecode = computed(() => {
 
 // Fonctions pour la nouvelle interface TimecodesListMultiLine
 function selectTimecode(timecode: Timecode) {
-  const idx = compatibleTimecodes.value.findIndex(tc =>
-    tc.id === timecode.id ||
-    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
+  const idx = compatibleTimecodes.value.findIndex(
+    (tc) =>
+      tc.id === timecode.id ||
+      (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text),
   )
   if (idx >= 0) {
     onSelectTimecode(idx)
@@ -866,9 +916,10 @@ function selectTimecode(timecode: Timecode) {
 }
 
 function editTimecode(timecode: Timecode) {
-  const idx = compatibleTimecodes.value.findIndex(tc =>
-    tc.id === timecode.id ||
-    (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text)
+  const idx = compatibleTimecodes.value.findIndex(
+    (tc) =>
+      tc.id === timecode.id ||
+      (tc.start === timecode.start && tc.end === timecode.end && tc.text === timecode.text),
   )
   if (idx >= 0) {
     onEditTimecode(idx)
@@ -882,7 +933,7 @@ function deleteTimecode(timecode: Timecode) {
 function addTimecodeToLine(lineNumber: number) {
   // Ouvre le modal avec la ligne pré-sélectionnée
   // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
-  const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+  const adjustedTime = Math.max(0, currentTime.value - FRAME_OFFSET / FPS)
 
   editTimecodeIdx.value = null
   Object.assign(modalTimecode, {
@@ -890,7 +941,7 @@ function addTimecodeToLine(lineNumber: number) {
     end: adjustedTime + 2,
     text: '',
     line_number: lineNumber,
-    character_id: activeCharacter.value?.id || null
+    character_id: activeCharacter.value?.id || null,
   })
   showTimecodeModal.value = true
 }
@@ -930,7 +981,7 @@ function onCharacterSaved(character: Character) {
   editingCharacter.value = null
 
   // Ajouter ou mettre à jour le personnage dans la liste
-  const existingIndex = allCharacters.value.findIndex(c => c.id === character.id)
+  const existingIndex = allCharacters.value.findIndex((c) => c.id === character.id)
   if (existingIndex >= 0) {
     allCharacters.value[existingIndex] = character
   } else {
@@ -950,7 +1001,7 @@ function onCharacterSaved(character: Character) {
 }
 
 function onCharacterDeleted(characterId: number) {
-  allCharacters.value = allCharacters.value.filter(c => c.id !== characterId)
+  allCharacters.value = allCharacters.value.filter((c) => c.id !== characterId)
 
   // Si le personnage supprimé était actif, sélectionner le premier disponible
   if (activeCharacter.value?.id === characterId) {
@@ -972,13 +1023,19 @@ function onSelectedLineChanged(lineNumber: number) {
 }
 
 // Nouvelle fonction onUpdateTimecode pour le nouveau format
-async function onUpdateTimecode({ timecode, text }: { timecode: ApiTimecode | Timecode; text: string }) {
+async function onUpdateTimecode({
+  timecode,
+  text,
+}: {
+  timecode: ApiTimecode | Timecode
+  text: string
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
   try {
     await timecodeApi.update(project.value.id, tc.id, { text })
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].text = text
     }
@@ -988,13 +1045,21 @@ async function onUpdateTimecode({ timecode, text }: { timecode: ApiTimecode | Ti
 }
 
 // Nouvelle fonction pour le redimensionnement des timecodes
-async function onUpdateTimecodeBounds({ timecode, start, end }: { timecode: ApiTimecode | Timecode; start: number; end: number }) {
+async function onUpdateTimecodeBounds({
+  timecode,
+  start,
+  end,
+}: {
+  timecode: ApiTimecode | Timecode
+  start: number
+  end: number
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
   try {
     await timecodeApi.update(project.value.id, tc.id, { start, end })
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].start = start
       allTimecodes.value[index].end = end
@@ -1005,7 +1070,15 @@ async function onUpdateTimecodeBounds({ timecode, start, end }: { timecode: ApiT
 }
 
 // Nouvelle fonction pour le déplacement des timecodes
-async function onMoveTimecode({ timecode, newStart, newLineNumber }: { timecode: ApiTimecode | Timecode; newStart: number; newLineNumber: number }) {
+async function onMoveTimecode({
+  timecode,
+  newStart,
+  newLineNumber,
+}: {
+  timecode: ApiTimecode | Timecode
+  newStart: number
+  newLineNumber: number
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
 
@@ -1017,24 +1090,29 @@ async function onMoveTimecode({ timecode, newStart, newLineNumber }: { timecode:
     await timecodeApi.update(project.value.id, tc.id, {
       start: newStart,
       end: newEnd,
-      line_number: newLineNumber
+      line_number: newLineNumber,
     })
 
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].start = newStart
       allTimecodes.value[index].end = newEnd
       allTimecodes.value[index].line_number = newLineNumber
     }
-
   } catch (error) {
     console.error('Erreur lors du déplacement du timecode:', error)
   }
 }
 
 // Nouvelle fonction pour basculer l'affichage du personnage
-async function onUpdateTimecodeShowCharacter({ timecode, showCharacter }: { timecode: ApiTimecode | Timecode; showCharacter: boolean }) {
+async function onUpdateTimecodeShowCharacter({
+  timecode,
+  showCharacter,
+}: {
+  timecode: ApiTimecode | Timecode
+  showCharacter: boolean
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
 
@@ -1042,17 +1120,23 @@ async function onUpdateTimecodeShowCharacter({ timecode, showCharacter }: { time
     await timecodeApi.update(project.value.id, tc.id, { show_character: showCharacter })
 
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].show_character = showCharacter
     }
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de l\'affichage du personnage:', error)
+    console.error("Erreur lors de la mise à jour de l'affichage du personnage:", error)
   }
 }
 
 // Nouvelle fonction pour changer le personnage d'un timecode
-async function onUpdateTimecodeCharacter({ timecode, characterId }: { timecode: ApiTimecode | Timecode; characterId: number | null }) {
+async function onUpdateTimecodeCharacter({
+  timecode,
+  characterId,
+}: {
+  timecode: ApiTimecode | Timecode
+  characterId: number | null
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
 
@@ -1060,12 +1144,12 @@ async function onUpdateTimecodeCharacter({ timecode, characterId }: { timecode: 
     await timecodeApi.update(project.value.id, tc.id, { character_id: characterId })
 
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].character_id = characterId
       // Trouve et assigne l'objet character complet
       if (characterId) {
-        allTimecodes.value[index].character = allCharacters.value.find(c => c.id === characterId)
+        allTimecodes.value[index].character = allCharacters.value.find((c) => c.id === characterId)
       } else {
         allTimecodes.value[index].character = undefined
       }
@@ -1076,7 +1160,13 @@ async function onUpdateTimecodeCharacter({ timecode, characterId }: { timecode: 
 }
 
 // Nouvelle fonction pour sauvegarder les positions des séparateurs
-async function onUpdateTimecodeSeparatorPositions({ timecode, separatorPositions }: { timecode: ApiTimecode | Timecode; separatorPositions: Record<number, number> }) {
+async function onUpdateTimecodeSeparatorPositions({
+  timecode,
+  separatorPositions,
+}: {
+  timecode: ApiTimecode | Timecode
+  separatorPositions: Record<number, number>
+}) {
   const tc = timecode as ApiTimecode
   if (!tc.id || !project.value) return
 
@@ -1084,7 +1174,7 @@ async function onUpdateTimecodeSeparatorPositions({ timecode, separatorPositions
     await timecodeApi.update(project.value.id, tc.id, { separator_positions: separatorPositions })
 
     // Met à jour localement
-    const index = allTimecodes.value.findIndex(t => t.id === tc.id)
+    const index = allTimecodes.value.findIndex((t) => t.id === tc.id)
     if (index >= 0) {
       allTimecodes.value[index].separator_positions = separatorPositions
     }
@@ -1097,10 +1187,10 @@ async function onUpdateTimecodeSeparatorPositions({ timecode, separatorPositions
 async function addSceneChange() {
   if (!project.value) return
   // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
-  const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+  const adjustedTime = Math.max(0, currentTime.value - FRAME_OFFSET / FPS)
   const t = Math.round(adjustedTime * 100) / 100
   // Vérifie si déjà présent (tolérance 0.01s)
-  if (sceneChanges.value.some(sc => Math.abs(sc.timecode - t) < 0.01)) return
+  if (sceneChanges.value.some((sc) => Math.abs(sc.timecode - t) < 0.01)) return
   try {
     const res = await api.post(`/projects/${project.value.id}/scene-changes`, { timecode: t })
     sceneChanges.value.push(res.data)
@@ -1113,7 +1203,13 @@ async function addSceneChange() {
 // Modal d'édition/ajout de timecode
 const showTimecodeModal = ref(false)
 const editTimecodeIdx = ref<number | null>(null)
-const modalTimecode = reactive<Timecode>({ start: 0, end: 0, text: '', line_number: 1, character_id: null })
+const modalTimecode = reactive<Timecode>({
+  start: 0,
+  end: 0,
+  text: '',
+  line_number: 1,
+  character_id: null,
+})
 
 // Modal d'édition de changement de plan
 const showSceneChangeModal = ref(false)
@@ -1319,7 +1415,7 @@ function onEditTimecode(idx: number) {
       start: tc.start,
       end: tc.end,
       text: tc.text,
-      line_number: tc.line_number || 1
+      line_number: tc.line_number || 1,
     })
   }
   showTimecodeModal.value = true
@@ -1329,13 +1425,13 @@ async function onAddTimecode() {
 
   try {
     // Applique le décalage de compensation (FRAME_OFFSET frames en arrière)
-    const adjustedTime = Math.max(0, currentTime.value - (FRAME_OFFSET / FPS))
+    const adjustedTime = Math.max(0, currentTime.value - FRAME_OFFSET / FPS)
 
     // Trouver une position libre pour le nouveau timecode
     const freePosition = findFreeTimecodePosition(
       adjustedTime,
       6, // durée de 6 secondes
-      selectedLineNumber.value
+      selectedLineNumber.value,
     )
 
     // Créer un nouveau timecode de 6 secondes directement dans la base
@@ -1345,7 +1441,7 @@ async function onAddTimecode() {
       text: 'Insérer du texte ici',
       line_number: selectedLineNumber.value, // Utilise la ligne actuellement sélectionnée
       character_id: activeCharacter.value?.id || null,
-      show_character: !!activeCharacter.value
+      show_character: !!activeCharacter.value,
     }
 
     await timecodeApi.create(project.value.id, newTimecodeData)
@@ -1374,7 +1470,12 @@ async function onDeleteTimecode(payload: { timecode: Timecode }) {
   }
 }
 // Callback pour la soumission du modal de timecode
-function onTimecodeModalSubmit(data: { line_number: number; start: number; end: number; text: string }) {
+function onTimecodeModalSubmit(data: {
+  line_number: number
+  start: number
+  end: number
+  text: string
+}) {
   if (!project.value) return
 
   // Si editTimecodeIdx !== null, on met à jour le timecode existant
@@ -1382,17 +1483,12 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
     const tc = compatibleTimecodes.value[editTimecodeIdx.value]
     if (tc?.id) {
       // Ajuster les bornes pour éviter les superpositions
-      const adjustedBounds = adjustTimecodeForModal(
-        data.start,
-        data.end,
-        data.line_number,
-        tc.id
-      )
+      const adjustedBounds = adjustTimecodeForModal(data.start, data.end, data.line_number, tc.id)
 
       const adjustedData = {
         ...data,
         start: adjustedBounds.start,
-        end: adjustedBounds.end
+        end: adjustedBounds.end,
       }
 
       timecodeApi.update(project.value.id, tc.id, adjustedData).then(() => {
@@ -1404,16 +1500,12 @@ function onTimecodeModalSubmit(data: { line_number: number; start: number; end: 
   }
 
   // Pour la création, trouver une position libre
-  const freePosition = findFreeTimecodePosition(
-    data.start,
-    data.end - data.start,
-    data.line_number
-  )
+  const freePosition = findFreeTimecodePosition(data.start, data.end - data.start, data.line_number)
 
   const adjustedData = {
     ...data,
     start: freePosition.start,
-    end: freePosition.end
+    end: freePosition.end,
   }
 
   // Sinon on crée un nouveau timecode
@@ -1446,7 +1538,7 @@ async function onSceneChangeModalSubmit(newTimecode: number) {
 
   try {
     const updatedSceneChange = await sceneChangesApi.updateSceneChange(sceneChange.id, {
-      timecode: newTimecode
+      timecode: newTimecode,
     })
 
     // Mettre à jour dans la liste locale
@@ -1469,7 +1561,7 @@ function goToNextSceneChange() {
   if (!uniqueSceneChangeTimecodes.value.length) return
 
   const sortedSceneChanges = [...uniqueSceneChangeTimecodes.value].sort((a, b) => a - b)
-  const currentIdx = sortedSceneChanges.findIndex(sc => sc > currentTime.value)
+  const currentIdx = sortedSceneChanges.findIndex((sc) => sc > currentTime.value)
 
   if (currentIdx !== -1) {
     // Aller au prochain changement de plan
@@ -1507,7 +1599,7 @@ function goToNextTimecode() {
   if (!allTimecodes.value.length) return
 
   const sortedTimecodes = [...allTimecodes.value].sort((a, b) => a.start - b.start)
-  const currentIdx = sortedTimecodes.findIndex(tc => tc.start > currentTime.value)
+  const currentIdx = sortedTimecodes.findIndex((tc) => tc.start > currentTime.value)
 
   if (currentIdx !== -1) {
     // Aller au prochain timecode
@@ -1543,7 +1635,7 @@ function goToPreviousTimecode() {
 // Fonction helper pour seek avec compensation
 function seekToTime(time: number) {
   // Appliquer la compensation FRAME_OFFSET pour la synchronisation
-  const compensatedTime = time + (FRAME_OFFSET / FPS)
+  const compensatedTime = time + FRAME_OFFSET / FPS
   currentTime.value = Math.max(0, compensatedTime)
   lastSeekFromTimecode = true
 }
@@ -1605,7 +1697,7 @@ function handleGlobalKeydown(event: KeyboardEvent) {
     event.preventDefault()
     addSceneChange()
     return
-  }  // Échap pour retour aux projets (uniquement si le modal n'est pas ouvert)
+  } // Échap pour retour aux projets (uniquement si le modal n'est pas ouvert)
   if (event.key === 'Escape' && !showKeyboardShortcuts.value) {
     event.preventDefault()
     goBack()
@@ -1695,8 +1787,8 @@ onMounted(async () => {
       router.push({
         name: 'home',
         query: {
-          error: 'Vous n\'avez pas les droits pour accéder à ce projet'
-        }
+          error: "Vous n'avez pas les droits pour accéder à ce projet",
+        },
       })
       return
     }
@@ -1707,8 +1799,8 @@ onMounted(async () => {
     router.push({
       name: 'home',
       query: {
-        error: 'Projet introuvable ou erreur de chargement'
-      }
+        error: 'Projet introuvable ou erreur de chargement',
+      },
     })
   } finally {
     loading.value = false
@@ -1721,7 +1813,11 @@ onMounted(async () => {
   const onFocusIn = (ev: Event) => {
     const target = ev.target as HTMLElement | null
     if (!target) return
-    if (target.matches('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]')) {
+    if (
+      target.matches(
+        'input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]',
+      )
+    ) {
       if (!isEditingText.value) {
         isEditingText.value = true
         // Pause vidéo si en lecture
@@ -1739,7 +1835,12 @@ onMounted(async () => {
     // Attendre fin de boucle pour voir si nouveau focus est toujours dans un champ
     requestAnimationFrame(() => {
       const active = document.activeElement as HTMLElement | null
-      if (active && (active.matches('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]'))) {
+      if (
+        active &&
+        active.matches(
+          'input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]',
+        )
+      ) {
         return // toujours dans un champ
       }
       if (isEditingText.value) {
@@ -1769,7 +1870,6 @@ onUnmounted(() => {
   if (focusInHandler) window.removeEventListener('focusin', focusInHandler)
   if (focusOutHandler) window.removeEventListener('focusout', focusOutHandler)
 })
-
 
 // Seek déclenché par clic sur un bloc de la bande rythmo
 const onRythmoSeek = (time: number) => {
@@ -1804,10 +1904,12 @@ const onNavigationSeek = (time: number) => {
 }
 </script>
 <style scoped>
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.2s;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
@@ -1831,8 +1933,8 @@ const onNavigationSeek = (time: number) => {
   width: 60px;
   height: 60px;
   border: 3px solid transparent;
-  border-top-color: #8455F6;
-  border-right-color: #8455F6;
+  border-top-color: #8455f6;
+  border-right-color: #8455f6;
   border-radius: 50%;
   animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
 }
@@ -1843,8 +1945,8 @@ const onNavigationSeek = (time: number) => {
   width: 45px;
   height: 45px;
   border: 2px solid transparent;
-  border-bottom-color: #60A5FA;
-  border-left-color: #60A5FA;
+  border-bottom-color: #60a5fa;
+  border-left-color: #60a5fa;
   border-radius: 50%;
   animation: spin-reverse 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
 }
@@ -1853,7 +1955,7 @@ const onNavigationSeek = (time: number) => {
 .spinner-dot {
   width: 12px;
   height: 12px;
-  background: linear-gradient(135deg, #8455F6, #60A5FA);
+  background: linear-gradient(135deg, #8455f6, #60a5fa);
   border-radius: 50%;
   animation: pulse 1s ease-in-out infinite;
   box-shadow: 0 0 20px rgba(132, 85, 246, 0.6);
@@ -1878,7 +1980,8 @@ const onNavigationSeek = (time: number) => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
