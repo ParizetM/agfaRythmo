@@ -277,6 +277,7 @@ const progressBarContainer = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const hoverTime = ref<number | null>(null)
 const pressedKey = ref<string | null>(null)
+const pendingSeekTime = ref<number | null>(null)
 
 // Constantes pour la compensation de décalage (identique à RythmoBandSingle)
 const FRAME_OFFSET = 8 // Décalage de 8 frames
@@ -496,7 +497,7 @@ function getClientXFromEvent(event: TouchEvent | MouseEvent): number {
 function onMouseDown(event: MouseEvent) {
   isDragging.value = true
   const time = getTimeFromPosition(event.clientX)
-  emit('seek', time)
+  pendingSeekTime.value = time
   event.preventDefault()
 }
 
@@ -505,17 +506,25 @@ function onMouseMove(event: MouseEvent) {
   hoverTime.value = time
 
   if (isDragging.value) {
-    emit('seek', time)
+    pendingSeekTime.value = time
   }
 }
 
 function onMouseUp() {
+  if (isDragging.value && pendingSeekTime.value !== null) {
+    emit('seek', pendingSeekTime.value)
+  }
   isDragging.value = false
+  pendingSeekTime.value = null
 }
 
 function onMouseLeave() {
   hoverTime.value = null
+  if (isDragging.value && pendingSeekTime.value !== null) {
+    emit('seek', pendingSeekTime.value)
+  }
   isDragging.value = false
+  pendingSeekTime.value = null
 }
 
 // Gestion des événements tactiles pour mobile
@@ -523,7 +532,7 @@ function onTouchStart(event: TouchEvent) {
   isDragging.value = true
   const clientX = getClientXFromEvent(event)
   const time = getTimeFromPosition(clientX)
-  emit('seek', time)
+  pendingSeekTime.value = time
   event.preventDefault()
 }
 
@@ -533,14 +542,18 @@ function onTouchMove(event: TouchEvent) {
   hoverTime.value = time
 
   if (isDragging.value) {
-    emit('seek', time)
+    pendingSeekTime.value = time
     event.preventDefault() // Empêche le défilement de la page
   }
 }
 
 function onTouchEnd() {
+  if (isDragging.value && pendingSeekTime.value !== null) {
+    emit('seek', pendingSeekTime.value)
+  }
   isDragging.value = false
   hoverTime.value = null
+  pendingSeekTime.value = null
 }
 
 // Gestion des événements clavier avec animations
