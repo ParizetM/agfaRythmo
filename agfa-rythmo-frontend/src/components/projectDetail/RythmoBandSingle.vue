@@ -274,7 +274,7 @@
           :style="sceneChangeDragOverlayStyle"
         ></div>
 
-        <div v-if="isLastLine" class="rythmo-ticks pointer-events-none">
+        <div v-if="isLastLine && !props.hideConfig" class="rythmo-ticks pointer-events-none">
           <template v-for="(tick, tickIdx) in ticks" :key="'tick' + tickIdx">
             <div
               class="rythmo-tick"
