@@ -39,16 +39,19 @@
         }"
       >
         <div class="video-container">
+          <!-- Pas d'indicateur de buffering dans l'aperçu final - lecture fluide uniquement -->
+
           <video
             ref="video"
             :src="videoSrc"
             class="preview-video"
             playsinline
             webkit-playsinline
+            preload="auto"
             @loadedmetadata="onLoadedMetadata"
+            @canplay="onCanPlay"
+            @loadeddata="onLoadedData"
             @error="(e) => console.error('[video] Erreur chargement:', e)"
-            @canplay="() => console.log('[video] canplay event')"
-            @loadstart="() => console.log('[video] loadstart event')"
             @click="playError && video && video.play()"
             tabindex="0"
           />
@@ -151,6 +154,18 @@ function onLoadedMetadata() {
       'isVideoLoading:',
       isVideoLoading.value
     )
+  }
+}
+
+function onCanPlay() {
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
+  }
+}
+
+function onLoadedData() {
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
   }
 }
 
@@ -360,6 +375,16 @@ onUnmounted(() => {
   justify-content: center;
   width: 100%;
   flex-shrink: 0;
+}
+
+.buffering-indicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
 }
 
 /* Mode overlay : la vidéo prend tout l'espace */

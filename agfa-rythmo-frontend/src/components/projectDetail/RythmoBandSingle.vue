@@ -2050,11 +2050,18 @@ function onMoveEnd() {
   align-items: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
+  /* Optimisations GPU pour mobile */
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .rythmo-track-container {
   position: relative;
   height: v-bind('projectSettings.bandHeight + "px"');
   overflow: visible;
+  /* Optimisations GPU */
+  transform: translateZ(0);
 }
 .rythmo-text {
   /* plus de flex, tout est positionné en absolu */
@@ -2066,6 +2073,9 @@ function onMoveEnd() {
   font-size: 1.1rem;
   color: #fff;
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
+  /* Optimisations GPU */
+  transform: translateZ(0);
+  will-change: transform;
 }
 .rythmo-content {
   position: absolute;
@@ -2075,6 +2085,12 @@ function onMoveEnd() {
   height: v-bind('projectSettings.bandHeight + "px"');
   will-change: transform;
   transition: transform 0.18s cubic-bezier(0.4, 2, 0.6, 1);
+  /* Optimisations GPU pour mobile */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
 }
 .rythmo-content.no-transition {
   transition: none;

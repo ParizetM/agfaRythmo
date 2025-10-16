@@ -147,7 +147,7 @@
       <!-- Center Panel - Video and Controls -->
       <div class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]">
         <!-- Écran de chargement dans la zone vidéo -->
-        <div v-if="project && project.video_path && isVideoLoading" class="absolute inset-0 bg-gray-900 z-10 flex flex-col items-center justify-center rounded-lg h-full w-lvw">
+        <div v-if="project && project.video_path && isVideoLoading" class="absolute inset-0 bg-gray-900 z-30 flex flex-col items-center justify-center rounded-lg h-full w-lvw">
           <div class="flex flex-col items-center justify-center space-y-6">
             <!-- Spinner personnalisé -->
             <div class="relative">
@@ -168,6 +168,18 @@
           </div>
         </div>
 
+        <!-- Indicateur de buffering pendant le seek (toujours au-dessus de la vidéo) -->
+        <div
+          v-if="isVideoBuffering && !isVideoLoading"
+          class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+        >
+          <div class="buffering-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring-inner"></div>
+            <div class="spinner-dot"></div>
+          </div>
+        </div>
+
         <!-- Lecteur vidéo (toujours présent dans le DOM pour charger, masqué si loading) -->
         <VideoPlayer
           v-if="project && project.video_path"
@@ -176,6 +188,15 @@
           :currentTime="currentTime"
           @timeupdate="onVideoTimeUpdate"
           @loadedmetadata="onLoadedMetadata"
+          @canplay="onVideoCanPlay"
+          @canplaythrough="onVideoCanPlayThrough"
+          @loadeddata="onVideoLoadedData"
+          @seeking="onVideoSeeking"
+          @seeked="onVideoSeeked"
+          @waiting="onVideoWaiting"
+          @playing="onVideoPlaying"
+          @stalled="onVideoStalled"
+          @error="onVideoError"
         />
 
         <!-- Message si pas de vidéo -->
@@ -515,6 +536,12 @@ const videoFps = ref(25) // valeur par défaut, sera mise à jour
 const isVideoPaused = ref(true)
 const selectedTimecodeIdx = ref<number | null>(null)
 const isVideoLoading = ref(true) // Indique si la vidéo est en cours de chargement
+const isSeeking = ref(false) // Indique si on est en train de scrubber la vidéo
+const isVideoBuffering = ref(false) // Indique si la vidéo est en train de buffer
+
+// Throttle pour les mises à jour vidéo (optimisation mobile)
+let lastUpdateTime = 0
+const UPDATE_THROTTLE = 100 // ms entre chaque update (réduit la charge)
 
 // Constantes pour le décalage de synchronisation
 const FRAME_OFFSET = 8 // Décalage de 8 frames
@@ -1100,17 +1127,26 @@ function getVideoUrl(path?: string) {
 }
 
 function onVideoTimeUpdate(time: number) {
+  // Throttle des mises à jour pour améliorer les performances mobile
+  const now = Date.now()
+  if (now - lastUpdateTime < UPDATE_THROTTLE) {
+    return
+  }
+  lastUpdateTime = now
+
   // Si le seek vient d'un clic sur timecode, on ignore le premier event
   if (lastSeekFromTimecode) {
     lastSeekFromTimecode = false
     return
   }
   currentTime.value = time
-  // Sélectionne le timecode courant
+
+  // Sélectionne le timecode courant (optimisé)
   if (compatibleTimecodes.value.length > 0) {
     const idx = compatibleTimecodes.value.findIndex((tc) => time >= tc.start && time < tc.end)
     selectedTimecodeIdx.value = idx >= 0 ? idx : null
   }
+
   // Si la vidéo joue, smooth, sinon instantané
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
   instantRythmoScroll.value = !videoEl || videoEl.paused
@@ -1123,40 +1159,137 @@ function onLoadedMetadata(duration: number) {
   }
 }
 
+function onVideoCanPlay() {
+  // Sur mobile, canplay est souvent plus fiable que loadedmetadata
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
+  }
+}
+
+function onVideoCanPlayThrough() {
+  // La vidéo a assez de données pour jouer sans interruption
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
+  }
+  if (isVideoBuffering.value) {
+    isVideoBuffering.value = false
+  }
+}
+
+function onVideoLoadedData() {
+  // loadeddata signifie que les données sont prêtes
+  if (isVideoLoading.value) {
+    isVideoLoading.value = false
+  }
+}
+
+function onVideoSeeking() {
+  // La vidéo cherche une nouvelle position
+  isVideoBuffering.value = true
+  isSeeking.value = true
+}
+
+function onVideoSeeked() {
+  // La vidéo a trouvé la position
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  // Désactiver buffering seulement si on a assez de données
+  if (videoEl && videoEl.readyState >= 3) {
+    isVideoBuffering.value = false
+  }
+  // Garder isSeeking à true un moment pour éviter les animations
+  setTimeout(() => {
+    isSeeking.value = false
+  }, 200)
+}
+
+function onVideoWaiting() {
+  // La vidéo attend des données
+  isVideoBuffering.value = true
+}
+
+function onVideoPlaying() {
+  // La vidéo joue - désactiver buffering seulement si readyState OK
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (videoEl && videoEl.readyState >= 3) {
+    isVideoBuffering.value = false
+  }
+}
+
+function onVideoStalled() {
+  // Le téléchargement est bloqué
+  isVideoBuffering.value = true
+}
+
+function onVideoError(error: MediaError | null) {
+  // Erreur de chargement vidéo - afficher le buffering
+  isVideoBuffering.value = true
+
+  // Retry automatique pour les erreurs réseau (code 2)
+  if (error?.code === 2) {
+    setTimeout(() => {
+      const videoEl = document.querySelector('video') as HTMLVideoElement | null
+      if (videoEl) {
+        videoEl.load()
+      }
+    }, 2000)
+  }
+}
+
 function seek(delta: number) {
-  // Si delta vaut 0, toggle play/pause sur la vidéo
+  isSeeking.value = true
+
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
   if (delta === 0) {
+    // Toggle play/pause
     if (videoEl) {
       if (videoEl.paused) {
-        videoEl.play()
-        instantRythmoScroll.value = false // smooth
+        isVideoBuffering.value = true
+        videoEl.play().catch(() => {
+          // Si échec, on réessaie après avoir forcé le chargement
+          videoEl.load()
+        })
+        instantRythmoScroll.value = false
       } else {
         videoEl.pause()
-        instantRythmoScroll.value = true // instantané
+        instantRythmoScroll.value = true
       }
       isVideoPaused.value = videoEl.paused
     }
+    isSeeking.value = false
     return
   }
+
   // Avance/recul d'une seconde
   let t = currentTime.value + delta
   t = Math.max(0, Math.min(videoDuration.value, t))
   currentTime.value = t
-  // Si on modifie le temps, on met à jour la vidéo si possible
-  if (videoEl) videoEl.currentTime = t
-  instantRythmoScroll.value = true // instantané
+
+  if (videoEl) {
+    videoEl.currentTime = t
+  }
+  instantRythmoScroll.value = true
+
+  setTimeout(() => {
+    isSeeking.value = false
+  }, 200)
 }
 function seekFrame(delta: number) {
-  // Avance/recul d'une frame selon les fps
+  isSeeking.value = true
+
   const frameDuration = 1 / videoFps.value
   let t = currentTime.value + delta * frameDuration
   t = Math.max(0, Math.min(videoDuration.value, t))
   currentTime.value = t
-  // Met à jour la vidéo si possible
+
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
-  if (videoEl) videoEl.currentTime = t
-  instantRythmoScroll.value = true // instantané
+  if (videoEl) {
+    videoEl.currentTime = t
+  }
+  instantRythmoScroll.value = true
+
+  setTimeout(() => {
+    isSeeking.value = false
+  }, 200)
 }
 
 function updatePlayPauseState() {
@@ -1676,5 +1809,82 @@ const onNavigationSeek = (time: number) => {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+/* Spinner de buffering élégant */
+.buffering-spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Anneau extérieur qui tourne */
+.spinner-ring {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border: 3px solid transparent;
+  border-top-color: #8455F6;
+  border-right-color: #8455F6;
+  border-radius: 50%;
+  animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+/* Anneau intérieur qui tourne en sens inverse */
+.spinner-ring-inner {
+  position: absolute;
+  width: 45px;
+  height: 45px;
+  border: 2px solid transparent;
+  border-bottom-color: #60A5FA;
+  border-left-color: #60A5FA;
+  border-radius: 50%;
+  animation: spin-reverse 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+/* Point central qui pulse */
+.spinner-dot {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #8455F6, #60A5FA);
+  border-radius: 50%;
+  animation: pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(132, 85, 246, 0.6);
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
 }
 </style>

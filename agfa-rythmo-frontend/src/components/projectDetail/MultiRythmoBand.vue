@@ -445,12 +445,20 @@ onBeforeUnmount(() => {
   overflow-y: visible;
   overflow-x: visible;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* Optimisations GPU pour mobile */
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .rythmo-line-wrapper {
   position: relative;
   width: 100%;
   border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  /* Optimisations GPU */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .rythmo-line-wrapper:last-child {
