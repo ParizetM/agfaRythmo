@@ -85,7 +85,11 @@ export const useAuthStore = defineStore('auth', () => {
     return response
   }
 
-  const changePassword = async (data: { current_password: string; password: string; password_confirmation: string }) => {
+  const changePassword = async (data: {
+    current_password: string
+    password: string
+    password_confirmation: string
+  }) => {
     const response = await authService.changePassword(data)
     // Après un changement de mot de passe, le serveur supprime tous les tokens
     clearAuth()
@@ -104,6 +108,28 @@ export const useAuthStore = defineStore('auth', () => {
         // Token invalide, nettoyer
         clearAuth()
       }
+    }
+  }
+
+  // Vérifier la validité du token en appelant l'API
+  const checkAuth = async (): Promise<boolean> => {
+    if (!token.value) {
+      clearAuth()
+      return false
+    }
+
+    try {
+      // Configurer le header si pas déjà fait
+      if (!axios.defaults.headers.common['Authorization']) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+      }
+
+      await fetchProfile()
+      return true
+    } catch {
+      // Token invalide ou expiré
+      clearAuth()
+      return false
     }
   }
 
@@ -127,7 +153,8 @@ export const useAuthStore = defineStore('auth', () => {
     updateProfile,
     changePassword,
     initAuth,
+    checkAuth,
     setAuth,
-    clearAuth
+    clearAuth,
   }
 })

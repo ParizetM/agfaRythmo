@@ -27,10 +27,18 @@ api.interceptors.response.use(
       localStorage.removeItem('auth_token');
       delete api.defaults.headers.common['Authorization'];
 
-      // Rediriger vers la page de connexion si pas déjà en cours
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // Rediriger vers la page de connexion si pas déjà sur une page publique
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        // Sauvegarder l'URL actuelle pour redirection après login
+        const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?redirect=${redirectUrl}`;
       }
+    }
+
+    // Gérer aussi les 403 (accès refusé) - peut indiquer un problème de permissions
+    if (error.response?.status === 403) {
+      console.warn('Accès refusé:', error.response.data?.message || 'Permissions insuffisantes');
     }
 
     // Améliorer le message d'erreur pour le développement

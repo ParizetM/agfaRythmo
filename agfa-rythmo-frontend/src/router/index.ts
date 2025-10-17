@@ -69,23 +69,27 @@ const router = createRouter({
 router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) => {
   const authStore = useAuthStore()
 
-  // Initialiser l'authentification si pas encore fait
-  if (authStore.token && !authStore.user) {
-    try {
-      await authStore.initAuth()
-    } catch {
-      // Si l'initialisation échoue, continuer avec l'état non authentifié
+  // Vérifier systématiquement l'authentification pour les routes protégées
+  if (to.meta.requiresAuth) {
+    // Si pas de token stocké, rediriger vers login
+    if (!authStore.token) {
+      next({
+        name: 'login',
+        query: { redirect: to.fullPath }
+      })
+      return
     }
-  }
 
-  // Vérifier si la route nécessite une authentification
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Rediriger vers la page de connexion avec l'URL de retour
-    next({
-      name: 'login',
-      query: { redirect: to.fullPath }
-    })
-    return
+    // Vérifier la validité du token avec le backend
+    const isValid = await authStore.checkAuth()
+    if (!isValid) {
+      // Token invalide ou expiré, rediriger vers login
+      next({
+        name: 'login',
+        query: { redirect: to.fullPath }
+      })
+      return
+    }
   }
 
   // Vérifier si la route est réservée aux invités (non connectés)

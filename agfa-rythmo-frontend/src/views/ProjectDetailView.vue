@@ -1614,10 +1614,12 @@ function goToPreviousTimecode() {
   if (!allTimecodes.value.length) return
 
   const sortedTimecodes = [...allTimecodes.value].sort((a, b) => a.start - b.start)
-  // Trouver le dernier timecode avant le temps actuel (alternative à findLastIndex)
+  // Trouver le dernier timecode avant le temps actuel avec une tolérance de 0.1s
+  // pour éviter de rester coincé sur le timecode actuel à cause de la compensation
+  const tolerance = 0.1
   let currentIdx = -1
   for (let i = sortedTimecodes.length - 1; i >= 0; i--) {
-    if (sortedTimecodes[i].start < currentTime.value) {
+    if (sortedTimecodes[i].start < currentTime.value - tolerance) {
       currentIdx = i
       break
     }

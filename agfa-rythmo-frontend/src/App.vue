@@ -165,7 +165,7 @@ import { useRouter } from 'vue-router'
 import { EnvelopeIcon } from '@heroicons/vue/24/outline'
 import NotificationToast from './components/NotificationToast.vue'
 import { useInvitations } from './composables/useInvitations'
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -177,4 +177,43 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+// Vérification périodique de l'authentification (toutes les 5 minutes)
+let authCheckInterval: number | null = null
+
+const startAuthCheck = () => {
+  // Vérifier immédiatement au montage
+  if (authStore.isAuthenticated) {
+    authStore.checkAuth().then((isValid) => {
+      if (!isValid && router.currentRoute.value.meta.requiresAuth) {
+        router.push('/login')
+      }
+    })
+  }
+
+  // Puis vérifier toutes les 5 minutes
+  authCheckInterval = window.setInterval(async () => {
+    if (authStore.isAuthenticated) {
+      const isValid = await authStore.checkAuth()
+      if (!isValid && router.currentRoute.value.meta.requiresAuth) {
+        router.push('/login')
+      }
+    }
+  }, 5 * 60 * 1000) // 5 minutes
+}
+
+const stopAuthCheck = () => {
+  if (authCheckInterval) {
+    clearInterval(authCheckInterval)
+    authCheckInterval = null
+  }
+}
+
+onMounted(() => {
+  startAuthCheck()
+})
+
+onUnmounted(() => {
+  stopAuthCheck()
+})
 </script>
