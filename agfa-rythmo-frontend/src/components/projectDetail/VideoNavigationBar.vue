@@ -290,14 +290,14 @@ const linesCount = computed(() => {
 
 const containerHeight = computed(() => {
   // Hauteur plus compacte avec un espacement dégressif
-  const baseHeight = 2.5 // 2.5rem de base (40px)
+  const baseHeight = 2.3 // 2.5rem de base (40px)
 
   // Espacement dégressif : plus il y a de lignes, moins on ajoute par ligne
   let extraHeight = 0
   if (linesCount.value <= 2) {
-    extraHeight = (linesCount.value - 1) * 1.2 // 1.2rem pour les 2 premières lignes
+    extraHeight = (linesCount.value - 1) * 0.5 // 1.2rem pour les 2 premières lignes
   } else if (linesCount.value <= 4) {
-    extraHeight = 1.2 + (linesCount.value - 2) * 0.8 // Puis 0.8rem par ligne
+    extraHeight = 1.2 + (linesCount.value - 2) * 0.4 // Puis 0.8rem par ligne
   } else {
     extraHeight = 1.2 + 1.6 + (linesCount.value - 4) * 0.5 // Puis 0.5rem par ligne
   }
@@ -307,14 +307,14 @@ const containerHeight = computed(() => {
 
 const minContainerHeight = computed(() => {
   // Hauteur minimale plus compacte
-  const baseMinHeight = 65 // 65px de base
+  const baseMinHeight = 40 // 65px de base
 
   // Espacement minimal dégressif
   let extraMinHeight = 0
   if (linesCount.value <= 2) {
     extraMinHeight = (linesCount.value - 1) * 20 // 20px pour les 2 premières lignes
   } else if (linesCount.value <= 4) {
-    extraMinHeight = 20 + (linesCount.value - 2) * 15 // Puis 15px par ligne
+    extraMinHeight = 20 + (linesCount.value - 2) * 8 // Puis 15px par ligne
   } else {
     extraMinHeight = 20 + 30 + (linesCount.value - 4) * 10 // Puis 10px par ligne
   }
@@ -656,7 +656,7 @@ onUnmounted(() => {
   background: #202937;
   border: 1px solid #4b5563;
   border-radius: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.4rem;
   margin-bottom: 1rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   /* min-height sera définie dynamiquement via :style */

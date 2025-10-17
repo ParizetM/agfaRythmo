@@ -5,7 +5,7 @@
       v-if="authStore.isAuthenticated"
       class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-7xl px-2 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <!-- Logo & Desktop Nav -->
           <div class="flex items-center">
@@ -71,7 +71,7 @@
             <button
               @click="mobileMenuOpen = !mobileMenuOpen"
               type="button"
-              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              class="inline-flex items-center justify-center rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
               aria-controls="mobile-menu"
               :aria-expanded="mobileMenuOpen"
             >
@@ -95,7 +95,7 @@
         v-show="mobileMenuOpen"
         @click.away="mobileMenuOpen = false"
       >
-        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <div class="px-4 pt-2 pb-3 space-y-1 sm:px-3">
           <router-link
             to="/"
             class="block text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2 rounded-md text-base font-medium"

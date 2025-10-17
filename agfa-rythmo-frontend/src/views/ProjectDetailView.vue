@@ -1,17 +1,18 @@
 <template>
   <div class="flex flex-col items-center bg-gray-900 min-h-screen p-0 m-0">
     <!-- Header Panel -->
-    <header class="w-full flex items-center justify-between bg-agfa-dark shadow-lg py-2 px-6">
+    <header class="w-full flex items-center justify-between bg-agfa-dark shadow-lg py-2 px-2 md:px-6 lg:px-12">
       <button
         class="flex items-center gap-2 bg-transparent border-none text-white text-lg font-medium cursor-pointer px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors duration-300"
         @click="goBack"
         title="Retour aux projets"
       >
         <BackSvg class="w-5 h-5" />
-        <span>Projets</span>
+        <span class="hidden md:inline"
+        >Projets</span>
       </button>
 
-      <div class="flex-1 text-white text-left mx-6 min-w-0">
+      <div class="flex-1 text-white text-left mx-6 min-w-0 hidden sm:block">
         <h1 class="text-3xl font-bold mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
           {{ project?.name }}
         </h1>
@@ -72,11 +73,14 @@
         <!-- Bouton aperçu final -->
         <button
           v-if="project && project.video_path && compatibleTimecodes.length > 0"
-          class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-5 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+          class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-2 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
           @click="goToFinalPreview"
           title="Aperçu final plein écran"
         >
-          Aperçu final
+
+          <span class="hidden md:inline"
+        >Aperçu</span>
+           final
         </button>
       </div>
     </header>
@@ -167,7 +171,7 @@
 
       <!-- Center Panel - Video and Controls -->
       <div
-        class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 mr-4 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]"
+        class="flex-1 flex flex-col items-center bg-agfa-dark rounded-lg shadow-lg min-w-0 lg:mr-0 lg:max-w-full lg:px-1 p-2 relative min-h-[500px]"
       >
         <!-- Écran de chargement dans la zone vidéo -->
         <div
