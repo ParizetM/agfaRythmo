@@ -8,7 +8,7 @@
         <input
           id="video"
           type="file"
-          accept="video/mp4,video/quicktime"
+          accept="video/mp4"
           @change="onFileChange"
           required
           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-transparent outline-none transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-agfa-blue file:text-white hover:file:bg-agfa-blue-hover"
@@ -52,9 +52,19 @@ const error = ref('')
 function onFileChange(e: Event) {
 	const files = (e.target as HTMLInputElement).files
 	if (files && files[0]) {
-		selectedFile.value = files[0]
-		previewUrl.value = URL.createObjectURL(files[0])
-		error.value = ''
+		const file = files[0]
+		if (file.type === 'video/mp4') {
+			selectedFile.value = file
+			previewUrl.value = URL.createObjectURL(file)
+			error.value = ''
+		} else {
+			error.value = 'Seuls les fichiers MP4 sont acceptés.'
+			selectedFile.value = null
+			previewUrl.value = null
+			// Réinitialiser l'input
+			const input = e.target as HTMLInputElement
+			input.value = ''
+		}
 	} else {
 		selectedFile.value = null
 		previewUrl.value = null

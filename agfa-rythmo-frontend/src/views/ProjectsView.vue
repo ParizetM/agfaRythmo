@@ -243,147 +243,27 @@
     </div>
 
     <!-- Modal création projet -->
-    <div
-      v-if="showCreateModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    >
-      <div
-        class="bg-agfa-bg-secondary rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100"
-      >
-        <h3 class="text-2xl font-bold text-white mb-6">Nouveau projet</h3>
-        <form @submit.prevent="createProject" class="space-y-4">
-          <input
-            v-model="form.name"
-            placeholder="Nom du projet"
-            required
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 text-white placeholder-gray-400"
-          />
-          <textarea
-            v-model="form.description"
-            placeholder="Description"
-            rows="3"
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 resize-none text-white placeholder-gray-400"
-          ></textarea>
-          <input
-            type="file"
-            accept="video/*"
-            @change="onFileChange"
-            required
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 text-white file:bg-agfa-blue file:text-white file:border-0 file:rounded file:px-3 file:py-1 file:mr-3"
-          />
-
-          <div class="flex gap-4 pt-4">
-            <button
-              type="submit"
-              :disabled="uploading"
-              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover disabled:bg-gray-400 text-white py-3 rounded-lg transition-all duration-300 font-medium"
-            >
-              {{ uploading ? 'Création...' : 'Créer' }}
-            </button>
-            <button
-              type="button"
-              @click="showCreateModal = false"
-              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
-
-        <div v-if="uploading" class="mt-4 text-center">
-          <div
-            class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-agfa-blue mr-2"
-          ></div>
-          <span class="text-agfa-blue">Upload en cours...</span>
-        </div>
-      </div>
-    </div>
+    <CreateProjectModal
+      :show="showCreateModal"
+      @close="showCreateModal = false"
+      @created="onProjectCreated"
+    />
 
     <!-- Modal édition projet -->
-    <div
-      v-if="showEditModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    >
-      <div
-        class="bg-agfa-bg-secondary rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100"
-      >
-        <h3 class="text-2xl font-bold text-white mb-6">Modifier le projet</h3>
-        <form @submit.prevent="updateProject" class="space-y-4">
-          <input
-            v-model="editForm.name"
-            placeholder="Nom du projet"
-            required
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 text-white placeholder-gray-400"
-          />
-          <textarea
-            v-model="editForm.description"
-            placeholder="Description"
-            rows="3"
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 resize-none text-white placeholder-gray-400"
-          ></textarea>
-          <input
-            type="file"
-            accept="video/*"
-            @change="onEditFileChange"
-            class="w-full p-3 bg-agfa-bg-primary border border-gray-600 rounded-lg focus:ring-2 focus:ring-agfa-blue focus:border-agfa-blue outline-none transition-all duration-300 text-white file:bg-agfa-blue file:text-white file:border-0 file:rounded file:px-3 file:py-1 file:mr-3"
-          />
-
-          <div class="flex gap-4 pt-4">
-            <button
-              type="submit"
-              :disabled="editUploading"
-              class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover disabled:bg-gray-400 text-white py-3 rounded-lg transition-all duration-300 font-medium"
-            >
-              {{ editUploading ? 'Mise à jour...' : 'Enregistrer' }}
-            </button>
-            <button
-              type="button"
-              @click="showEditModal = false"
-              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
-
-        <div v-if="editUploading" class="mt-4 text-center">
-          <div
-            class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-agfa-blue mr-2"
-          ></div>
-          <span class="text-agfa-blue">Mise à jour en cours...</span>
-        </div>
-      </div>
-    </div>
+    <EditProjectModal
+      :show="showEditModal"
+      :project="projectToEdit"
+      @close="showEditModal = false"
+      @updated="handleProjectUpdated"
+    />
 
     <!-- Modal suppression projet -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    >
-      <div
-        class="bg-agfa-bg-secondary rounded-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100"
-      >
-        <h3 class="text-2xl font-bold text-white mb-4">Supprimer le projet</h3>
-        <p class="text-gray-300 mb-6">
-          Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.
-        </p>
-
-        <div class="flex gap-4">
-          <button
-            @click="confirmDeleteProject"
-            class="flex-1 bg-agfa-red hover:bg-agfa-red-hover text-white py-3 rounded-lg transition-all duration-300 font-medium"
-          >
-            Oui, supprimer
-          </button>
-          <button
-            @click="showDeleteModal = false"
-            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition-all duration-300 font-medium"
-          >
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
+    <DeleteProjectModal
+      :show="showDeleteModal"
+      :project="projectToDelete"
+      @close="showDeleteModal = false"
+      @confirm="confirmDeleteProject"
+    />
   </div>
 </template>
 
@@ -392,6 +272,9 @@ import { ref, onMounted, computed, watch } from 'vue'
 import api from '../api/axios'
 import { useAuthStore } from '@/stores/auth'
 import InvitationsPanel from '../components/InvitationsPanel.vue'
+import CreateProjectModal from '../components/CreateProjectModal.vue'
+import EditProjectModal from '../components/EditProjectModal.vue'
+import DeleteProjectModal from '../components/DeleteProjectModal.vue'
 import { useInvitations } from '@/composables/useInvitations'
 import { UsersIcon } from '@heroicons/vue/24/outline'
 
@@ -445,17 +328,8 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 const showInvitations = ref(false)
-const editUploading = ref(false)
+const projectToEdit = ref<Project | null>(null)
 const projectToDelete = ref<Project | null>(null)
-const form = ref({ name: '', description: '', video: null as File | null })
-const editForm = ref<{
-  id: number
-  name: string
-  description: string
-  video: File | null
-  video_path?: string
-}>({ id: 0, name: '', description: '', video: null, video_path: '' })
-const uploading = ref(false)
 const videoError = ref<Record<number, boolean>>({})
 
 function getVideoUrl(path?: string) {
@@ -495,108 +369,24 @@ async function fetchProjects() {
   }
 }
 
-function onFileChange(e: Event) {
-  const files = (e.target as HTMLInputElement).files
-  if (files && files.length > 0) {
-    form.value.video = files[0]
-  }
-}
-
-async function createProject() {
-  if (!form.value.video) return
-  uploading.value = true
-  try {
-    // Upload vidéo
-    const videoData = new FormData()
-    videoData.append('video', form.value.video)
-    const uploadRes = await api.post('/videos/upload', videoData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    // Récupérer juste le nom du fichier pour video_path
-    const url = uploadRes.data.url
-    let filename = url
-    // Si url commence par '/', on prend le dernier segment
-    if (typeof url === 'string') {
-      const parts = url.split('/')
-      filename = parts[parts.length - 1]
-    }
-    // Création projet
-    const projectRes = await api.post('/projects', {
-      name: form.value.name,
-      description: form.value.description,
-      video_path: filename,
-    })
-    projects.value.push(projectRes.data)
-    showCreateModal.value = false
-    form.value.name = ''
-    form.value.description = ''
-    form.value.video = null
+function onProjectCreated(project: unknown) {
+  if (isValidProject(project)) {
+    projects.value.push(project)
     apiError.value = null
-  } catch (err: unknown) {
-    apiError.value =
-      err instanceof Error ? err.message : String(err) || 'Erreur lors de la création du projet'
-  } finally {
-    uploading.value = false
   }
 }
 
 function openEditModal(project: Project) {
-  editForm.value = {
-    id: project.id,
-    name: project.name,
-    description: project.description || '',
-    video: null,
-    video_path: project.video_path,
-  }
+  projectToEdit.value = project
   showEditModal.value = true
 }
 
-function onEditFileChange(e: Event) {
-  const files = (e.target as HTMLInputElement).files
-  if (files && files.length > 0) {
-    editForm.value.video = files[0]
+function handleProjectUpdated(updatedProject: Project) {
+  const index = projects.value.findIndex((p) => p.id === updatedProject.id)
+  if (index !== -1) {
+    projects.value[index] = { ...projects.value[index], ...updatedProject }
   }
-}
-
-async function updateProject() {
-  editUploading.value = true
-  try {
-    let videoPath = editForm.value.video_path
-    if (editForm.value.video) {
-      // Upload new video
-      const videoData = new FormData()
-      videoData.append('video', editForm.value.video)
-      const uploadRes = await api.post('/videos/upload', videoData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      // Récupérer juste le nom du fichier pour video_path
-      const url = uploadRes.data.url
-      let filename = url
-      if (typeof url === 'string') {
-        const parts = url.split('/')
-        filename = parts[parts.length - 1]
-      }
-      videoPath = filename
-    }
-    // Update project
-    await api.put(`/projects/${editForm.value.id}`, {
-      name: editForm.value.name,
-      description: editForm.value.description,
-      video_path: videoPath,
-    })
-    const index = projects.value.findIndex((p) => p.id === editForm.value.id)
-    if (index !== -1) {
-      projects.value[index] = { ...projects.value[index], ...editForm.value, video_path: videoPath }
-    }
-    showEditModal.value = false
-    editForm.value = { id: 0, name: '', description: '', video: null }
-    apiError.value = null
-  } catch (err: unknown) {
-    apiError.value =
-      err instanceof Error ? err.message : String(err) || 'Erreur lors de la mise à jour'
-  } finally {
-    editUploading.value = false
-  }
+  apiError.value = null
 }
 
 function openDeleteModal(project: Project) {

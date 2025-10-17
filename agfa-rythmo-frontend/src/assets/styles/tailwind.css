@@ -108,6 +108,14 @@ html, body {
 .bg-agfa-dark {
   background-color: var(--agfa-dark);
 }
+
+.bg-agfa-dark-30 {
+  background-color: rgba(45, 55, 72, 0.3);
+}
 .bg-agfa-gray {
   background-color: var(--agfa-gray);
+}
+
+.bg-agfa-accent {
+  background-color: var(--agfa-strong);
 }

@@ -11,7 +11,7 @@ class VideoController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'video' => 'required|file|mimetypes:video/mp4,video/quicktime|max:102400', // 100 Mo
+            'video' => 'required|file|mimetypes:video/mp4|max:102400', // 100 Mo - MP4 uniquement
         ]);
 
         $file = $request->file('video');

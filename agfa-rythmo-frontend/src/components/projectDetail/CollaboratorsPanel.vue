@@ -1,54 +1,56 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-    <div class="flex items-center justify-between mb-6">
+  <div class="space-y-6">
+    <!-- Header avec statistiques et bouton -->
+    <div class="flex items-center justify-between">
       <div>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+        <h3 class="text-lg font-semibold text-white">
           Participants au projet
         </h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p class="text-sm text-gray-400 mt-1">
           {{ getTotalParticipants() }} personne{{ getTotalParticipants() > 1 ? 's' : '' }} participe{{ getTotalParticipants() > 1 ? 'nt' : '' }} à ce projet
         </p>
       </div>
       <button
         v-if="canManageCollaborators"
         @click="showInviteModal = true"
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+        class="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25"
       >
         <PlusIcon class="w-4 h-4 mr-2" />
         Inviter
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-4">
-      <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+    <div v-if="loading" class="text-center py-8">
+      <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+      <p class="text-gray-400 text-sm mt-3">Chargement des collaborateurs...</p>
     </div>
 
     <div v-else>
       <!-- Section Propriétaire -->
       <div v-if="collaboratorData?.owner" class="mb-6">
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center">
           <UserCircleIcon class="w-4 h-4 mr-2" />
           Propriétaire du projet
         </h4>
-        <div class="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
+        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl border border-purple-500/30">
           <div class="flex items-center">
-            <div class="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center shadow-sm">
+            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
               <span class="text-white font-medium text-sm">
                 {{ collaboratorData.owner.name.charAt(0).toUpperCase() }}
               </span>
             </div>
             <div class="ml-3">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
+              <div class="text-sm font-medium text-white">
                 {{ collaboratorData.owner.name }}
-                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   <CheckCircleIcon class="w-3 h-3 mr-1" />
                   Propriétaire
                 </span>
               </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">
+              <div class="text-sm text-gray-400">
                 {{ collaboratorData.owner.email }}
               </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <div class="text-xs text-gray-500 mt-1">
                 Accès complet • Peut inviter des collaborateurs
               </div>
             </div>
@@ -58,7 +60,7 @@
 
       <!-- Section Collaborateurs -->
       <div v-if="collaboratorData?.collaborators && collaboratorData.collaborators.length > 0">
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center">
           <UsersIcon class="w-4 h-4 mr-2" />
           Collaborateurs ({{ collaboratorData.collaborators.length }})
         </h4>
@@ -66,17 +68,17 @@
           <div
             v-for="collaborator in collaboratorData.collaborators"
             :key="collaborator.id"
-            class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-100 dark:border-gray-600 hover:border-gray-200 dark:hover:border-gray-500 transition-colors"
+            class="flex items-center justify-between p-4 bg-agfa-bg-primary rounded-xl border border-gray-700 hover:border-gray-600 transition-all"
           >
             <div class="flex items-center flex-1">
-              <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-sm">
+              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
                 <span class="text-white font-medium text-sm">
                   {{ collaborator.name.charAt(0).toUpperCase() }}
                 </span>
               </div>
               <div class="ml-3 flex-1">
                 <div class="flex items-center">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <div class="text-sm font-medium text-white">
                     {{ collaborator.name }}
                   </div>
                   <span
@@ -86,10 +88,10 @@
                     {{ getPermissionLabel(collaborator.permission) }}
                   </span>
                 </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">
+                <div class="text-sm text-gray-400">
                   {{ collaborator.email }}
                 </div>
-                <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                <div class="text-xs text-gray-500 mt-1">
                   {{ getPermissionDescription(collaborator.permission) }}
                 </div>
               </div>
@@ -98,14 +100,14 @@
             <div v-if="canManageCollaborators" class="flex items-center space-x-2">
               <button
                 @click="editCollaborator(collaborator)"
-                class="inline-flex items-center px-3 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
               >
                 <PencilIcon class="w-3 h-3 mr-1" />
                 Modifier
               </button>
               <button
                 @click="removeCollaborator(collaborator)"
-                class="inline-flex items-center px-3 py-1 text-xs font-medium text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-all"
               >
                 <TrashIcon class="w-3 h-3 mr-1" />
                 Retirer
@@ -117,7 +119,7 @@
 
       <!-- Section Invitations en attente -->
       <div v-if="canManageCollaborators && pendingInvitations.length > 0" class="mb-6">
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center">
           <EnvelopeIcon class="w-4 h-4 mr-2" />
           Invitations en attente ({{ pendingInvitations.length }})
         </h4>
@@ -125,15 +127,15 @@
           <div
             v-for="invitation in pendingInvitations"
             :key="invitation.id"
-            class="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800"
+            class="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 rounded-xl border border-yellow-500/30"
           >
             <div class="flex items-center flex-1">
-              <div class="h-10 w-10 rounded-full bg-yellow-500 flex items-center justify-center shadow-sm">
+              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg">
                 <ClockIcon class="w-5 h-5 text-white" />
               </div>
               <div class="ml-3 flex-1">
                 <div class="flex items-center">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <div class="text-sm font-medium text-white">
                     {{ invitation.invited_user.name }}
                   </div>
                   <span
@@ -143,10 +145,10 @@
                     {{ getPermissionLabel(invitation.permission) }}
                   </span>
                 </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">
+                <div class="text-sm text-gray-400">
                   {{ invitation.invited_user.email }}
                 </div>
-                <div class="text-xs text-yellow-600 dark:text-yellow-400 mt-1 flex items-center">
+                <div class="text-xs text-yellow-400 mt-1 flex items-center">
                   <ClockIcon class="w-3 h-3 mr-1" />
                   En attente de réponse • Invité le {{ formatDate(invitation.created_at) }}
                 </div>
@@ -156,7 +158,7 @@
             <div class="flex items-center space-x-2">
               <button
                 @click="cancelInvitation(invitation)"
-                class="inline-flex items-center px-3 py-1 text-xs font-medium text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-all"
               >
                 <XMarkIcon class="w-3 h-3 mr-1" />
                 Annuler
@@ -168,18 +170,18 @@
 
       <!-- Aucun collaborateur -->
       <div v-else-if="!loading && (!collaboratorData?.collaborators || collaboratorData.collaborators.length === 0)">
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+        <h4 class="text-sm font-semibold text-gray-300 mb-3 flex items-center">
           <UsersIcon class="w-4 h-4 mr-2" />
           Collaborateurs
         </h4>
-        <div class="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600">
-          <UsersIcon class="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p class="text-sm font-medium">Aucun collaborateur pour le moment</p>
-          <p class="text-xs mt-1">Invitez des personnes pour travailler ensemble sur ce projet</p>
+        <div class="text-center py-8 bg-agfa-bg-primary rounded-xl border-2 border-dashed border-gray-600">
+          <UsersIcon class="w-12 h-12 mx-auto mb-4 text-gray-500" />
+          <p class="text-sm font-medium text-gray-300">Aucun collaborateur pour le moment</p>
+          <p class="text-xs text-gray-500 mt-1">Invitez des personnes pour travailler ensemble sur ce projet</p>
           <button
             v-if="canManageCollaborators"
             @click="showInviteModal = true"
-            class="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            class="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
           >
             <PlusIcon class="w-4 h-4 mr-2" />
             Inviter votre première personne
@@ -189,73 +191,80 @@
     </div>
 
     <!-- Modal d'invitation -->
-    <div v-if="showInviteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl max-w-lg w-full mx-4 shadow-2xl">
-        <h4 class="text-xl font-medium text-gray-900 dark:text-white mb-6">
-          Inviter un collaborateur
-        </h4>
+    <BaseModal
+      :show="showInviteModal"
+      title="Inviter un collaborateur"
+      subtitle="Recherchez et invitez des personnes à collaborer sur ce projet"
+      size="lg"
+      @close="closeInviteModal"
+    >
+      <template v-slot:icon>
+        <PlusIcon class="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+      </template>
 
-        <!-- Recherche d'utilisateurs -->
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Rechercher un utilisateur
-          </label>
-          <input
-            v-model="searchQuery"
-            @input="searchUsers"
-            type="text"
-            placeholder="Nom ou email..."
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-          />
+      <template v-slot:default>
+        <div class="space-y-6">
+          <!-- Recherche d'utilisateurs -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-300 mb-2">
+              Rechercher un utilisateur
+            </label>
+            <input
+              v-model="searchQuery"
+              @input="searchUsers"
+              type="text"
+              placeholder="Nom ou email..."
+              class="w-full px-4 py-3 bg-agfa-bg-primary border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 text-white placeholder-gray-500 hover:border-gray-500"
+            />
 
-          <!-- Résultats de recherche -->
-          <div v-if="searchResults.length > 0" class="mt-3 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
-            <div
-              v-for="user in searchResults"
-              :key="user.id"
-              @click="selectUser(user)"
-              class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
-            >
+            <!-- Résultats de recherche -->
+            <div v-if="searchResults.length > 0" class="mt-3 max-h-48 overflow-y-auto border border-gray-600 rounded-xl bg-agfa-bg-primary">
+              <div
+                v-for="user in searchResults"
+                :key="user.id"
+                @click="selectUser(user)"
+                class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0 transition-colors"
+              >
+                <div class="flex items-center">
+                  <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <span class="text-white font-medium text-sm">
+                      {{ user.name.charAt(0).toUpperCase() }}
+                    </span>
+                  </div>
+                  <div class="ml-3">
+                    <div class="text-sm font-medium text-white">{{ user.name }}</div>
+                    <div class="text-xs text-gray-400">{{ user.email }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="searchQuery && searchLoading" class="mt-3 text-center py-4 text-gray-400">
+              <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            </div>
+
+            <div v-else-if="searchQuery && !searchLoading" class="mt-3 text-center py-4 text-gray-400">
+              Aucun utilisateur trouvé
+            </div>
+          </div>
+
+          <!-- Utilisateur sélectionné -->
+          <div v-if="selectedUser" class="p-4 bg-gradient-to-r from-blue-500/10 to-purple-600/10 rounded-xl border border-blue-500/30">
+            <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center">
-                  <span class="text-white font-medium text-sm">
-                    {{ user.name.charAt(0).toUpperCase() }}
+                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                  <span class="text-white font-medium">
+                    {{ selectedUser.name.charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <div class="ml-3">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ user.name }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ user.email }}</div>
+                  <div class="text-sm font-medium text-white">{{ selectedUser.name }}</div>
+                  <div class="text-sm text-gray-400">{{ selectedUser.email }}</div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div v-else-if="searchQuery && searchLoading" class="mt-3 text-center py-4 text-gray-500">
-            <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500"></div>
-          </div>
-
-          <div v-else-if="searchQuery && !searchLoading" class="mt-3 text-center py-4 text-gray-500 dark:text-gray-400">
-            Aucun utilisateur trouvé
-          </div>
-        </div>
-
-        <!-- Utilisateur sélectionné -->
-        <div v-if="selectedUser" class="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
-                <span class="text-white font-medium">
-                  {{ selectedUser.name.charAt(0).toUpperCase() }}
-                </span>
-              </div>
-              <div class="ml-3">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedUser.name }}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">{{ selectedUser.email }}</div>
-              </div>
-            </div>
-            <button
-              @click="selectedUser = null"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              <button
+                @click="selectedUser = null"
+                class="w-8 h-8 rounded-full hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-all"
             >
               ✕
             </button>
@@ -263,125 +272,133 @@
         </div>
 
         <!-- Sélection des permissions -->
-        <div v-if="selectedUser" class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <div v-if="selectedUser">
+          <label class="block text-sm font-medium text-gray-300 mb-3">
             Permissions
           </label>
           <div class="space-y-2">
-            <label class="flex items-center">
+            <label class="flex items-center p-3 bg-agfa-bg-primary rounded-xl border border-gray-600 hover:border-gray-500 cursor-pointer transition-all">
               <input
                 v-model="selectedPermission"
                 type="radio"
                 value="edit"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                class="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-500"
               />
-              <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                <strong>Collaborateur</strong> - Peut voir et modifier tout le contenu du projet
+              <span class="ml-3 text-sm text-gray-300">
+                <strong class="text-white">Collaborateur</strong> - Peut voir et modifier tout le contenu du projet
               </span>
             </label>
-            <label class="flex items-center">
+            <label class="flex items-center p-3 bg-agfa-bg-primary rounded-xl border border-gray-600 hover:border-gray-500 cursor-pointer transition-all">
               <input
                 v-model="selectedPermission"
                 type="radio"
                 value="admin"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                class="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-500"
               />
-              <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                <strong>Administrateur</strong> - Peut tout faire + inviter/gérer d'autres collaborateurs
+              <span class="ml-3 text-sm text-gray-300">
+                <strong class="text-white">Administrateur</strong> - Peut tout faire + inviter/gérer d'autres collaborateurs
               </span>
             </label>
           </div>
         </div>
-
-        <!-- Actions -->
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="closeInviteModal"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-lg transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            @click="inviteCollaborator"
-            :disabled="!selectedUser || !selectedPermission || inviting"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors disabled:cursor-not-allowed"
-          >
-            {{ inviting ? 'Invitation...' : 'Inviter' }}
-          </button>
         </div>
-      </div>
-    </div>
+      </template>
+
+      <template v-slot:footer>
+        <button
+          @click="closeInviteModal"
+          class="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          Annuler
+        </button>
+        <button
+          @click="inviteCollaborator"
+          :disabled="!selectedUser || !selectedPermission || inviting"
+          class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25 disabled:shadow-none"
+        >
+          {{ inviting ? 'Invitation...' : 'Inviter' }}
+        </button>
+      </template>
+    </BaseModal>
 
     <!-- Modal de modification des permissions -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4 shadow-2xl">
-        <h4 class="text-xl font-medium text-gray-900 dark:text-white mb-6">
-          Modifier les permissions
-        </h4>
+    <BaseModal
+      :show="showEditModal"
+      title="Modifier les permissions"
+      subtitle="Ajustez les droits d'accès du collaborateur"
+      size="md"
+      @close="closeEditModal"
+    >
+      <template v-slot:icon>
+        <PencilIcon class="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+      </template>
 
-        <div v-if="editingCollaborator" class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <div class="flex items-center">
-            <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
-              <span class="text-white font-medium">
-                {{ editingCollaborator.name.charAt(0).toUpperCase() }}
-              </span>
+      <template v-slot:default>
+        <div class="space-y-6">
+          <!-- Collaborateur concerné -->
+          <div v-if="editingCollaborator" class="p-4 bg-agfa-bg-primary rounded-xl border border-gray-700">
+            <div class="flex items-center">
+              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <span class="text-white font-medium">
+                  {{ editingCollaborator.name.charAt(0).toUpperCase() }}
+                </span>
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-white">{{ editingCollaborator.name }}</div>
+                <div class="text-sm text-gray-400">{{ editingCollaborator.email }}</div>
+              </div>
             </div>
-            <div class="ml-3">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">{{ editingCollaborator.name }}</div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">{{ editingCollaborator.email }}</div>
+          </div>
+
+          <!-- Sélection des nouvelles permissions -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-3">
+              Nouvelles permissions
+            </label>
+            <div class="space-y-2">
+              <label class="flex items-center p-3 bg-agfa-bg-primary rounded-xl border border-gray-600 hover:border-gray-500 cursor-pointer transition-all">
+                <input
+                  v-model="editingPermission"
+                  type="radio"
+                  value="edit"
+                  class="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-500"
+                />
+                <span class="ml-3 text-sm text-gray-300">
+                  <strong class="text-white">Collaborateur</strong> - Peut voir et modifier tout le contenu du projet
+                </span>
+              </label>
+              <label class="flex items-center p-3 bg-agfa-bg-primary rounded-xl border border-gray-600 hover:border-gray-500 cursor-pointer transition-all">
+                <input
+                  v-model="editingPermission"
+                  type="radio"
+                  value="admin"
+                  class="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-500"
+                />
+                <span class="ml-3 text-sm text-gray-300">
+                  <strong class="text-white">Administrateur</strong> - Peut tout faire + inviter/gérer d'autres collaborateurs
+                </span>
+              </label>
             </div>
           </div>
         </div>
+      </template>
 
-        <!-- Sélection des nouvelles permissions -->
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Nouvelles permissions
-          </label>
-          <div class="space-y-2">
-            <label class="flex items-center">
-              <input
-                v-model="editingPermission"
-                type="radio"
-                value="edit"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-              />
-              <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                <strong>Collaborateur</strong> - Peut voir et modifier tout le contenu du projet
-              </span>
-            </label>
-            <label class="flex items-center">
-              <input
-                v-model="editingPermission"
-                type="radio"
-                value="admin"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-              />
-              <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                <strong>Administrateur</strong> - Peut tout faire + inviter/gérer d'autres collaborateurs
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="closeEditModal"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-lg transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            @click="updatePermissions"
-            :disabled="!editingPermission || updating"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors disabled:cursor-not-allowed"
-          >
-            {{ updating ? 'Mise à jour...' : 'Mettre à jour' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      <template v-slot:footer>
+        <button
+          @click="closeEditModal"
+          class="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          Annuler
+        </button>
+        <button
+          @click="updatePermissions"
+          :disabled="!editingPermission || updating"
+          class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25 disabled:shadow-none"
+        >
+          {{ updating ? 'Mise à jour...' : 'Mettre à jour' }}
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -391,6 +408,7 @@ import type { User } from '../../api/auth'
 import collaborationService, { type CollaboratorResponse, type Collaborator, type ProjectPendingInvitation } from '../../api/collaboration'
 import { useAuthStore } from '../../stores/auth'
 import { notificationService } from '../../services/notifications'
+import BaseModal from '../BaseModal.vue'
 import {
   PlusIcon,
   UsersIcon,
@@ -482,13 +500,13 @@ const getPermissionLabel = (permission: string) => {
 
 const getPermissionBadgeClass = (permission: string) => {
   switch (permission) {
-    case 'admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-    case 'edit': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    case 'view': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    case 'admin': return 'bg-red-500/20 text-red-300 border border-red-500/30'
+    case 'edit': return 'bg-green-500/20 text-green-300 border border-green-500/30'
+    case 'view': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
     // Rétrocompatibilité avec l'ancien système
-    case 'write': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    case 'read': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+    case 'write': return 'bg-green-500/20 text-green-300 border border-green-500/30'
+    case 'read': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+    default: return 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
   }
 }
 

@@ -1,38 +1,70 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="$emit('cancel')">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Confirmer la suppression</h3>
-        <button @click="$emit('cancel')" class="close-btn">&times;</button>
-      </div>
-      
-      <div class="modal-body">
-        <p>Êtes-vous sûr de vouloir supprimer ce timecode ?</p>
-        <div v-if="timecode" class="timecode-info">
-          <div class="timecode-details">
-            <span class="time-range">{{ timecode.start.toFixed(2) }}s - {{ timecode.end.toFixed(2) }}s</span>
-            <span class="line-info">Ligne {{ timecode.line_number }}</span>
-          </div>
-          <div class="timecode-text">{{ timecode.text }}</div>
-          <div v-if="timecode.character" class="character-info" :style="{ backgroundColor: timecode.character.color }">
-            {{ timecode.character.name }}
-          </div>
+  <BaseModal
+    :show="show"
+    title="Confirmer la suppression"
+    subtitle="Cette action est irréversible"
+    size="lg"
+    icon-gradient="bg-gradient-to-br from-red-500 to-red-700"
+    @close="$emit('cancel')"
+  >
+    <!-- Icône personnalisée -->
+    <template #icon>
+      <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
+      </svg>
+    </template>
+
+    <!-- Contenu -->
+    <div class="px-4 sm:px-6 md:px-8 py-6">
+      <p class="text-gray-300 text-base mb-4">
+        Êtes-vous sûr de vouloir supprimer ce timecode ?
+      </p>
+
+      <div v-if="timecode" class="bg-agfa-bg-primary rounded-xl p-4 border-l-4 border-red-500">
+        <div class="flex items-center gap-3 mb-3 flex-wrap">
+          <span class="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-semibold">
+            {{ timecode.start.toFixed(2) }}s - {{ timecode.end.toFixed(2) }}s
+          </span>
+          <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-medium">
+            Ligne {{ timecode.line_number }}
+          </span>
+        </div>
+        <div class="text-white font-medium mb-2 break-words">{{ timecode.text }}</div>
+        <div
+          v-if="timecode.character"
+          class="inline-block px-3 py-1 rounded-full text-xs font-semibold text-white"
+          :style="{ backgroundColor: timecode.character.color }"
+        >
+          {{ timecode.character.name }}
         </div>
       </div>
-      
-      <div class="modal-footer">
-        <button @click="$emit('cancel')" class="cancel-btn">
-          Annuler
-        </button>
-        <button @click="$emit('confirm')" class="confirm-btn">
-          Supprimer
-        </button>
-      </div>
     </div>
-  </div>
+
+    <!-- Footer avec boutons -->
+    <template #footer>
+      <button
+        @click="$emit('cancel')"
+        class="flex-1 px-4 sm:px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+      >
+        Annuler
+      </button>
+      <button
+        @click="$emit('confirm')"
+        class="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-red-500/25"
+      >
+        Supprimer
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
+import BaseModal from '../BaseModal.vue'
 import type { Character } from '../../api/characters'
 
 interface Timecode {
@@ -56,156 +88,3 @@ defineEmits<{
   (e: 'cancel'): void
 }>()
 </script>
-
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #2a3441;
-  border-radius: 12px;
-  padding: 0;
-  min-width: 400px;
-  max-width: 500px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-body p {
-  margin: 0 0 1rem 0;
-  color: #e5e7eb;
-  font-size: 1rem;
-}
-
-.timecode-info {
-  background: #374151;
-  border-radius: 8px;
-  padding: 1rem;
-  border-left: 3px solid #3b82f6;
-}
-
-.timecode-details {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.time-range {
-  color: #3b82f6;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.line-info {
-  color: #9ca3af;
-  font-size: 0.75rem;
-  background: #4b5563;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.timecode-text {
-  color: white;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-}
-
-.character-info {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.modal-footer {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  border-top: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.cancel-btn {
-  background: #4b5563;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.cancel-btn:hover {
-  background: #6b7280;
-}
-
-.confirm-btn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.confirm-btn:hover {
-  background: #dc2626;
-}
-</style>

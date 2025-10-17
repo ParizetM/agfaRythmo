@@ -9,7 +9,7 @@ applyTo: '**'
 ## Règles de développement strictes
 
 ### ⛔ INTERDICTIONS ABSOLUES
-- **Ne JAMAIS faire `npm run dev` dans le frontend** (utiliser `composer dev` dans le backend pour tout démarrer)
+- **Ne JAMAIS faire `npm run dev` dans le frontend**
 - **Ne pas utiliser de navigateur simple dans VSCode** pour les prévisualisations
 - **Ne jamais créer de routes API sans vérifier les existantes**
 - **Ne jamais modifier les migrations déjà exécutées**
@@ -572,14 +572,11 @@ Configuration avec guards d'authentification :
 - [x] Heroicons integration
 
 ### 🚧 En développement actif
-- [ ] Bande rythmo animée synchronisée finale
 - [ ] Export projets complets (JSON)
 - [ ] Export vidéo avec bande rythmo incrustée
 - [ ] Mode hors ligne (PWA)
 - [ ] Websockets pour collaboration temps réel
 - [ ] Historique modifications (undo/redo)
-- [ ] Recherche globale
-- [ ] Tags/catégories projets
 
 ## Scripts de développement
 
@@ -769,30 +766,6 @@ Système centralisé de notifications :
 - **Node.js** : 20.19+ ou 22.12+
 - **SQLite** : 3.35+ (inclus macOS/Linux)
 - **Git** : version control + GitHub
-
-### Variables d'environnement
-
-#### Backend (.env)
-```bash
-APP_NAME=AgfaRythmo
-APP_ENV=local
-APP_KEY=base64:...
-APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-DB_CONNECTION=sqlite
-DB_DATABASE=/absolute/path/to/database.sqlite
-
-SANCTUM_STATEFUL_DOMAINS=localhost:5173
-SESSION_DRIVER=file
-QUEUE_CONNECTION=sync
-```
-
-#### Frontend (.env)
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-VITE_APP_NAME=AgfaRythmo
-```
 
 ### Cibles de déploiement
 - **Développement** : VSCode + GitHub Copilot + Laravel Valet/Herd

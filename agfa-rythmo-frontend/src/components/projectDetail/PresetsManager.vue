@@ -1,42 +1,59 @@
 <template>
-  <div class="presets-manager">
-    <h3 class="text-lg font-semibold text-gray-300 mb-4">Mes Presets ({{ userPresets.length }}/5)</h3>
+  <div class="space-y-6">
+    <!-- En-tête avec compteur -->
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-white">Mes Presets</h3>
+      <span class="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm font-medium">
+        {{ userPresets.length }} / 5
+      </span>
+    </div>
 
-    <!-- Liste des slots de presets -->
-    <div class="presets-grid">
+    <!-- Grille des presets -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="index in 5"
         :key="index"
-        class="preset-slot"
-        :class="{ 'preset-filled': getPresetAtIndex(index - 1) }"
+        class="relative rounded-xl overflow-hidden transition-all duration-300"
+        :class="getPresetAtIndex(index - 1)
+          ? 'bg-gradient-to-br from-agfa-bg-primary to-agfa-bg-tertiary border-2 border-blue-500/30 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20'
+          : 'bg-agfa-bg-primary border-2 border-dashed border-gray-600 hover:border-gray-500'"
       >
         <template v-if="getPresetAtIndex(index - 1)">
           <!-- Preset rempli -->
-          <div class="preset-content">
-            <div class="preset-header">
-              <h4 class="preset-name">{{ getPresetAtIndex(index - 1)!.name }}</h4>
-              <span class="preset-slot-number">{{ index }}</span>
+          <div class="p-4 space-y-3">
+            <!-- Header avec nom et numéro -->
+            <div class="flex items-start justify-between pb-3 border-b border-gray-700">
+              <h4 class="text-base font-semibold text-white truncate pr-2">
+                {{ getPresetAtIndex(index - 1)!.name }}
+              </h4>
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                {{ index }}
+              </span>
             </div>
 
-            <div class="preset-info">
-              <div class="preset-param">
-                <span class="param-label">Hauteur:</span>
-                <span class="param-value">{{ getPresetAtIndex(index - 1)!.settings.bandHeight }}px</span>
+            <!-- Informations du preset -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Hauteur</span>
+                <span class="text-white font-medium">{{ getPresetAtIndex(index - 1)!.settings.bandHeight }}px</span>
               </div>
-              <div class="preset-param">
-                <span class="param-label">Police:</span>
-                <span class="param-value">{{ getPresetAtIndex(index - 1)!.settings.fontSize }}rem</span>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Police</span>
+                <span class="text-white font-medium">{{ getPresetAtIndex(index - 1)!.settings.fontSize }}rem</span>
               </div>
-              <div class="preset-param">
-                <span class="param-label">Font:</span>
-                <span class="param-value truncate">{{ getPresetAtIndex(index - 1)!.settings.fontFamily }}</span>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-400">Font</span>
+                <span class="text-white font-medium truncate max-w-[120px]" :title="getPresetAtIndex(index - 1)!.settings.fontFamily">
+                  {{ getPresetAtIndex(index - 1)!.settings.fontFamily }}
+                </span>
               </div>
             </div>
 
-            <div class="preset-actions">
+            <!-- Boutons d'action -->
+            <div class="flex gap-2 pt-2">
               <button
                 @click="applyPreset(getPresetAtIndex(index - 1)!.id)"
-                class="btn-apply"
+                class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md"
                 title="Appliquer ce preset"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,7 +63,7 @@
               </button>
               <button
                 @click="confirmDelete(getPresetAtIndex(index - 1)!.id)"
-                class="btn-delete"
+                class="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                 title="Supprimer ce preset"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,35 +76,45 @@
 
         <template v-else>
           <!-- Slot vide -->
-          <div class="preset-empty">
-            <div class="empty-icon">
-              <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="p-6 flex flex-col items-center justify-center min-h-[200px]">
+            <div class="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
               </svg>
             </div>
-            <p class="text-gray-500 text-sm">Slot {{ index }} vide</p>
+            <p class="text-gray-500 text-sm font-medium">Slot {{ index }} vide</p>
           </div>
         </template>
       </div>
     </div>
 
-    <!-- Formulaire de création de preset -->
-    <div class="save-preset-form">
-      <h4 class="text-md font-semibold text-gray-300 mb-3">Sauvegarder les paramètres actuels</h4>
-      <div class="form-group">
+    <!-- Formulaire de sauvegarde -->
+    <div class="bg-gradient-to-br from-agfa-bg-primary to-agfa-bg-tertiary rounded-xl border border-gray-700 p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h4 class="text-base font-semibold text-white">Sauvegarder les paramètres actuels</h4>
+          <p class="text-xs text-gray-400 mt-0.5">Créez un nouveau preset avec vos réglages</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
         <input
           v-model="newPresetName"
           type="text"
           placeholder="Nom du preset (ex: Cinéma, TV, Web...)"
           maxlength="255"
-          class="preset-name-input"
+          class="flex-1 px-4 py-3 bg-agfa-bg-primary border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-300 text-white placeholder-gray-500 hover:border-gray-500"
           @keyup.enter="saveCurrentAsPreset"
         />
         <button
           @click="saveCurrentAsPreset"
           :disabled="!canSavePreset"
-          class="btn-save"
-          :class="{ 'btn-disabled': !canSavePreset }"
+          class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-green-500/25 disabled:shadow-none flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
@@ -95,7 +122,26 @@
           Sauvegarder
         </button>
       </div>
-      <p v-if="saveError" class="error-message">{{ saveError }}</p>
+
+      <!-- Message d'erreur -->
+      <div v-if="saveError" class="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+        <p class="text-red-400 text-sm flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+          {{ saveError }}
+        </p>
+      </div>
+
+      <!-- Info limite -->
+      <div v-if="userPresets.length >= 5" class="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+        <p class="text-yellow-400 text-sm flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+          Limite atteinte : supprimez un preset existant pour en créer un nouveau
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -160,221 +206,3 @@ function confirmDelete(presetId: number) {
   }
 }
 </script>
-
-<style scoped>
-.presets-manager {
-  width: 100%;
-}
-
-.presets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.preset-slot {
-  background-color: #1f2937;
-  border: 2px solid #374151;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  min-height: 180px;
-  transition: all 0.2s ease;
-}
-
-.preset-slot.preset-filled {
-  border-color: #8455F6;
-}
-
-.preset-slot.preset-filled:hover {
-  border-color: #9d6fff;
-  box-shadow: 0 0 0 2px rgba(132, 85, 246, 0.2);
-}
-
-.preset-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  gap: 0.75rem;
-}
-
-.preset-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #374151;
-}
-
-.preset-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: white;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.preset-slot-number {
-  background-color: #8455F6;
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  flex-shrink: 0;
-}
-
-.preset-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.preset-param {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.875rem;
-}
-
-.param-label {
-  color: #9ca3af;
-}
-
-.param-value {
-  color: white;
-  font-weight: 500;
-}
-
-.preset-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-apply {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background-color: #8455F6;
-  color: white;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-apply:hover {
-  background-color: #7c3aed;
-}
-
-.btn-delete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  background-color: #dc2626;
-  color: white;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-delete:hover {
-  background-color: #b91c1c;
-}
-
-.preset-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 1rem;
-}
-
-.empty-icon {
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-}
-
-.save-preset-form {
-  background-color: #1f2937;
-  border: 2px solid #374151;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  gap: 0.75rem;
-  align-items: stretch;
-}
-
-.preset-name-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  background-color: #374151;
-  border: 1px solid #4b5563;
-  border-radius: 0.375rem;
-  color: white;
-  font-size: 0.875rem;
-}
-
-.preset-name-input:focus {
-  outline: none;
-  border-color: #8455F6;
-  box-shadow: 0 0 0 2px rgba(132, 85, 246, 0.2);
-}
-
-.preset-name-input::placeholder {
-  color: #6b7280;
-}
-
-.btn-save {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background-color: #10b981;
-  color: white;
-  border-radius: 0.375rem;
-  font-weight: 600;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-save:hover:not(.btn-disabled) {
-  background-color: #059669;
-}
-
-.btn-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.error-message {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background-color: rgba(220, 38, 38, 0.1);
-  border: 1px solid #dc2626;
-  border-radius: 0.375rem;
-  color: #fca5a5;
-  font-size: 0.875rem;
-}
-
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

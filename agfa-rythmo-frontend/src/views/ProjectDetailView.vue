@@ -370,35 +370,22 @@
     <ProjectSettingsModal :show="showProjectSettings" @close="showProjectSettings = false" />
 
     <!-- Modal de gestion des collaborateurs -->
-    <div
-      v-if="showCollaboratorsModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    <BaseModal
+      :show="showCollaboratorsModal"
+      title="Gérer les collaborateurs"
+      subtitle="Invitez et gérez les personnes qui travaillent sur ce projet"
+      size="2xl"
+      max-height="90vh"
+      @close="showCollaboratorsModal = false"
     >
-      <div
-        class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-            Gérer les collaborateurs
-          </h3>
-          <button
-            @click="showCollaboratorsModal = false"
-            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
+      <template v-slot:icon>
+        <UsersIcon class="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+      </template>
 
+      <template v-slot:default>
         <CollaboratorsPanel v-if="project" :projectId="project.id" :canManage="canManageProject" />
-      </div>
-    </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -406,6 +393,7 @@
 import TimecodeModal from '../components/projectDetail/TimecodeModal.vue'
 import KeyboardShortcutsModal from '../components/projectDetail/KeyboardShortcutsModal.vue'
 import ProjectSettingsModal from '../components/projectDetail/ProjectSettingsModal.vue'
+import BaseModal from '../components/BaseModal.vue'
 import { UsersIcon } from '@heroicons/vue/24/outline'
 // Contrôle du scroll instantané pour la bande rythmo
 

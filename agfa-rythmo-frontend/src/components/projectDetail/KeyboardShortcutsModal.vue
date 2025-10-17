@@ -1,40 +1,25 @@
 <template>
-  <Transition name="modal">
-    <div
-      v-if="show"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      @click="closeModal"
-    >
-      <div
-        class="bg-[#1a1f2e] border border-gray-700/50 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
-        @click.stop
-      >
-        <!-- Header avec bouton fermer -->
-        <div class="relative border-b border-gray-700/50 bg-gradient-to-r from-[#1a1f2e] to-[#202937] px-6 py-5">
-          <div class="text-center">
-            <h1 class="text-3xl font-bold text-white mb-2">Raccourcis clavier</h1>
-            <p class="text-sm text-gray-400">
-              <span class="inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                </svg>
-                {{ osName }}
-              </span>
-            </p>
-          </div>
-          <button
-            @click="closeModal"
-            class="absolute top-5 right-5 p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200"
-            title="Fermer (Échap)"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+  <BaseModal
+    :show="show"
+    title="Raccourcis clavier"
+    :subtitle="osName"
+    size="full"
+    max-height="90vh"
+    @close="closeModal"
+  >
+    <template v-slot:icon>
+      <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 10V3L4 14h7v7l9-11h-7z"
+        />
+      </svg>
+    </template>
 
-        <!-- Content scrollable -->
-        <div class="flex-1 overflow-y-auto p-6 md:p-8">
+    <template v-slot:default>
+      <div class="space-y-8">
           <!-- Grille responsive -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <!-- Navigation -->
@@ -173,25 +158,25 @@
             </div>
           </div>
 
-          <!-- Note importante -->
-          <div class="mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-            <div class="flex gap-3">
-              <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
-              <p class="text-xs text-yellow-200/90 leading-relaxed">
-                <strong class="font-semibold">Important :</strong> Pendant la saisie de texte, tous les raccourcis sont désactivés. La lecture vidéo est automatiquement mise en pause et reprend quand vous quittez le champ.
-              </p>
-            </div>
+        <!-- Note importante -->
+        <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            <p class="text-xs text-yellow-200/90 leading-relaxed">
+              <strong class="font-semibold">Important :</strong> Pendant la saisie de texte, tous les raccourcis sont désactivés. La lecture vidéo est automatiquement mise en pause et reprend quand vous quittez le champ.
+            </p>
           </div>
         </div>
       </div>
-    </div>
-  </Transition>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
 import { computed, onUnmounted, watch } from 'vue'
+import BaseModal from '../BaseModal.vue'
 
 interface Props {
   show: boolean
@@ -203,10 +188,6 @@ const emit = defineEmits<{
 }>()
 
 // Détection de l'OS
-const isMac = computed(() => {
-  return navigator.platform.toUpperCase().indexOf('MAC') >= 0
-})
-
 const osName = computed(() => {
   if (navigator.platform.toUpperCase().indexOf('MAC') >= 0) return 'macOS'
   if (navigator.platform.toUpperCase().indexOf('WIN') >= 0) return 'Windows'
