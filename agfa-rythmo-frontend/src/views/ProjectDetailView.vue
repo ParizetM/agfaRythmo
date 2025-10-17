@@ -113,7 +113,7 @@
       <!-- Overlay Right Panel - Scene Changes -->
       <div>
         <button
-          class="fixed top-[88px] right-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-l-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
+          class="fixed top-[40px] right-0 z-50 text-white border border-gray-600 rounded-l-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300 backdrop-blur-sm bg-black/30"
           @click="toggleSceneChangesPanel"
           :title="isSceneChangesCollapsed ? 'Déplier' : 'Replier'"
           style="transition: right 0.2s"
@@ -140,7 +140,7 @@
       </div>
       <div>
         <button
-          class="fixed top-[88px] left-0 z-50 bg-agfa-dark text-white border border-gray-600 rounded-r-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
+          class="fixed top-[40px] left-0 z-50 backdrop-blur-sm bg-black/30 text-white border border-gray-600 rounded-r-lg w-7 h-12 flex items-center justify-center cursor-pointer shadow-lg text-lg p-0 hover:bg-agfa-blue transition-colors duration-300"
           @click="toggleTimecodesPanel"
           :title="isTimecodesCollapsed ? 'Déplier' : 'Replier'"
           style="transition: left 0.2s"

@@ -1,14 +1,14 @@
 <template>
-  <div class="bg-agfa-dark rounded-lg p-3 w-64 text-white shadow-lg flex flex-col h-80">
+  <div class="backdrop-blur-sm bg-black/30 rounded-l-lg border border-gray-700/50 p-3 w-64 text-white shadow-lg flex flex-col ">
     <h3 class="text-lg font-semibold mb-2 text-white">Changements de plan</h3>
 
-    <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+    <div class="flex-1 overflow-y-auto max-h-[80vh]">
       <div class="space-y-1">
         <div
           v-for="(time, idx) in sceneChanges"
           :key="`scene-${Math.round(time * 10000)}-${idx}`"
           :class="[
-            'flex items-center justify-between p-2 rounded transition-colors group',
+            'flex items-center justify-between p-2 rounded transition-colors group bg-agfa-dark-30 border border-gray-700/50',
             'hover:bg-gray-700',
             { 'bg-agfa-blue bg-opacity-30': idx === selected }
           ]"

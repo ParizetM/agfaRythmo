@@ -1,114 +1,120 @@
 <template>
-  <div class="bg-agfa-dark rounded-xl p-6 min-w-56 max-w-96 text-white shadow-lg max-h-[90vh] overflow-y-auto">
+  <div
+    class="backdrop-blur-sm bg-black/30 rounded-r-lg border border-gray-700/50 p-6 min-w-56 max-w-96 text-white shadow-lg "
+  >
     <h3 class="text-xl font-bold mb-4 text-white">Timecodes</h3>
-
-    <!-- Groupés par ligne -->
-    <div v-for="lineNumber in rythmoLinesCount" :key="lineNumber" class="line-group mb-4">
-      <div class="line-header mb-2">
-        <span class="line-title">Ligne {{ lineNumber }}</span>
-        <div class="flex gap-2 items-center">
-          <button
-            @click="toggleFold(lineNumber)"
-            class="fold-btn"
-            :title="foldedLines[lineNumber] ? 'Déplier la ligne' : 'Replier la ligne'"
-          >
-            <span v-if="foldedLines[lineNumber]">&#9654;</span>
-            <span v-else>&#9660;</span>
-          </button>
-          <button
-            @click="emit('add-to-line', lineNumber)"
-            class="add-line-btn"
-            title="Ajouter un timecode sur cette ligne"
-          >
-            +
-          </button>
+    <div class="max-h-[80vh] overflow-y-auto" style="direction: rtl;">
+      <!-- Groupés par ligne -->
+      <div
+        v-for="lineNumber in rythmoLinesCount"
+        :key="lineNumber"
+        class="line-group mb-4 bg-agfa-dark-30 border border-gray-700/50 rounded-r-md"
+        style="direction: ltr;"
+      >
+        <div class="line-header mb-2">
+          <span class="line-title">Ligne {{ lineNumber }}</span>
+          <div class="flex gap-2 items-center">
+            <button
+              @click="toggleFold(lineNumber)"
+              class="fold-btn"
+              :title="foldedLines[lineNumber] ? 'Déplier la ligne' : 'Replier la ligne'"
+            >
+              <span v-if="foldedLines[lineNumber]">&#9654;</span>
+              <span v-else>&#9660;</span>
+            </button>
+            <button
+              @click="emit('add-to-line', lineNumber)"
+              class="add-line-btn"
+              title="Ajouter un timecode sur cette ligne"
+            >
+              +
+            </button>
+          </div>
         </div>
-      </div>
 
-      <ul v-show="!foldedLines[lineNumber]" class="list-none p-0 m-0 space-y-1">
-        <li
-          v-for="(timecode, idx) in getTimecodesForLine(lineNumber)"
-          :key="timecode.id != null ? `tc-${timecode.id}` : `line-${lineNumber}-idx-${idx}`"
-          :class="[
-            'p-2 rounded-lg cursor-pointer transition-all duration-300 hover:bg-gray-700',
-            {
-              'bg-agfa-blue bg-opacity-40 ring-2 ring-agfa-blue ring-opacity-50':
-                isSelected(timecode),
-            },
-          ]"
-          @click="emit('select', timecode)"
-        >
-          <div class="flex items-center gap-1">
-            <span class="text-xs font-medium text-gray-300">
-              {{ timecode.start.toFixed(2) }}s - {{ timecode.end.toFixed(2) }}s
+        <ul v-show="!foldedLines[lineNumber]" class="list-none p-0 m-0 space-y-1">
+          <li
+            v-for="(timecode, idx) in getTimecodesForLine(lineNumber)"
+            :key="timecode.id != null ? `tc-${timecode.id}` : `line-${lineNumber}-idx-${idx}`"
+            :class="[
+              'p-2 rounded-lg cursor-pointer transition-all duration-300 bg-agfa-dark-30 border border-gray-700/50 hover:bg-gray-600',
+              {
+                'bg-agfa-blue bg-opacity-40 ring-2 ring-agfa-blue ring-opacity-50':
+                  isSelected(timecode),
+              },
+            ]"
+            @click="emit('select', timecode)"
+          >
+            <div class="flex items-center gap-1">
+              <span class="text-xs font-medium text-gray-300">
+                {{ timecode.start.toFixed(2) }}s - {{ timecode.end.toFixed(2) }}s
+              </span>
+
+              <!-- Sélecteur de personnage -->
+              <select
+                v-model="timecode.character_id"
+                class="text-xs border border-gray-600 rounded px-1 py-0.5 min-w-20"
+                :style="getCharacterSelectStyle(timecode.character_id)"
+                @change="updateTimecodeCharacter(timecode)"
+                @click.stop
+              >
+                <option :value="null" style="background: #4a5568; color: #ffffff">Aucun</option>
+                <option
+                  v-for="character in characters"
+                  :key="character.id"
+                  :value="character.id"
+                  :style="{
+                    backgroundColor: character.color,
+                    color: getTextColor(character.color),
+                  }"
+                >
+                  {{ character.name }}
+                </option>
+              </select>
+
+              <!-- Sélecteur de ligne -->
+              <select
+                v-model="timecode.line_number"
+                class="text-xs border border-gray-600 rounded px-1 py-0.5 bg-gray-700 text-white"
+                @change="updateTimecodeLine(timecode)"
+                @click.stop
+                title="Changer la ligne"
+              >
+                <option v-for="line in rythmoLinesCount" :key="line" :value="line">
+                  L{{ line }}
+                </option>
+              </select>
+            </div>
+            <span class="flex-1 ml-2 text-sm text-white">
+              {{ timecode.text }}
             </span>
-
-            <!-- Sélecteur de personnage -->
-            <select
-              v-model="timecode.character_id"
-              class="text-xs border border-gray-600 rounded px-1 py-0.5 min-w-20"
-              :style="getCharacterSelectStyle(timecode.character_id)"
-              @change="updateTimecodeCharacter(timecode)"
-              @click.stop
-            >
-              <option :value="null" style="background: #4a5568; color: #ffffff">Aucun</option>
-              <option
-                v-for="character in characters"
-                :key="character.id"
-                :value="character.id"
-                :style="{ backgroundColor: character.color, color: getTextColor(character.color) }"
+            <div class="flex gap-1">
+              <button
+                @click.stop="emit('edit', timecode)"
+                class="bg-transparent border-none text-white cursor-pointer text-sm hover:text-agfa-blue transition-colors duration-300 p-1 rounded hover:bg-gray-600"
+                title="Éditer"
               >
-                {{ character.name }}
-              </option>
-            </select>
-
-            <!-- Sélecteur de ligne -->
-            <select
-              v-model="timecode.line_number"
-              class="text-xs border border-gray-600 rounded px-1 py-0.5 bg-gray-700 text-white"
-              @change="updateTimecodeLine(timecode)"
-              @click.stop
-              title="Changer la ligne"
-            >
-              <option
-                v-for="line in rythmoLinesCount"
-                :key="line"
-                :value="line"
+                ✏️
+              </button>
+              <button
+                @click.stop="emit('delete', timecode)"
+                class="bg-transparent border-none text-white cursor-pointer text-sm hover:text-red-400 transition-colors duration-300 p-1 rounded hover:bg-gray-600"
+                title="Supprimer"
               >
-                L{{ line }}
-              </option>
-            </select>
-          </div>
-          <span class="flex-1 ml-2 text-sm text-white">
-            {{ timecode.text }}
-          </span>
-          <div class="flex gap-1">
-            <button
-              @click.stop="emit('edit', timecode)"
-              class="bg-transparent border-none text-white cursor-pointer text-sm hover:text-agfa-blue transition-colors duration-300 p-1 rounded hover:bg-gray-600"
-              title="Éditer"
-            >
-              ✏️
-            </button>
-            <button
-              @click.stop="emit('delete', timecode)"
-              class="bg-transparent border-none text-white cursor-pointer text-sm hover:text-red-400 transition-colors duration-300 p-1 rounded hover:bg-gray-600"
-              title="Supprimer"
-            >
-              🗑️
-            </button>
-          </div>
-        </li>
+                🗑️
+              </button>
+            </div>
+          </li>
 
-        <li
-          v-if="getTimecodesForLine(lineNumber).length === 0"
-          class="text-gray-500 text-sm italic p-2"
-        >
-          Aucun timecode sur cette ligne
-        </li>
-      </ul>
+          <li
+            v-if="getTimecodesForLine(lineNumber).length === 0"
+            class="text-gray-500 text-sm italic p-2"
+          >
+            Aucun timecode sur cette ligne
+          </li>
+        </ul>
+      </div>
     </div>
-
   </div>
 </template>
 
