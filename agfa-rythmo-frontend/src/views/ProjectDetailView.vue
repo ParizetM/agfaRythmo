@@ -1691,11 +1691,6 @@ function handleGlobalKeydown(event: KeyboardEvent) {
     event.preventDefault()
     addSceneChange()
     return
-  } // Échap pour retour aux projets (uniquement si le modal n'est pas ouvert)
-  if (event.key === 'Escape' && !showKeyboardShortcuts.value) {
-    event.preventDefault()
-    goBack()
-    return
   }
 
   // F pour aperçu final

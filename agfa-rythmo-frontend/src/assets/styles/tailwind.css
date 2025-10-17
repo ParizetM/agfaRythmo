@@ -119,3 +119,6 @@ html, body {
 .bg-agfa-accent {
   background-color: var(--agfa-strong);
 }
+.bg-agfa-bg-tertiary {
+  background-color: var(--menu-color);
+}
