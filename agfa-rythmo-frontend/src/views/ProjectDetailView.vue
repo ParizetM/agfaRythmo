@@ -70,6 +70,23 @@
           <UsersIcon class="w-5 h-5" />
         </button>
 
+        <!-- Bouton export JSON -->
+        <button
+          v-if="project"
+          class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
+          @click="handleExportProject"
+          title="Exporter le projet en JSON"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            ></path>
+          </svg>
+        </button>
+
         <!-- Bouton aperçu final -->
         <button
           v-if="project && project.video_path && compatibleTimecodes.length > 0"
@@ -176,7 +193,7 @@
         <!-- Écran de chargement dans la zone vidéo -->
         <div
           v-if="project && project.video_path && isVideoLoading"
-          class="absolute inset-0 bg-gray-900 z-30 flex flex-col items-center justify-center rounded-lg h-full w-lvw"
+          class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-lg h-full w-lvw"
         >
           <div class="flex flex-col items-center justify-center space-y-6">
             <!-- Spinner personnalisé -->
@@ -415,6 +432,7 @@ import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
 import * as sceneChangesApi from '../api/sceneChanges'
+import { exportProject } from '../api/projects'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
@@ -538,6 +556,32 @@ function goToFinalPreview() {
     },
   })
 }
+
+// Fonction pour exporter le projet en format .agfa crypté
+async function handleExportProject() {
+  if (!project.value) return
+
+  try {
+    const exportData = await exportProject(project.value.id)
+
+    // Créer un blob et télécharger le fichier
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/octet-stream'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${project.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.agfa`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Erreur lors de l\'export du projet:', error)
+    alert('Erreur lors de l\'export du projet')
+  }
+}
+
 interface Timecode {
   id?: number
   project_id?: number

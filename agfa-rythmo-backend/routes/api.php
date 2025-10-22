@@ -31,6 +31,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('projects', ProjectController::class);
     Route::patch('/projects/{project}/rythmo-lines', [ProjectController::class, 'updateRythmoLinesCount']);
     Route::patch('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
+    Route::get('/projects/{project}/export', [ProjectController::class, 'export']);
+    Route::post('/projects/import', [ProjectController::class, 'import']);
 
     // Vidéos
     Route::post('/videos/upload', [VideoController::class, 'upload'])->name('videos.upload');

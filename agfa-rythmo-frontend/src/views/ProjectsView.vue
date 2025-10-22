@@ -24,7 +24,7 @@
             @click="showCreateModal = true"
             class="bg-agfa-blue hover:bg-agfa-blue-hover text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
           >
-            Créer un nouveau projet
+            Nouveau projet
           </button>
         </div>
       </div>
@@ -242,7 +242,7 @@
       </div>
     </div>
 
-    <!-- Modal création projet -->
+    <!-- Modal création/import projet -->
     <CreateProjectModal
       :show="showCreateModal"
       @close="showCreateModal = false"
@@ -370,10 +370,11 @@ async function fetchProjects() {
 }
 
 function onProjectCreated(project: unknown) {
-  if (isValidProject(project)) {
-    projects.value.push(project)
-    apiError.value = null
-  }
+  // Recharger la liste des projets pour inclure le nouveau
+  fetchProjects()
+  // Rediriger vers le nouveau projet
+  const projectData = project as { id: number }
+  window.location.href = `/projects/${projectData.id}`
 }
 
 function openEditModal(project: Project) {

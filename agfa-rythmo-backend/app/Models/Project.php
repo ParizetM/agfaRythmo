@@ -10,7 +10,7 @@ class Project extends Model
         'name',
         'description',
         'video_path',
-        'timecodes',
+        // 'timecodes', // DEPRECATED: champ legacy, utiliser la relation timecodes() à la place
         'text_content',
         'json_path',
         'rythmo_lines_count',

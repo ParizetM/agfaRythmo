@@ -13,7 +13,7 @@
               to="/"
               class="text-xl font-bold text-indigo-600 dark:text-indigo-400"
             >
-              AgfaRythmo
+              <Logo_titre_largeSvg class="h-20 w-auto fill-indigo-600" />
             </router-link>
             <!-- Desktop Nav -->
             <div class="ml-10 hidden md:flex items-baseline space-x-4">
@@ -166,6 +166,8 @@ import { EnvelopeIcon } from '@heroicons/vue/24/outline'
 import NotificationToast from './components/NotificationToast.vue'
 import { useInvitations } from './composables/useInvitations'
 import { ref, onMounted, onUnmounted } from 'vue'
+import Logo_titre_largeSvg from './assets/icons/logo_titre_large.svg'
+
 
 const authStore = useAuthStore()
 const router = useRouter()
