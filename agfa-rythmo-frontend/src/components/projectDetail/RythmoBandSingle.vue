@@ -1947,7 +1947,7 @@ function onMoveEnd() {
   z-index: 3;
   box-shadow: 0 0 8px v-bind('projectSettings.sceneChangeColor');
   pointer-events: none;
-  transition: all 0.2s ease;
+  /* transition: all 0.2s ease; */
 }
 
 .scene-change-bar.interactive {
