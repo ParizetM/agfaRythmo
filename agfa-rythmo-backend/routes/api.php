@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\ProjectCollaboratorController;
 use App\Http\Controllers\Api\ProjectInvitationController;
 use App\Http\Controllers\Api\SettingsPresetController;
+use App\Http\Controllers\Api\SceneAnalysisController;
 
 // Routes publiques (pas d'authentification requise)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -40,8 +41,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Changements de plan (scene changes)
     Route::get('/projects/{project}/scene-changes', [SceneChangeController::class, 'index']);
     Route::post('/projects/{project}/scene-changes', [SceneChangeController::class, 'store']);
+    Route::delete('/projects/{project}/scene-changes', [SceneChangeController::class, 'destroyAll']);
     Route::put('/scene-changes/{id}', [SceneChangeController::class, 'update']);
     Route::delete('/scene-changes/{id}', [SceneChangeController::class, 'destroy']);
+
+    // Analyse IA des changements de plan
+    Route::post('/projects/{project}/analyze-scenes', [SceneAnalysisController::class, 'startAnalysis']);
+    Route::get('/projects/{project}/analysis-status', [SceneAnalysisController::class, 'getStatus']);
+    Route::post('/projects/{project}/cancel-analysis', [SceneAnalysisController::class, 'cancelAnalysis']);
 
     // Timecodes multi-lignes
     Route::get('/projects/{project}/timecodes', [TimecodeController::class, 'index']);

@@ -70,6 +70,25 @@
           <UsersIcon class="w-5 h-5" />
         </button>
 
+        <!-- Bouton IA - Analyse automatique des changements de plan -->
+        <button
+          v-if="project && project.video_path && canManageProject"
+          :disabled="hasSceneChanges || isAnalyzing"
+          :class="[
+            'flex items-center gap-2 border rounded-lg px-3 py-2 font-semibold cursor-pointer transition-all duration-300',
+            hasSceneChanges || isAnalyzing
+              ? 'bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed opacity-50'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-purple-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
+          ]"
+          @click="handleStartAnalysis"
+          :title="hasSceneChanges ? 'Des changements de plan existent déjà' : 'Détecter automatiquement les changements de plan'"
+        >
+          <svg class="w-5 h-5" :class="{ 'animate-pulse': isAnalyzing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+          <span class="hidden md:inline">IA</span>
+        </button>
+
         <!-- Bouton export JSON -->
         <button
           v-if="project"
@@ -141,7 +160,7 @@
         <transition name="fade">
           <div
             v-if="!isSceneChangesCollapsed"
-            class="fixed top-[88px] right-0 z-40 h-fit w-64 max-w-full flex flex-col pr-2"
+            class="fixed top-[60px] right-0 z-40 h-fit w-64 max-w-full flex flex-col pr-2"
           >
             <SceneChangesList
               :sceneChanges="uniqueSceneChangeTimecodes"
@@ -149,6 +168,7 @@
               @select="onSelectSceneChange"
               @edit="onEditSceneChange"
               @delete="onDeleteSceneChange"
+              @deleteAll="onDeleteAllSceneChanges"
               @add="onAddSceneChange"
               @seekTo="onNavigationSeek"
             />
@@ -386,6 +406,46 @@
     <!-- Modal des paramètres du projet -->
     <ProjectSettingsModal :show="showProjectSettings" @close="showProjectSettings = false" />
 
+    <!-- Modal des paramètres d'analyse IA -->
+    <SceneAnalysisSettingsModal
+      v-model="showAnalysisSettings"
+      @confirm="handleAnalysisConfirm"
+    />
+
+    <!-- Modal d'analyse IA des changements de plan -->
+    <SceneAnalysisModal
+      :show="showAnalysisModal"
+      :status="analysisStatus === 'none' ? 'pending' : analysisStatus"
+      :progress="analysisProgress"
+      :message="analysisMessage"
+      :showDetails="true"
+      @cancel="handleCancelAnalysis"
+    />
+
+    <!-- Dialog de confirmation d'annulation -->
+    <ConfirmDialog
+      v-model:show="showCancelConfirm"
+      title="Annuler l'analyse ?"
+      message="Êtes-vous sûr de vouloir annuler l'analyse en cours ? Cette action supprimera tous les changements de plan déjà détectés."
+      confirm-text="Oui, annuler"
+      cancel-text="Non, continuer"
+      danger
+      @confirm="() => { pendingCancelAction?.(); showCancelConfirm = false; pendingCancelAction = null }"
+      @cancel="() => { showCancelConfirm = false; pendingCancelAction = null }"
+    />
+
+    <!-- Modal de confirmation pour suppression de tous les scene changes -->
+    <ConfirmModal
+      v-model:show="showDeleteAllConfirm"
+      title="Supprimer tous les changements de plan ?"
+      :message="`Êtes-vous sûr de vouloir supprimer tous les ${sceneChanges.length} changements de plan ?`"
+      details="Cette action est irréversible."
+      confirm-text="Oui, tout supprimer"
+      cancel-text="Annuler"
+      type="danger"
+      @confirm="confirmDeleteAllSceneChanges"
+    />
+
     <!-- Modal de gestion des collaborateurs -->
     <BaseModal
       :show="showCollaboratorsModal"
@@ -433,6 +493,8 @@ import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
 import { characterApi, type Character } from '../api/characters'
 import * as sceneChangesApi from '../api/sceneChanges'
 import { exportProject } from '../api/projects'
+import { startSceneAnalysis, getAnalysisStatus, cancelSceneAnalysis } from '../api/sceneAnalysis'
+import { notificationService } from '../services/notifications'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
@@ -471,6 +533,33 @@ async function onDeleteSceneChange(idx: number) {
     sceneChanges.value.splice(idx, 1)
   } catch {
     // TODO: gestion d'erreur
+  }
+}
+
+async function onDeleteAllSceneChanges() {
+  if (!project.value) return
+
+  // Afficher la modal de confirmation
+  showDeleteAllConfirm.value = true
+}
+
+async function confirmDeleteAllSceneChanges() {
+  if (!project.value) return
+
+  try {
+    // Supprimer tous les scene changes du projet via l'API
+    await api.delete(`/projects/${project.value.id}/scene-changes`)
+
+    // Vider le tableau local
+    sceneChanges.value = []
+
+    // Rafraîchir les bandes rythmo
+    refreshRythmoBands()
+
+    notificationService.success('Succès', 'Tous les changements de plan ont été supprimés')
+  } catch (error) {
+    console.error('Erreur lors de la suppression des changements de plan:', error)
+    notificationService.error('Erreur', 'Impossible de supprimer les changements de plan')
   }
 }
 
@@ -521,6 +610,10 @@ async function onDeleteSceneChangeFromBand(payload: { id: number }) {
 import VideoPlayer from '../components/projectDetail/VideoPlayer.vue'
 import VideoNavigationBar from '../components/projectDetail/VideoNavigationBar.vue'
 import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
+import SceneAnalysisModal from '../components/SceneAnalysisModal.vue'
+import SceneAnalysisSettingsModal from '../components/SceneAnalysisSettingsModal.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 // import RythmoControls from '../components/projectDetail/RythmoControls.vue'
 
@@ -579,7 +672,7 @@ async function handleExportProject() {
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error('Erreur lors de l\'export du projet:', error)
-    alert('Erreur lors de l\'export du projet')
+    notificationService.error('Erreur', 'Erreur lors de l\'export du projet')
   }
 }
 
@@ -661,6 +754,22 @@ const showKeyboardShortcuts = ref(false)
 const showCollaboratorsModal = ref(false)
 const showProjectSettings = ref(false)
 
+// Gestion de l'analyse IA des changements de plan
+const isAnalyzing = ref(false)
+const showAnalysisModal = ref(false)
+const showAnalysisSettings = ref(false)
+const analysisStatus = ref<'none' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'>('none')
+const analysisProgress = ref(0)  // 0-100
+const analysisMessage = ref('')
+let analysisPollingInterval: number | null = null
+
+// Dialog de confirmation pour annulation
+const showCancelConfirm = ref(false)
+const pendingCancelAction = ref<(() => void) | null>(null)
+
+// Dialog de confirmation pour suppression de tous les scene changes
+const showDeleteAllConfirm = ref(false)
+
 // Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
 const selectedLineNumber = ref<number>(1)
 
@@ -712,6 +821,11 @@ const uniqueSceneChangeTimecodes = computed(() => {
   // Utilise un Set pour éliminer les doublons, puis convertit en array
   const uniqueTimecodes = [...new Set(uniqueSceneChanges.value.map((sc) => sc.timecode))]
   return uniqueTimecodes.sort((a, b) => a - b)
+})
+
+// Computed pour vérifier s'il y a des changements de plan existants
+const hasSceneChanges = computed(() => {
+  return sceneChanges.value.length > 0
 })
 
 // Fonction pour trouver une position libre pour un nouveau timecode
@@ -1234,6 +1348,141 @@ async function addSceneChange() {
     sceneChanges.value.sort((a, b) => a.timecode - b.timecode)
   } catch {
     // TODO: gestion d'erreur
+  }
+}
+
+// ===== GESTION DE L'ANALYSE IA DES CHANGEMENTS DE PLAN =====
+
+/**
+ * Démarrer l'analyse automatique de détection de plans
+ */
+async function handleStartAnalysis() {
+  if (!project.value || hasSceneChanges.value) return
+
+  // Afficher la modale de paramètres
+  showAnalysisSettings.value = true
+}
+
+/**
+ * Confirmer et lancer l'analyse avec les paramètres choisis
+ */
+async function handleAnalysisConfirm(params: { fps: number; threshold: number }) {
+  if (!project.value || hasSceneChanges.value) return
+
+  try {
+    // Lancer l'analyse avec les paramètres
+    await startSceneAnalysis(project.value.id, params)
+
+    // Afficher le modal de chargement
+    isAnalyzing.value = true
+    showAnalysisModal.value = true
+    analysisStatus.value = 'pending'
+    analysisProgress.value = 0
+    analysisMessage.value = ''
+
+    // Démarrer le polling du statut
+    startAnalysisPolling()
+  } catch (error) {
+    console.error('Erreur lors du lancement de l\'analyse:', error)
+    isAnalyzing.value = false
+    showAnalysisModal.value = false
+    notificationService.error('Erreur', 'Erreur lors du lancement de l\'analyse. Veuillez réessayer.')
+  }
+}
+
+/**
+ * Annuler l'analyse en cours
+ */
+async function handleCancelAnalysis() {
+  if (!project.value) return
+
+  // Afficher le dialog de confirmation
+  showCancelConfirm.value = true
+  pendingCancelAction.value = async () => {
+    try {
+      // Appeler l'API pour annuler
+      await cancelSceneAnalysis(project.value!.id)
+
+      // Arrêter le polling
+      stopAnalysisPolling()
+
+      // Fermer le modal
+      isAnalyzing.value = false
+      showAnalysisModal.value = false
+      analysisStatus.value = 'cancelled'
+      analysisProgress.value = 0
+      analysisMessage.value = 'Analyse annulée'
+
+      // Notification
+      notificationService.success('Succès', 'Analyse annulée avec succès')
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation de l\'analyse:', error)
+      notificationService.error('Erreur', 'Erreur lors de l\'annulation de l\'analyse. Elle pourrait déjà être terminée.')
+    }
+  }
+}
+
+/**
+ * Démarrer le polling pour vérifier le statut de l'analyse
+ */
+function startAnalysisPolling() {
+  if (!project.value) return
+
+  // Nettoyer l'intervalle existant si présent
+  if (analysisPollingInterval !== null) {
+    clearInterval(analysisPollingInterval)
+  }
+
+  // Polling toutes les 2 secondes
+  analysisPollingInterval = window.setInterval(async () => {
+    if (!project.value) {
+      stopAnalysisPolling()
+      return
+    }
+
+    try {
+      const status = await getAnalysisStatus(project.value.id)
+      analysisStatus.value = status.analysis_status
+      analysisProgress.value = status.analysis_progress || 0
+      analysisMessage.value = status.analysis_message || ''
+
+      // Si l'analyse est terminée ou a échoué
+      if (status.analysis_status === 'completed' || status.analysis_status === 'failed') {
+        stopAnalysisPolling()
+        isAnalyzing.value = false
+        showAnalysisModal.value = false
+
+        if (status.analysis_status === 'completed') {
+          // Recharger les scene changes
+          const scResponse = await api.get(`/projects/${project.value.id}/scene-changes`)
+          sceneChanges.value = scResponse.data
+
+          // Rafraîchir les bandes rythmo
+          refreshRythmoBands()
+
+          // Notification de succès
+          notificationService.success('Succès', `Analyse terminée ! ${status.scene_changes_count} changement(s) de plan détecté(s).`)
+        } else {
+          // Notification d'échec
+          notificationService.error('Échec', status.analysis_message || 'L\'analyse a échoué. Veuillez vérifier les logs ou réessayer.')
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification du statut:', error)
+      stopAnalysisPolling()
+      isAnalyzing.value = false
+      showAnalysisModal.value = false
+    }
+  }, 2000)
+}
+
+/**
+ * Arrêter le polling
+ */
+function stopAnalysisPolling() {
+  if (analysisPollingInterval !== null) {
+    clearInterval(analysisPollingInterval)
+    analysisPollingInterval = null
   }
 }
 
@@ -1806,6 +2055,19 @@ onMounted(async () => {
     // Charge les personnages
     await loadCharacters()
 
+    // Vérifier si une analyse est en cours
+    if (data.analysis_status && ['pending', 'processing'].includes(data.analysis_status)) {
+      // Une analyse est déjà en cours, afficher le modal et démarrer le polling
+      isAnalyzing.value = true
+      showAnalysisModal.value = true
+      analysisStatus.value = data.analysis_status
+      analysisProgress.value = data.analysis_progress || 0
+      analysisMessage.value = data.analysis_message || ''
+
+      // Démarrer le polling pour suivre la progression
+      startAnalysisPolling()
+    }
+
     // Initialiser l'état de chargement vidéo APRÈS avoir chargé le projet
     // Seulement si la vidéo n'est pas déjà chargée (loadedmetadata pas encore déclenché)
     if (!project.value?.video_path) {
@@ -1903,6 +2165,9 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
   if (focusInHandler) window.removeEventListener('focusin', focusInHandler)
   if (focusOutHandler) window.removeEventListener('focusout', focusOutHandler)
+
+  // Arrêter le polling de l'analyse si actif
+  stopAnalysisPolling()
 })
 
 // Seek déclenché par clic sur un bloc de la bande rythmo

@@ -122,3 +122,21 @@ html, body {
 .bg-agfa-bg-tertiary {
   background-color: var(--menu-color);
 }
+.text-agfa-light {
+  color: var(--agfa-light);
+}
+.text-agfa-dark {
+  color: var(--agfa-dark);
+}
+.text-agfa-gray {
+  color: var(--agfa-gray);
+}
+.text-agfa-accent {
+  color: var(--agfa-strong);
+}
+.text-agfa-blue {
+  color: var(--agfa-blue);
+}
+.text-agfa-green {
+  color: var(--agfa-green);
+}

@@ -17,6 +17,7 @@ applyTo: '**'
 - Vue : `<script setup>` + TypeScript strict
 - Laravel : FormRequest pour validation, PascalCase classes, camelCase méthodes
 - Tester avant commit
+- **UI/UX** : JAMAIS utiliser `alert()` ou `confirm()` natifs → utiliser `ConfirmModal.vue` ou `BaseModal.vue` pour dialogues modernes
 
 ## 📋 Contexte Projet
 
@@ -242,6 +243,31 @@ agfa-rythmo-frontend/
 ### 🎨 UI/UX Améliorations
 **Design moderne et cohérent**
 
+#### ConfirmModal.vue :
+**Composant moderne pour confirmations utilisateur (remplace `confirm()` natif)**
+- **Props** :
+  - `show` (boolean) : affichage de la modal
+  - `title` (string) : titre de la confirmation
+  - `message` (string) : message principal
+  - `details?` (string) : détails optionnels
+  - `confirmText?` (string) : texte bouton confirmer (défaut: "Confirmer")
+  - `cancelText?` (string) : texte bouton annuler (défaut: "Annuler")
+  - `type?` ('danger' | 'warning' | 'info') : type de confirmation (défaut: 'warning')
+- **Événements** :
+  - `@confirm` : émis lors de la confirmation
+  - `@cancel` : émis lors de l'annulation
+  - `@update:show` : pour v-model:show
+- **Utilisation** :
+```vue
+<ConfirmModal
+  v-model:show="showConfirm"
+  title="Supprimer ce projet ?"
+  message="Cette action est irréversible."
+  type="danger"
+  @confirm="handleDelete"
+/>
+```
+
 #### Glassmorphism :
 - Panneaux latéraux avec effet verre (backdrop-filter: blur)
 - Bordures subtiles et ombres douces
@@ -255,6 +281,7 @@ agfa-rythmo-frontend/
 - Fermeture : Escape, clic extérieur, bouton X
 - Transitions fluides avec Tailwind
 - Utilisé dans : CreateProjectModal, EditProjectModal, DeleteProjectModal
+- **Titres longs** : utilisent `break-words` au lieu de `truncate` pour affichage complet sur plusieurs lignes
 
 #### UI compacte :
 - Espacements optimisés (reduced padding/margin)

@@ -106,6 +106,7 @@ import {
 import { invitationService, type ProjectInvitation } from '../api/invitations';
 import { useRouter } from 'vue-router';
 import { AxiosError } from 'axios';
+import { notificationService } from '@/services/notifications';
 
 const router = useRouter();
 const invitations = ref<ProjectInvitation[]>([]);
@@ -163,12 +164,12 @@ async function acceptInvitation(invitation: ProjectInvitation) {
     }
 
     if (errorMessage.includes('UNIQUE constraint failed')) {
-      alert('Il semble que vous soyez déjà collaborateur sur ce projet. Veuillez actualiser la page.');
+      notificationService.warning('Déjà collaborateur', 'Il semble que vous soyez déjà collaborateur sur ce projet. Veuillez actualiser la page.');
       // Actualiser les invitations pour synchroniser l'état
       await refreshInvitations();
     } else {
       // Autres erreurs
-      alert('Erreur lors de l\'acceptation de l\'invitation. Veuillez réessayer.');
+      notificationService.error('Erreur', 'Erreur lors de l\'acceptation de l\'invitation. Veuillez réessayer.');
     }
   } finally {
     processing.value = false;

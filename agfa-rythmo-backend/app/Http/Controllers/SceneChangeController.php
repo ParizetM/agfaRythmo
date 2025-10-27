@@ -50,4 +50,18 @@ class SceneChangeController extends Controller
         $sceneChange->delete();
         return response()->json(['success' => true]);
     }
+
+    // Suppression de tous les changements de plan d'un projet
+    public function destroyAll($projectId)
+    {
+        $project = Project::findOrFail($projectId);
+        $count = $project->sceneChanges()->count();
+        $project->sceneChanges()->delete();
+
+        return response()->json([
+            'success' => true,
+            'deleted_count' => $count,
+            'message' => "{$count} changement(s) de plan supprimé(s)"
+        ]);
+    }
 }

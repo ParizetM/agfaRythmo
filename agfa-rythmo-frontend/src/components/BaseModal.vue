@@ -54,7 +54,7 @@
 
               <!-- Titre et sous-titre -->
               <div class="flex-1 min-w-0">
-                <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate">
+                <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight break-words">
                   <slot name="title">{{ title }}</slot>
                 </h3>
                 <p

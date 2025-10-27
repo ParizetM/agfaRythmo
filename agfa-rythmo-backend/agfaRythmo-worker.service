@@ -1,0 +1,16 @@
+[Unit]
+Description=AgfaRythmo Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5s
+ExecStart=/usr/bin/php /path/to/agfa-rythmo-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=600
+StandardOutput=append:/path/to/agfa-rythmo-backend/storage/logs/worker.log
+StandardError=append:/path/to/agfa-rythmo-backend/storage/logs/worker-error.log
+
+[Install]
+WantedBy=multi-user.target

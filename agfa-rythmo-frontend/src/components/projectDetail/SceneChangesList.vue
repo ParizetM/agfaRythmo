@@ -40,16 +40,26 @@
       </div>
     </div>
 
-    <button
-      @click="$emit('add')"
-      class="mt-2 bg-agfa-green hover:bg-agfa-green-hover text-white font-medium py-2 px-3 rounded text-sm transition-colors"
-    >
-      + Ajouter
-    </button>
+    <div class="mt-2 flex gap-2">
+      <button
+        @click="$emit('add')"
+        class="flex-1 bg-agfa-green hover:bg-agfa-green-hover text-white font-medium py-2 px-3 rounded text-sm transition-colors"
+      >
+        + Ajouter
+      </button>
+      <button
+        v-if="sceneChanges.length > 0"
+        @click="$emit('deleteAll')"
+        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded text-sm transition-colors"
+        title="Supprimer tous les changements de plan"
+      >
+        🗑️ Tout supprimer
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 defineProps<{ sceneChanges: number[], selected?: number }>();
-defineEmits(['select', 'edit', 'delete', 'add', 'seekTo']);
+defineEmits(['select', 'edit', 'delete', 'add', 'seekTo', 'deleteAll']);
 </script>

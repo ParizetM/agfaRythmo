@@ -207,6 +207,7 @@
 import { ref, watch } from 'vue'
 import BaseModal from './BaseModal.vue'
 import { createProject, importProject, type ProjectExportData } from '@/api/projects'
+import { notificationService } from '@/services/notifications'
 
 interface ProjectFormData {
   name: string
@@ -290,7 +291,7 @@ async function handleCreate() {
     emit('close')
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
-    alert(err.response?.data?.message || 'Erreur lors de la création du projet')
+    notificationService.error('Erreur', err.response?.data?.message || 'Erreur lors de la création du projet')
   } finally {
     isCreating.value = false
   }

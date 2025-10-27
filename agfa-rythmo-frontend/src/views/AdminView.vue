@@ -423,6 +423,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import adminService, { type AdminStats, type UserWithStats, type Project } from '@/api/admin'
+import { notificationService } from '@/services/notifications'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -597,7 +598,7 @@ const saveUser = async () => {
     closeUserModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
-    alert('Erreur lors de la sauvegarde de l\'utilisateur')
+    notificationService.error('Erreur', 'Erreur lors de la sauvegarde de l\'utilisateur')
   } finally {
     userSaving.value = false
   }
@@ -612,9 +613,10 @@ const deleteUser = async (user: UserWithStats) => {
     await adminService.deleteUser(user.id)
     await loadUsers()
     await loadStats()
+    notificationService.success('Succès', 'Utilisateur supprimé avec succès')
   } catch (error) {
     console.error('Erreur lors de la suppression:', error)
-    alert('Erreur lors de la suppression de l\'utilisateur')
+    notificationService.error('Erreur', 'Erreur lors de la suppression de l\'utilisateur')
   }
 }
 
@@ -628,9 +630,10 @@ const deleteProject = async (project: Project) => {
     await adminService.deleteProject(project.id)
     await loadProjects()
     await loadStats()
+    notificationService.success('Succès', 'Projet supprimé avec succès')
   } catch (error) {
     console.error('Erreur lors de la suppression du projet:', error)
-    alert('Erreur lors de la suppression du projet')
+    notificationService.error('Erreur', 'Erreur lors de la suppression du projet')
   }
 }
 </script>

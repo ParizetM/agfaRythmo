@@ -126,6 +126,7 @@
 import { ref, watch } from 'vue'
 import BaseModal from './BaseModal.vue'
 import api from '@/api/axios'
+import { notificationService } from '@/services/notifications'
 
 interface Project {
   id: number
@@ -178,7 +179,7 @@ function handleFileChange(event: Event) {
     if (file.type === 'video/mp4') {
       formData.value.newVideo = file
     } else {
-      alert('Seuls les fichiers MP4 sont acceptés.')
+      notificationService.warning('Format invalide', 'Seuls les fichiers MP4 sont acceptés.')
       target.value = ''
     }
   }
@@ -259,7 +260,7 @@ async function handleSubmit() {
     resetForm()
   } catch (error) {
     console.error('Erreur lors de la mise à jour du projet:', error)
-    alert('Erreur lors de la mise à jour du projet. Veuillez réessayer.')
+    notificationService.error('Erreur', 'Erreur lors de la mise à jour du projet. Veuillez réessayer.')
   } finally {
     uploading.value = false
     uploadProgress.value = 0

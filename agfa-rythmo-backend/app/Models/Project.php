@@ -16,6 +16,9 @@ class Project extends Model
         'rythmo_lines_count',
         'user_id',
         'project_settings',
+        'analysis_status',
+        'analysis_progress',
+        'analysis_message',
     ];
 
     protected $casts = [
