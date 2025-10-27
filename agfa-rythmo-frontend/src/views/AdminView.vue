@@ -52,23 +52,6 @@
               <div class="w-0 flex-1">
                 <dl>
                   <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Utilisateurs
-                  </dt>
-                  <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                    {{ stats.regular_users }}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
                     Projets total
                   </dt>
                   <dd class="text-lg font-medium text-gray-900 dark:text-white">
@@ -96,7 +79,28 @@
             </div>
           </div>
         </div>
+        <!-- Statistiques vidéos -->
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+          <div class="p-5">
+            <div class="flex items-center">
+              <div class="w-0 flex-1">
+                <dl>
+                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                    Espace total utilisé
+                  </dt>
+                  <dd class="text-lg font-medium text-gray-900 dark:text-white">
+                    {{ formatFileSize(stats.total_video_size) }}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
+
+
 
       <!-- Onglets -->
       <div class="border-b border-gray-200 dark:border-gray-700">
@@ -261,8 +265,14 @@
                 <p v-if="project.owner" class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                   Propriétaire : {{ project.owner.name }}
                 </p>
-                <p v-if="project.collaborators?.length" class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <p v-if="project.collaborators?.length" class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                   {{ project.collaborators.length }} collaborateur(s)
+                </p>
+                <p v-if="project.video_path && project.video_size !== undefined && project.video_size > 0" class="text-sm text-indigo-500 dark:text-indigo-400 mb-4">
+                  📹 {{ formatFileSize(project.video_size) }}
+                </p>
+                <p v-else-if="project.video_path" class="text-sm text-gray-400 dark:text-gray-500 mb-4">
+                  📹 Vidéo présente (taille inconnue)
                 </p>
                 <div class="flex justify-between items-center">
                   <span class="text-xs text-gray-500 dark:text-gray-400">
@@ -447,6 +457,17 @@ const userForm = ref({
 const projects = ref<Project[]>([])
 const projectLoading = ref(false)
 const projectSearch = ref('')
+
+// Fonction pour formater la taille des fichiers
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 octets'
+
+  const k = 1024
+  const sizes = ['octets', 'Ko', 'Mo', 'Go', 'To']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+}
 
 onMounted(async () => {
   await loadStats()

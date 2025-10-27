@@ -164,6 +164,24 @@ class AdminUserController extends Controller
 
         $projects = $query->orderBy('created_at', 'desc')->paginate(20);
 
+        // Ajouter la taille de la vidéo pour chaque projet
+        $projects->getCollection()->transform(function ($project) {
+            $project->video_size = 0;
+            if ($project->video_path) {
+                // Le video_path contient "/storage/videos/filename.mp4"
+                $filename = basename($project->video_path);
+                
+                // Les fichiers sont stockés via le disque 'local' qui pointe vers storage/app/private
+                // Donc le chemin est: storage/app/private/public/videos/filename.mp4
+                $videoPath = storage_path('app/private/public/videos/' . $filename);
+                
+                if (file_exists($videoPath)) {
+                    $project->video_size = filesize($videoPath);
+                }
+            }
+            return $project;
+        });
+
         return response()->json($projects);
     }
 
@@ -193,12 +211,30 @@ class AdminUserController extends Controller
      */
     public function stats()
     {
+        // Calculer la taille totale des vidéos
+        $totalVideoSize = 0;
+        $videoCount = 0;
+        $projects = Project::whereNotNull('video_path')->get();
+
+        foreach ($projects as $project) {
+            $filename = basename($project->video_path);
+            // Les fichiers sont stockés via le disque 'local' qui pointe vers storage/app/private
+            $videoPath = storage_path('app/private/public/videos/' . $filename);
+            
+            if (file_exists($videoPath)) {
+                $totalVideoSize += filesize($videoPath);
+                $videoCount++;
+            }
+        }
+
         return response()->json([
             'total_users' => User::count(),
             'admin_users' => User::where('role', 'admin')->count(),
             'regular_users' => User::where('role', 'user')->count(),
             'total_projects' => Project::count(),
             'projects_with_collaborators' => Project::has('collaborators')->count(),
+            'total_video_size' => $totalVideoSize,
+            'video_count' => $videoCount,
         ]);
     }
 }

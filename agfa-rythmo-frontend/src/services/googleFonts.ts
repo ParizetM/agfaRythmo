@@ -74,7 +74,7 @@ export function loadGoogleFont(fontFamily: string): Promise<void> {
     // Gérer le chargement réussi
     link.onload = () => {
       loadedFonts.add(fontFamily)
-      console.log(`Police "${fontFamily}" chargée avec succès`)
+      // console.log(`Police "${fontFamily}" chargée avec succès`)
       resolve()
     }
 

@@ -7,6 +7,8 @@ export interface AdminStats {
   regular_users: number
   total_projects: number
   projects_with_collaborators: number
+  total_video_size: number
+  video_count: number
 }
 
 export interface Project {
@@ -14,6 +16,7 @@ export interface Project {
   name: string
   description?: string
   video_path?: string
+  video_size?: number
   user_id: number
   created_at: string
   updated_at: string
