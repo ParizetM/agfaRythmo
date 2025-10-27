@@ -26,6 +26,7 @@
           @click="importMode = false"
           :class="[
             'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
+            timecode != null ? 'opacity-50 cursor-not-allowed' : '',
             !importMode
               ? 'bg-agfa-blue text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -35,10 +36,11 @@
         </button>
         <button
           type="button"
-            :disabled="(timecode == null)"
+            :disabled="timecode != null"
           @click="importMode = true"
           :class="[
             'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
+            timecode != null ? 'opacity-50 cursor-not-allowed' : '',
             importMode
               ? 'bg-agfa-blue text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
