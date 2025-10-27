@@ -553,6 +553,7 @@ function goToFinalPreview() {
       video: getVideoUrl(project.value.video_path),
       rythmo: JSON.stringify(compatibleTimecodes.value),
       rythmoLinesCount: String(project.value.rythmo_lines_count || 1),
+      sceneChanges: JSON.stringify(uniqueSceneChanges.value),
     },
   })
 }

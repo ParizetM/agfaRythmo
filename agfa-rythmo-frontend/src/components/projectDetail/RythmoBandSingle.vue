@@ -290,24 +290,24 @@
             :class="{
               'hovered': isSceneChangeHovered(sceneChange.id),
               'dragging': draggingSceneChangeIdx === idx,
-              'interactive': props.lineNumber === 1 || props.isLastLine
+              'interactive': !props.hideConfig && (props.lineNumber === 1 || props.isLastLine)
             }"
             :style="{ left: sceneChange.x + 'px' }"
             @mouseenter="onSceneChangeHover(idx)"
             @mouseleave="onSceneChangeLeave()"
             @click="onSceneChangeClick(sceneChange, $event)"
           >
-            <!-- Zone de grab visible uniquement sur la ligne 1 -->
+            <!-- Zone de grab visible uniquement sur la ligne 1 et si pas en mode hideConfig -->
             <div
-              v-if="props.lineNumber === 1"
+              v-if="props.lineNumber === 1 && !props.hideConfig"
               class="scene-change-grab-handle"
               @mousedown="onSceneChangeDragStart(idx, sceneChange, $event)"
               title="Glisser pour déplacer le changement de plan"
             ></div>
 
-            <!-- Bouton de suppression visible au hover uniquement sur la dernière ligne -->
+            <!-- Bouton de suppression visible au hover uniquement sur la dernière ligne et si pas en mode hideConfig -->
             <button
-              v-if="props.isLastLine && isSceneChangeHovered(sceneChange.id)"
+              v-if="props.isLastLine && isSceneChangeHovered(sceneChange.id) && !props.hideConfig"
               class="scene-change-delete-btn"
               @click="onSceneChangeDelete(sceneChange.id)"
               title="Supprimer le changement de plan"

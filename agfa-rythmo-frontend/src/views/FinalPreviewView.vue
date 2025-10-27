@@ -67,6 +67,7 @@
           >
             <MultiRythmoBand
               :timecodes="rythmoData"
+              :sceneChanges="sceneChangesData"
               :currentTime="currentTime"
               :videoDuration="videoDuration"
               :rythmoLinesCount="getRythmoLinesCount"
@@ -91,6 +92,7 @@
         >
           <MultiRythmoBand
             :timecodes="rythmoData"
+            :sceneChanges="sceneChangesData"
             :currentTime="currentTime"
             :videoDuration="videoDuration"
             :rythmoLinesCount="getRythmoLinesCount"
@@ -115,6 +117,7 @@ const settingsStore = useProjectSettingsStore()
 const projectSettings = computed(() => settingsStore.settings)
 
 const rythmoData = route.query.rythmo ? JSON.parse(route.query.rythmo as string) : []
+const sceneChangesData = route.query.sceneChanges ? JSON.parse(route.query.sceneChanges as string) : []
 // Récupère le nombre de lignes depuis les paramètres de la route (configuré dans le projet)
 const getRythmoLinesCount = route.query.rythmoLinesCount
   ? parseInt(route.query.rythmoLinesCount as string, 10)
