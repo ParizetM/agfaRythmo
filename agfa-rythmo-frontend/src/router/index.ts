@@ -9,10 +9,19 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import AdminView from '../views/AdminView.vue'
+import MaintenanceView from '../views/MaintenanceView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // Page de maintenance
+    {
+      path: '/maintenance',
+      name: 'maintenance',
+      component: MaintenanceView,
+      meta: { public: true }
+    },
+
     // Routes publiques
     {
       path: '/login',

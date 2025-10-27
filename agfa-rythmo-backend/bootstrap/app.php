@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
+
+        // Mode maintenance global
+        $middleware->append(\App\Http\Middleware\CheckMaintenanceMode::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

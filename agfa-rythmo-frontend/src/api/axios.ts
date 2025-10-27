@@ -22,6 +22,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Mode maintenance - ne rediriger que si on n'est pas déjà sur la page maintenance
+    if (error.response?.status === 503) {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/maintenance') {
+        window.location.href = '/maintenance';
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       // Token invalide ou expiré
       localStorage.removeItem('auth_token');
