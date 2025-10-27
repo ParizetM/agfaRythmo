@@ -383,7 +383,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
-import { POPULAR_FONTS, type GoogleFont } from '../../services/googleFonts'
+import { POPULAR_FONTS, type GoogleFont, loadGoogleFont, preloadPopularFonts } from '../../services/googleFonts'
 import PresetsManager from './PresetsManager.vue'
 import BaseModal from '../BaseModal.vue'
 
@@ -426,10 +426,24 @@ watch(
 )
 
 async function loadFonts() {
-  // Pour l'instant, on utilise les polices populaires
-  // On pourrait charger plus de polices via l'API Google Fonts
+  // Pré-charger toutes les polices populaires
+  await preloadPopularFonts()
   availableFonts.value = POPULAR_FONTS
 }
+
+// Charger la police sélectionnée quand elle change
+watch(
+  () => localSettings.value.fontFamily,
+  async (newFont) => {
+    if (newFont) {
+      try {
+        await loadGoogleFont(newFont)
+      } catch (error) {
+        console.error(`Impossible de charger la police ${newFont}:`, error)
+      }
+    }
+  },
+)
 
 function closeModal() {
   emit('close')
