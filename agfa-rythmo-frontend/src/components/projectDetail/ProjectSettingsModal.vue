@@ -384,6 +384,7 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
 import { POPULAR_FONTS, type GoogleFont, loadGoogleFont, preloadPopularFonts } from '../../services/googleFonts'
+import { notificationService } from '../../services/notifications'
 import PresetsManager from './PresetsManager.vue'
 import BaseModal from '../BaseModal.vue'
 
@@ -449,17 +450,28 @@ function closeModal() {
   emit('close')
 }
 
-function applySettings() {
-  // Appliquer tous les paramètres
-  Object.entries(localSettings.value).forEach(([key, value]) => {
-    settingsStore.updateSetting(key as keyof typeof localSettings.value, value)
-  })
-  closeModal()
+async function applySettings() {
+  try {
+    // Appliquer tous les paramètres
+    for (const [key, value] of Object.entries(localSettings.value)) {
+      await settingsStore.updateSetting(key as keyof typeof localSettings.value, value)
+    }
+    notificationService.success('Paramètres sauvegardés', 'Les paramètres ont été appliqués avec succès', 3000)
+    closeModal()
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde des paramètres:', error)
+    notificationService.error(
+      'Erreur de sauvegarde',
+      'Impossible de sauvegarder les paramètres. Veuillez réessayer.',
+      5000
+    )
+  }
 }
 
 function resetToDefaults() {
   settingsStore.resetSettings()
   localSettings.value = { ...settingsStore.settings }
+  notificationService.info('Paramètres réinitialisés', 'Les paramètres par défaut ont été restaurés', 3000)
 }
 
 // Quand un preset est appliqué, recharger les paramètres locaux

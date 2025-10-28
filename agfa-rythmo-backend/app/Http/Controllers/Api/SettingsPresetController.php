@@ -43,7 +43,7 @@ class SettingsPresetController extends Controller
             'settings.fontFamily' => 'required|string|max:255',
             'settings.bandBackgroundColor' => 'required|string|max:7',
             'settings.sceneChangeColor' => 'required|string|max:7',
-            'settings.overlayPosition' => 'required|in:under,over',
+            'settings.overlayPosition' => 'required|in:over,under-full,under-video-width,contained-16-9',
         ]);
 
         $preset = SettingsPreset::create([
@@ -73,7 +73,7 @@ class SettingsPresetController extends Controller
             'settings.fontFamily' => 'sometimes|required|string|max:255',
             'settings.bandBackgroundColor' => 'sometimes|required|string|max:7',
             'settings.sceneChangeColor' => 'sometimes|required|string|max:7',
-            'settings.overlayPosition' => 'sometimes|required|in:under,over',
+            'settings.overlayPosition' => 'sometimes|required|in:over,under-full,under-video-width,contained-16-9',
         ]);
 
         $preset->update($validated);

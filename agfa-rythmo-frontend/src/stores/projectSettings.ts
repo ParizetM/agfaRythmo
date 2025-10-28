@@ -72,9 +72,14 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     }
 
     try {
-      await updateProjectSettings(currentProjectId.value, settings.value)
+      const success = await updateProjectSettings(currentProjectId.value, settings.value)
+      if (!success) {
+        console.error('Échec de la sauvegarde des paramètres')
+        throw new Error('Échec de la sauvegarde des paramètres')
+      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des paramètres:', error)
+      throw error
     }
   }
 
