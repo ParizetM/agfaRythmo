@@ -165,6 +165,7 @@ import { useRouter } from 'vue-router'
 import { EnvelopeIcon } from '@heroicons/vue/24/outline'
 import NotificationToast from './components/NotificationToast.vue'
 import { useInvitations } from './composables/useInvitations'
+import { useServerCapabilities } from './composables/useServerCapabilities'
 import { ref, onMounted, onUnmounted } from 'vue'
 import Logo_titre_largeSvg from './assets/icons/logo_titre_large.svg'
 
@@ -172,6 +173,7 @@ import Logo_titre_largeSvg from './assets/icons/logo_titre_large.svg'
 const authStore = useAuthStore()
 const router = useRouter()
 const { invitationCount } = useInvitations()
+const { loadCapabilities } = useServerCapabilities()
 
 const mobileMenuOpen = ref(false)
 
@@ -213,6 +215,8 @@ const stopAuthCheck = () => {
 
 onMounted(() => {
   startAuthCheck()
+  // Charger les capacités du serveur au démarrage
+  loadCapabilities()
 })
 
 onUnmounted(() => {

@@ -4,29 +4,53 @@
 
 ## 📋 Prérequis
 
-### Serveur
-- PHP 8.2+ avec extensions : FFmpeg, PDO, SQLite
-- FFmpeg installé et accessible dans PATH
+### Types d'Installation Supportés
+
+AgfaRythmo peut être installé sur deux types de serveurs :
+
+1. **Serveur Standard (avec FFmpeg)** : Toutes les fonctionnalités disponibles incluant l'analyse IA
+2. **Serveur PHP-only (sans FFmpeg)** : Installation basique sans les fonctionnalités d'analyse IA
+
+### Serveur Standard (Complet)
+- PHP 8.2+ avec extensions : PDO, SQLite, GD, MBString
+- **FFmpeg installé et accessible dans PATH** (pour analyse IA)
 - Composer 2.x
 - Node.js 18+ (pour build frontend)
 - Serveur web : Nginx ou Apache
 - Accès SSH au serveur
+
+### Serveur PHP-only (Basique)
+- PHP 8.2+ avec extensions : PDO, SQLite, GD, MBString
+- Composer 2.x
+- Node.js 18+ (pour build frontend)
+- Serveur web : Nginx ou Apache
+- **FFmpeg non requis** - L'application désactivera automatiquement les fonctionnalités IA
 
 ### Vérifications avant déploiement
 ```bash
 # Vérifier PHP
 php -v
 
-# Vérifier FFmpeg
+# Vérifier FFmpeg (optionnel)
 ffmpeg -version
+# Si cette commande échoue, l'application fonctionnera en mode basique sans IA
 
 # Vérifier les extensions PHP
 php -m | grep -E 'pdo|sqlite|gd|mbstring'
 ```
 
+### 🔍 Détection Automatique des Capacités
+
+L'application détecte automatiquement les fonctionnalités disponibles au démarrage :
+- **FFmpeg disponible** → Bouton "IA" affiché pour l'analyse automatique
+- **FFmpeg non disponible** → Badge "IA non disponible" + tooltip explicatif
+- Aucune configuration manuelle nécessaire
+
 ---
 
 ## 🚀 Méthodes de Déploiement des Workers
+
+**⚠️ Important** : Les workers de queue sont **optionnels** et ne sont nécessaires que si FFmpeg est installé pour l'analyse IA. Sur un serveur PHP-only, vous pouvez ignorer cette section.
 
 ### ⭐ Option 1 : Supervisor (RECOMMANDÉ)
 

@@ -70,20 +70,14 @@
           <UsersIcon class="w-5 h-5" />
         </button>
 
-        <!-- Bouton IA - Analyse automatique des changements de plan -->
+        <!-- Bouton IA - Ouvre le menu des fonctionnalités IA -->
         <button
           v-if="project && project.video_path && canManageProject"
-          :disabled="hasSceneChanges || isAnalyzing"
-          :class="[
-            'flex items-center gap-2 border rounded-lg px-3 py-2 font-semibold cursor-pointer transition-all duration-300',
-            hasSceneChanges || isAnalyzing
-              ? 'bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed opacity-50'
-              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-purple-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-          ]"
-          @click="handleStartAnalysis"
-          :title="hasSceneChanges ? 'Des changements de plan existent déjà' : 'Détecter automatiquement les changements de plan'"
+          class="flex items-center gap-2 border rounded-lg px-3 py-2 font-semibold cursor-pointer transition-all duration-300 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-purple-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+          @click="showAiMenu = true"
+          title="Fonctionnalités IA"
         >
-          <svg class="w-5 h-5" :class="{ 'animate-pulse': isAnalyzing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
           </svg>
           <span class="hidden md:inline">IA</span>
@@ -406,6 +400,15 @@
     <!-- Modal des paramètres du projet -->
     <ProjectSettingsModal :show="showProjectSettings" @close="showProjectSettings = false" />
 
+    <!-- Menu IA avec état des capacités et fonctionnalités -->
+    <AiMenuModal
+      v-model:show="showAiMenu"
+      :capabilities="serverCapabilities"
+      :has-scene-changes="hasSceneChanges"
+      :is-analyzing="isAnalyzing"
+      @start-analysis="handleStartAnalysis"
+    />
+
     <!-- Modal des paramètres d'analyse IA -->
     <SceneAnalysisSettingsModal
       v-model="showAnalysisSettings"
@@ -487,6 +490,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectSettingsStore } from '@/stores/projectSettings'
 import { useCollaborativeRefresh } from '@/composables/useCollaborativeRefresh'
+import { useServerCapabilities } from '@/composables/useServerCapabilities'
 import api from '../api/axios'
 import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
@@ -612,6 +616,7 @@ import VideoNavigationBar from '../components/projectDetail/VideoNavigationBar.v
 import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 import SceneAnalysisModal from '../components/SceneAnalysisModal.vue'
 import SceneAnalysisSettingsModal from '../components/SceneAnalysisSettingsModal.vue'
+import AiMenuModal from '../components/AiMenuModal.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ConfirmModal from '../components/ConfirmModal.vue'
 
@@ -756,6 +761,7 @@ const showProjectSettings = ref(false)
 
 // Gestion de l'analyse IA des changements de plan
 const isAnalyzing = ref(false)
+const showAiMenu = ref(false)
 const showAnalysisModal = ref(false)
 const showAnalysisSettings = ref(false)
 const analysisStatus = ref<'none' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'>('none')
@@ -775,6 +781,7 @@ const selectedLineNumber = ref<number>(1)
 
 // Store d'authentification
 const authStore = useAuthStore()
+const { capabilities: serverCapabilities } = useServerCapabilities()
 
 // Computed pour vérifier s'il y a des collaborateurs actifs
 const hasActiveCollaborators = computed(() => {
@@ -1359,7 +1366,8 @@ async function addSceneChange() {
 async function handleStartAnalysis() {
   if (!project.value || hasSceneChanges.value) return
 
-  // Afficher la modale de paramètres
+  // Fermer le menu IA et afficher la modale de paramètres
+  showAiMenu.value = false
   showAnalysisSettings.value = true
 }
 

@@ -17,6 +17,11 @@ use App\Http\Controllers\Api\SceneAnalysisController;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// Capacités du serveur (public pour vérification avant connexion)
+Route::get('/server/capabilities', function () {
+    return response()->json(\App\Services\ServerCapabilities::getCapabilities());
+});
+
 // Streaming vidéo (public pour compatibility avec les balises <video>)
 Route::get('/videos/{filename}', [VideoController::class, 'stream'])->where('filename', '.*');
 

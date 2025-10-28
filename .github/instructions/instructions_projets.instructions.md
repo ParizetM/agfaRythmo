@@ -314,6 +314,56 @@ agfa-rythmo-frontend/
 ### 🎬 Prévisualisation Finale
 **Passage des scene changes à la vue finale**
 
+### 🔍 Menu IA avec Configuration Simple
+**Interface unifiée pour toutes les fonctionnalités IA avec configuration via .env**
+
+#### Objectif :
+- Menu centralisé pour toutes les fonctionnalités IA
+- **Configuration simple** via fichier `.env` (pas de détection automatique)
+- Interface adaptée selon les fonctionnalités activées
+- Extensible pour futures fonctionnalités IA
+
+#### Configuration Backend :
+- Fichier `config/ai.php` : définit les fonctionnalités disponibles
+- Variables `.env` :
+  - `AI_SCENE_DETECTION_ENABLED=true/false` : détection changements de plan
+  - `AI_AUTO_SUBTITLES_ENABLED=true/false` : sous-titrage auto (futur)
+  - `AI_VOICE_RECOGNITION_ENABLED=true/false` : reconnaissance vocale (futur)
+  - `AI_AUDIO_ANALYSIS_ENABLED=true/false` : analyse audio (futur)
+- Service `ServerCapabilities.php` : lit la config et l'expose via API
+- Endpoint public `GET /api/server/capabilities` : retourne config JSON
+
+#### Frontend :
+- **Composant `AiMenuModal.vue`** : interface principale
+  - **Pas d'affichage d'état technique** (FFmpeg, workers, etc.)
+  - Cartes pour chaque fonctionnalité activée
+  - Bouton "Lancer" avec gradient violet/rose
+  - Badge "Déjà analysé" si déjà fait
+  - Message "Aucune fonctionnalité IA activée" si tout désactivé
+  - Placeholder "Futures fonctionnalités à venir..."
+- Service API `serverCapabilities.ts` : interface TypeScript
+- Composable `useServerCapabilities.ts` : gestion état
+- Chargement au démarrage dans `App.vue` via `onMounted`
+- Utilisation dans `ProjectDetailView.vue` :
+  - Bouton "IA" toujours visible (gradient violet/rose)
+  - Clic ouvre `AiMenuModal` avec fonctionnalités activées
+  - Modal ferme automatiquement en lançant analyse
+
+#### UX :
+- **Bouton IA** : Toujours visible, design moderne
+- **Modal IA** :
+  - Simple et épurée
+  - Pas d'info technique sur FFmpeg/workers
+  - Juste les fonctionnalités disponibles
+  - Footer avec bouton "Fermer"
+- **Avec fonctionnalités** : Cartes interactives, boutons actifs
+- **Sans fonctionnalités** : Message informatif
+
+#### Documentation :
+- Guide complet : `AI_CONFIG.md`
+- Configuration `.env.example` documentée
+- Instructions ajout nouvelles fonctionnalités
+
 
 ## Scripts de développement
 
@@ -390,6 +440,13 @@ Système centralisé de notifications :
 ---
 
 ## 📝 Changelog récent
+
+### v2.1.1-beta (28 octobre 2025)
+- ✅ **Menu IA unifié** : Interface centralisée pour toutes les fonctionnalités IA
+- ✅ **Détection capacités serveur** : Auto-détection FFmpeg et workers avec statut visuel
+- ✅ **Support serveurs basiques** : Fonctionne sur hébergement PHP-only sans FFmpeg
+- ✅ **Extensibilité IA** : Architecture prête pour futures fonctionnalités (sous-titrage, etc.)
+- ✅ **UX améliorée** : Badges colorés, tooltips explicatifs, messages d'avertissement clairs
 
 ### v2.1.0-beta (27 octobre 2025)
 - ✅ Import/Export projets format .agfa crypté
