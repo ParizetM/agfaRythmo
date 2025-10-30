@@ -644,32 +644,54 @@ sudo nano /etc/apache2/sites-available/agfarythmo-backend.conf
 **Fichier `agfarythmo-backend.conf`** :
 ```apache
 <VirtualHost *:80>
-    ServerName agfarythmo-backend.agfagoofay.fr
-    
-    DocumentRoot /agfaRythmo/agfa-rythmo-backend/public
-    
-    <Directory /agfaRythmo/agfa-rythmo-backend/public>
-        AllowOverride All
-        Require all granted
-        Options -Indexes +FollowSymLinks
-    </Directory>
-    
-    # Headers CORS
-    <IfModule mod_headers.c>
-        Header set Access-Control-Allow-Origin "https://votre-domaine.com"
-        Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-        Header set Access-Control-Allow-Credentials "true"
-    </IfModule>
-    
-    # Logs
-    ErrorLog ${APACHE_LOG_DIR}/agfarythmo_backend_error.log
-    CustomLog ${APACHE_LOG_DIR}/agfarythmo_backend_access.log combined
-    
-    # PHP-FPM
-    <FilesMatch \.php$>
-        SetHandler "proxy:unix:/run/php/php8.2-fpm.sock|fcgi://localhost"
-    </FilesMatch>
+  ServerName agfarythmo-backend.agfagoofay.fr
+  DocumentRoot /var/www/agfaRythmo/agfa-rythmo-backend/public
+
+  <Directory /var/www/agfaRythmo/agfa-rythmo-backend/public>
+    AllowOverride All
+    Require all granted
+    Options -Indexes +FollowSymLinks
+  </Directory>
+
+  # Redirection HTTP → HTTPS
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [L,R=301]
+
+  # Logs
+  ErrorLog ${APACHE_LOG_DIR}/agfarythmo_backend_error.log
+  CustomLog ${APACHE_LOG_DIR}/agfarythmo_backend_access.log combined
+</VirtualHost>
+
+<VirtualHost *:443>
+  ServerName agfarythmo-backend.agfagoofay.fr
+  DocumentRoot /agfaRythmo/agfa-rythmo-backend/public
+  SSLEngine on
+  SSLCertificateFile /etc/letsencrypt/live/agfarythmo-backend.agfagoofay.fr/fullchain.pem
+  SSLCertificateKeyFile /etc/letsencrypt/live/agfarythmo-backend.agfagoofay.fr/privkey.pem
+
+  <Directory /agfaRythmo/agfa-rythmo-backend/public>
+    AllowOverride All
+    Require all granted
+    Options -Indexes +FollowSymLinks
+  </Directory>
+
+  # Headers CORS
+  <IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "https://agfarythmo.agfagoofay.fr"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header set Access-Control-Allow-Credentials "true"
+  </IfModule>
+
+  # Logs
+  ErrorLog ${APACHE_LOG_DIR}/agfarythmo_backend_error.log
+  CustomLog ${APACHE_LOG_DIR}/agfarythmo_backend_access.log combined
+
+  # PHP-FPM
+  <FilesMatch \.php$>
+    SetHandler "proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost"
+  </FilesMatch>
 </VirtualHost>
 ```
 
