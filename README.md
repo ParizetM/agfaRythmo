@@ -526,7 +526,7 @@ APP_URL=https://api.votre-domaine.com  # ⚠️ MODIFIER (URL API)
 
 # Database (SQLite)
 DB_CONNECTION=sqlite
-DB_DATABASE=/var/www/agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+DB_DATABASE=/agfaRythmo/agfa-rythmo-backend/database/database.sqlite
 
 # Queue (pour analyse IA)
 QUEUE_CONNECTION=database
@@ -562,17 +562,35 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Permissions
-sudo chown -R www-data:www-data /var/www/agfaRythmo
-sudo chmod -R 775 /var/www/agfaRythmo/agfa-rythmo-backend/storage
-sudo chmod -R 775 /var/www/agfaRythmo/agfa-rythmo-backend/bootstrap/cache
-sudo chmod 664 /var/www/agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+# Permissions (UNIQUEMENT les dossiers critiques)
+# ⚠️ Stratégie : utilisateur FTP propriétaire + groupe www-data
+# → Tu gardes l'accès FTP + Apache peut écrire via le groupe
+
+# Remplace VOTRE_USER_FTP par ton utilisateur FTP (ex: martinp, ubuntu, etc.)
+USER_FTP="VOTRE_USER_FTP"  # ⚠️ À MODIFIER
+
+# 1. Storage (logs, cache, uploads)
+sudo chown -R $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/storage
+sudo chmod -R 775 /agfaRythmo/agfa-rythmo-backend/storage
+
+# 2. Bootstrap cache
+sudo chown -R $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/bootstrap/cache
+sudo chmod -R 775 /agfaRythmo/agfa-rythmo-backend/bootstrap/cache
+
+# 3. Database SQLite
+sudo chown $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/database
+sudo chown $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+sudo chmod 775 /agfaRythmo/agfa-rythmo-backend/database
+sudo chmod 664 /agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+
+# 4. Ajouter ton user FTP au groupe www-data (pour accès complet)
+sudo usermod -aG www-data $USER_FTP
 ```
 
 #### 🎨 Étape 3 : Build du frontend
 
 ```bash
-cd /var/www/agfaRythmo/agfa-rythmo-frontend
+cd /agfaRythmo/agfa-rythmo-frontend
 
 # Configuration environnement
 nano .env.production
@@ -589,7 +607,7 @@ npm install
 npm run build
 
 # Permissions sur le dossier de build
-sudo chown -R www-data:www-data /var/www/agfaRythmo/agfa-rythmo-frontend/dist
+sudo chown -R www-data:www-data /agfaRythmo/agfa-rythmo-frontend/dist
 ```
 
 #### 🌐 Étape 4 : Configuration Apache (2 VirtualHosts)
@@ -645,9 +663,9 @@ sudo nano /etc/apache2/sites-available/agfarythmo-backend.conf
 ```apache
 <VirtualHost *:80>
   ServerName agfarythmo-backend.agfagoofay.fr
-  DocumentRoot /var/www/agfaRythmo/agfa-rythmo-backend/public
+  DocumentRoot /agfaRythmo/agfa-rythmo-backend/public
 
-  <Directory /var/www/agfaRythmo/agfa-rythmo-backend/public>
+  <Directory /agfaRythmo/agfa-rythmo-backend/public>
     AllowOverride All
     Require all granted
     Options -Indexes +FollowSymLinks
@@ -741,7 +759,7 @@ sudo nano /etc/supervisor/conf.d/agfaRythmo-worker.conf
 ```ini
 [program:agfaRythmo-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/agfaRythmo/agfa-rythmo-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+command=php /agfaRythmo/agfa-rythmo-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -749,7 +767,7 @@ killasgroup=true
 user=www-data
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/www/agfaRythmo/agfa-rythmo-backend/storage/logs/worker.log
+stdout_logfile=/agfaRythmo/agfa-rythmo-backend/storage/logs/worker.log
 stopwaitsecs=3600
 ```
 
@@ -778,8 +796,8 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/agfaRythmo/agfa-rythmo-backend
-ExecStart=/usr/bin/php /var/www/agfaRythmo/agfa-rythmo-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+WorkingDirectory=/agfaRythmo/agfa-rythmo-backend
+ExecStart=/usr/bin/php /agfaRythmo/agfa-rythmo-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
 Restart=always
 RestartSec=5
 
@@ -802,8 +820,8 @@ crontab -e
 
 Ajouter :
 ```cron
-* * * * * cd /var/www/agfaRythmo/agfa-rythmo-backend && php artisan schedule:run >> /dev/null 2>&1
-* * * * * cd /var/www/agfaRythmo/agfa-rythmo-backend && php artisan queue:work --stop-when-empty >> storage/logs/worker.log 2>&1
+* * * * * cd /agfaRythmo/agfa-rythmo-backend && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /agfaRythmo/agfa-rythmo-backend && php artisan queue:work --stop-when-empty >> storage/logs/worker.log 2>&1
 ```
 
 #### 🎉 Étape 7 : Vérification finale
@@ -820,7 +838,7 @@ curl https://votre-domaine.com
 # Doit retourner le HTML de l'index.html
 
 # Test worker
-cd /var/www/agfaRythmo/agfa-rythmo-backend
+cd /agfaRythmo/agfa-rythmo-backend
 php artisan queue:work --once --verbose
 
 # Logs
@@ -845,7 +863,7 @@ sudo apt install -y htop
 watch -n 1 'sudo supervisorctl status'
 
 # Monitoring jobs
-cd /var/www/agfaRythmo/agfa-rythmo-backend
+cd /agfaRythmo/agfa-rythmo-backend
 php artisan queue:monitor
 
 # Monitoring espace disque
@@ -988,12 +1006,20 @@ Effet immédiat, aucun redémarrage nécessaire. Redirection automatique vers `/
 
 **Solutions** :
 ```bash
-# Vérifier permissions
-sudo chown -R www-data:www-data storage/
+# Vérifier permissions (utilisateur FTP propriétaire + groupe www-data)
+
+
+cd /agfaRythmo/agfa-rythmo-backend
+sudo chown -R root:www-data storage/
+sudo chown -R root:www-data bootstrap/cache/
+sudo chown root:www-data database/
+sudo chown root:www-data database/database.sqlite
 sudo chmod -R 775 storage/
+sudo chmod -R 775 bootstrap/cache/
+sudo chmod 775 database/
+sudo chmod 664 database/database.sqlite
 
 # Tester manuellement
-cd agfa-rythmo-backend
 php artisan queue:work --once --verbose
 
 # Vérifier Supervisor
@@ -1026,9 +1052,21 @@ FFMPEG_PATH=/usr/bin/ffmpeg  # Chemin complet si besoin
 
 **Solutions** :
 ```bash
-# Permissions
-sudo chown -R www-data:www-data /var/www/agfaRythmo
-sudo chmod -R 775 storage bootstrap/cache
+# Permissions (utilisateur FTP propriétaire + groupe www-data)
+# Remplace VOTRE_USER_FTP par ton utilisateur FTP
+USER_FTP="VOTRE_USER_FTP"
+
+sudo chown -R $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/storage
+sudo chown -R $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/bootstrap/cache
+sudo chown $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/database
+sudo chown $USER_FTP:www-data /agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+sudo chmod -R 775 /agfaRythmo/agfa-rythmo-backend/storage
+sudo chmod -R 775 /agfaRythmo/agfa-rythmo-backend/bootstrap/cache
+sudo chmod 775 /agfaRythmo/agfa-rythmo-backend/database
+sudo chmod 664 /agfaRythmo/agfa-rythmo-backend/database/database.sqlite
+
+# Ajouter ton user au groupe www-data
+sudo usermod -aG www-data $USER_FTP
 
 # Cache Laravel
 php artisan config:clear
