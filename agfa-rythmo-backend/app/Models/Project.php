@@ -15,6 +15,7 @@ class Project extends Model
         'json_path',
         'rythmo_lines_count',
         'user_id',
+        'status',
         'project_settings',
         'analysis_status',
         'analysis_progress',

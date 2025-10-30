@@ -29,6 +29,45 @@
         </div>
       </div>
 
+      <!-- Onglets de filtrage -->
+      <div class="mb-8 border-b border-gray-700">
+        <nav class="flex space-x-8" aria-label="Tabs">
+          <button
+            @click="activeTab = 'in_progress'"
+            :class="[
+              activeTab === 'in_progress'
+                ? 'border-agfa-blue text-agfa-blue'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-300',
+            ]"
+          >
+            En cours ({{ inProgressProjects.length }})
+          </button>
+          <button
+            @click="activeTab = 'completed'"
+            :class="[
+              activeTab === 'completed'
+                ? 'border-agfa-blue text-agfa-blue'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-300',
+            ]"
+          >
+            Terminés ({{ completedProjects.length }})
+          </button>
+          <button
+            @click="activeTab = 'collaborative'"
+            :class="[
+              activeTab === 'collaborative'
+                ? 'border-agfa-blue text-agfa-blue'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-300',
+            ]"
+          >
+            Collaboratifs ({{ collaborativeProjects.length }})
+          </button>
+        </nav>
+      </div>
+
       <!-- Banner erreur API -->
       <div
         v-if="apiError"
@@ -80,162 +119,69 @@
           </button>
         </div>
 
-        <div v-else class="space-y-12">
-          <!-- Mes projets (propriétaire) -->
-          <div v-if="ownedProjects.length > 0">
-            <h3 class="text-2xl font-bold text-white mb-6 flex items-center">
-              <svg class="w-6 h-6 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                ></path>
-              </svg>
-              Mes projets ({{ ownedProjects.length }})
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              <div
-                v-for="project in ownedProjects.filter(isValidProject)"
-                :key="project.id"
-                class="group bg-agfa-bg-tertiary border border-gray-700 hover:border-gray-600 rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-300 transform hover:-translate-y-2"
+        <!-- Affichage selon l'onglet actif -->
+        <div v-else>
+          <!-- Projets en cours -->
+          <div v-if="activeTab === 'in_progress'">
+            <div v-if="inProgressProjects.length === 0" class="text-center py-16">
+              <div class="text-white text-xl mb-4">Aucun projet en cours.</div>
+              <button
+                @click="showCreateModal = true"
+                class="bg-agfa-green hover:bg-agfa-green-hover text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300"
               >
-                <router-link :to="`/projects/${project.id}`" class="block">
-                  <div class="aspect-video bg-gray-800 relative overflow-hidden">
-                    <div
-                      class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 z-0"
-                    ></div>
-                    <video
-                      v-if="project.video_path && !videoError[project.id]"
-                      :src="getVideoUrl(project.video_path)"
-                      class="w-full h-full object-cover relative z-10"
-                      preload="metadata"
-                      muted
-                      playsinline
-                      @mouseover="onVideoHover($event)"
-                      @mouseleave="onVideoLeave($event)"
-                      @error="onVideoError($event, project.id)"
-                    ></video>
-                    <div
-                      v-else
-                      class="flex items-center justify-center h-full text-white text-lg relative z-10"
-                    >
-                      Vidéo non trouvée
-                    </div>
-                  </div>
+                Créer un nouveau projet
+              </button>
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <ProjectCard
+                v-for="project in inProgressProjects.filter(isValidProject)"
+                :key="project.id"
+                :project="project"
+                :is-owner="true"
+                @edit="openEditModal"
+                @delete="openDeleteModal"
+                @toggle-status="toggleProjectStatus"
+              />
+            </div>
+          </div>
 
-                  <div class="p-6">
-                    <h3
-                      class="text-xl font-bold text-white mb-2 group-hover:text-agfa-blue transition-colors duration-300"
-                    >
-                      {{ project.name }}
-                    </h3>
-                    <p class="text-gray-300 text-sm line-clamp-2">
-                      {{ project.description || 'Pas de description' }}
-                    </p>
-                    <div
-                      v-if="project.collaborators && project.collaborators.length > 0"
-                      class="mt-2 flex items-center text-xs text-gray-400"
-                    >
-                      <UsersIcon class="w-5 h-5 mr-1" />
-                      {{ project.collaborators.length }} collaborateur(s)
-                    </div>
-                  </div>
-                </router-link>
-
-                <div class="px-6 pb-6 flex gap-3">
-                  <button
-                    @click.stop="openEditModal(project)"
-                    class="flex-1 bg-agfa-blue hover:bg-agfa-blue-hover text-white py-2 px-4 rounded-lg transition-all duration-300 text-sm font-medium"
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    @click.stop="openDeleteModal(project)"
-                    class="flex-1 bg-agfa-red hover:bg-agfa-red-hover text-white py-2 px-4 rounded-lg transition-all duration-300 text-sm font-medium"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
+          <!-- Projets terminés -->
+          <div v-if="activeTab === 'completed'">
+            <div v-if="completedProjects.length === 0" class="text-center py-16">
+              <div class="text-white text-xl mb-4">Aucun projet terminé.</div>
+              <p class="text-gray-400">
+                Marquez un projet comme terminé pour le retrouver ici.
+              </p>
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <ProjectCard
+                v-for="project in completedProjects.filter(isValidProject)"
+                :key="project.id"
+                :project="project"
+                :is-owner="true"
+                @edit="openEditModal"
+                @delete="openDeleteModal"
+                @toggle-status="toggleProjectStatus"
+              />
             </div>
           </div>
 
           <!-- Projets collaboratifs -->
-          <div v-if="collaborativeProjects.length > 0">
-            <h3 class="text-2xl font-bold text-white mb-6 flex items-center">
-              <UsersIcon class="w-6 h-6 mr-2 text-purple-500" />
-              Projets collaboratifs ({{ collaborativeProjects.length }})
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              <div
+          <div v-if="activeTab === 'collaborative'">
+            <div v-if="collaborativeProjects.length === 0" class="text-center py-16">
+              <div class="text-white text-xl mb-4">Aucun projet collaboratif.</div>
+              <p class="text-gray-400">
+                Les projets partagés avec vous apparaîtront ici.
+              </p>
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <ProjectCard
                 v-for="project in collaborativeProjects.filter(isValidProject)"
                 :key="project.id"
-                class="group bg-agfa-bg-tertiary border border-gray-700 hover:border-gray-600 rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-300 transform hover:-translate-y-2"
-              >
-                <router-link :to="`/projects/${project.id}`" class="block">
-                  <div class="aspect-video bg-gray-800 relative overflow-hidden">
-                    <div
-                      class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 z-0"
-                    ></div>
-                    <video
-                      v-if="project.video_path && !videoError[project.id]"
-                      :src="getVideoUrl(project.video_path)"
-                      class="w-full h-full object-cover relative z-10"
-                      preload="metadata"
-                      muted
-                      playsinline
-                      @mouseover="onVideoHover($event)"
-                      @mouseleave="onVideoLeave($event)"
-                      @error="onVideoError($event, project.id)"
-                    ></video>
-                    <div
-                      v-else
-                      class="flex items-center justify-center h-full text-white text-lg relative z-10"
-                    >
-                      Vidéo non trouvée
-                    </div>
-                  </div>
-
-                  <div class="p-6">
-                    <h3
-                      class="text-xl font-bold text-white mb-2 group-hover:text-agfa-blue transition-colors duration-300"
-                    >
-                      {{ project.name }}
-                    </h3>
-                    <div v-if="project.owner" class="flex items-center mb-2">
-                      <div
-                        class="h-6 w-6 rounded-full bg-purple-500 flex items-center justify-center mr-2"
-                      >
-                        <span class="text-white font-medium text-xs">
-                          {{ project.owner.name.charAt(0).toUpperCase() }}
-                        </span>
-                      </div>
-                      <p class="text-sm text-gray-300 font-medium">
-                        Propriétaire : {{ project.owner.name }}
-                      </p>
-                    </div>
-                    <p class="text-gray-300 text-sm line-clamp-2 mb-2">
-                      {{ project.description || 'Pas de description' }}
-                    </p>
-                    <div
-                      class="mt-2 flex items-center text-xs text-purple-300 bg-purple-900 bg-opacity-30 px-2 py-1 rounded-full w-fit"
-                    >
-                      <UsersIcon class="w-5 h-5" />
-                      Vous collaborez
-                    </div>
-                  </div>
-                </router-link>
-
-                <div class="px-6 pb-6">
-                  <button
-                    @click.stop="openProject(project)"
-                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-all duration-300 text-sm font-medium"
-                  >
-                    Ouvrir le projet
-                  </button>
-                </div>
-              </div>
+                :project="project"
+                :is-owner="false"
+                @open="openProject"
+              />
             </div>
           </div>
         </div>
@@ -275,8 +221,8 @@ import InvitationsPanel from '../components/InvitationsPanel.vue'
 import CreateProjectModal from '../components/CreateProjectModal.vue'
 import EditProjectModal from '../components/EditProjectModal.vue'
 import DeleteProjectModal from '../components/DeleteProjectModal.vue'
+import ProjectCard from '../components/ProjectCard.vue'
 import { useInvitations } from '@/composables/useInvitations'
-import { UsersIcon } from '@heroicons/vue/24/outline'
 
 interface Timecode {
   start: number
@@ -302,6 +248,7 @@ interface Project {
   created_at?: string
   updated_at?: string
   user_id?: number
+  status?: 'in_progress' | 'completed'
   owner?: User
   collaborators?: User[]
 }
@@ -311,6 +258,7 @@ const { invitationCount } = useInvitations()
 const projects = ref<Project[]>([])
 const loading = ref(true)
 const apiError = ref<string | null>(null)
+const activeTab = ref<'in_progress' | 'completed' | 'collaborative'>('in_progress')
 
 // Séparer les projets en fonction du propriétaire
 const ownedProjects = computed(() =>
@@ -324,35 +272,39 @@ const collaborativeProjects = computed(() =>
       project.collaborators?.some((collab) => collab.id === authStore.user?.id),
   ),
 )
+
+// Filtrer les projets en cours (uniquement les projets dont on est propriétaire)
+const inProgressProjects = computed(() =>
+  ownedProjects.value.filter((project) => !project.status || project.status === 'in_progress'),
+)
+
+// Filtrer les projets terminés (uniquement les projets dont on est propriétaire)
+const completedProjects = computed(() =>
+  ownedProjects.value.filter((project) => project.status === 'completed'),
+)
+
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 const showInvitations = ref(false)
 const projectToEdit = ref<Project | null>(null)
 const projectToDelete = ref<Project | null>(null)
-const videoError = ref<Record<number, boolean>>({})
 
-function getVideoUrl(path?: string) {
-  if (!path) return ''
-  // Si path est déjà une URL absolue, on la retourne
-  if (path.startsWith('http')) return path
-  // Sinon, on construit l'URL de l'API vidéo
-  const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || ''
-  return `${apiBase}/api/videos/${encodeURIComponent(path)}`
-}
-function onVideoHover(event: MouseEvent) {
-  const video = event.target as HTMLVideoElement | null
-  if (video) video.play()
-}
-function onVideoLeave(event: MouseEvent) {
-  const video = event.target as HTMLVideoElement | null
-  if (video) {
-    video.pause()
-    video.currentTime = 0
+async function toggleProjectStatus(project: Project) {
+  try {
+    const newStatus = project.status === 'completed' ? 'in_progress' : 'completed'
+    await api.put(`/projects/${project.id}`, { status: newStatus })
+
+    // Mettre à jour le projet dans la liste
+    const index = projects.value.findIndex((p) => p.id === project.id)
+    if (index !== -1) {
+      projects.value[index].status = newStatus
+    }
+    apiError.value = null
+  } catch (err: unknown) {
+    apiError.value =
+      err instanceof Error ? err.message : String(err) || 'Erreur lors du changement de statut'
   }
-}
-function onVideoError(event: Event, id: number) {
-  videoError.value[id] = true
 }
 
 async function fetchProjects() {

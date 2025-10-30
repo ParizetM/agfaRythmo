@@ -48,6 +48,7 @@ class ProjectController extends Controller
             'text_content' => 'nullable|string',
             'json_path' => 'nullable|string',
             'rythmo_lines_count' => 'nullable|integer|min:1|max:6',
+            'status' => 'nullable|in:in_progress,completed',
         ]);
 
         // Si timecodes est fourni, l'encoder en JSON
@@ -105,6 +106,7 @@ class ProjectController extends Controller
             'text_content' => 'nullable|string',
             'json_path' => 'nullable|string',
             'rythmo_lines_count' => 'nullable|integer|min:1|max:6',
+            'status' => 'nullable|in:in_progress,completed',
         ]);
 
         if (isset($validated['timecodes'])) {

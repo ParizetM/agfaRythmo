@@ -9,6 +9,7 @@ export interface Project {
   rythmo_lines_count: number
   project_settings?: ProjectSettings
   user_id: number
+  status: 'in_progress' | 'completed'
   created_at: string
   updated_at: string
 }
@@ -66,6 +67,7 @@ export async function createProject(data: {
   description?: string
   video_path?: string
   rythmo_lines_count?: number
+  status?: 'in_progress' | 'completed'
 }) {
   const response = await api.post('/projects', data)
   return response.data
