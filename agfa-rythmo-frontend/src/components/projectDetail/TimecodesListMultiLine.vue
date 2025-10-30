@@ -2,7 +2,9 @@
   <div
     class="backdrop-blur-sm bg-black/30 rounded-r-lg border border-gray-700/50 p-6 min-w-56 max-w-96 text-white shadow-lg "
   >
-    <h3 class="text-xl font-bold mb-4 text-white">Timecodes</h3>
+    <h3 class="text-xl font-bold mb-4 text-white">Timecodes ({{
+timecodes.length
+     }}) </h3>
     <div class="max-h-[80vh] overflow-y-auto" style="direction: rtl;">
       <!-- Groupés par ligne -->
       <div

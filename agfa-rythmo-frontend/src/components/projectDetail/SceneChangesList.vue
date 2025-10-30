@@ -1,6 +1,6 @@
 <template>
   <div class="backdrop-blur-sm bg-black/30 rounded-l-lg border border-gray-700/50 p-3 w-64 text-white shadow-lg flex flex-col ">
-    <h3 class="text-lg font-semibold mb-2 text-white">Changements de plan</h3>
+    <h3 class="text-lg font-semibold mb-2 text-white">Changements de plan ({{ sceneChanges.length }})</h3>
 
     <div class="flex-1 overflow-y-auto max-h-[80vh]">
       <div class="space-y-1">
