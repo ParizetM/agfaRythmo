@@ -725,9 +725,77 @@ const isVideoBuffering = ref(false) // Indique si la vidéo est en train de buff
 let lastUpdateTime = 0
 const UPDATE_THROTTLE = 100 // ms entre chaque update (réduit la charge)
 
+// Gestion optimisée du buffering pour éviter les icônes bloquées
+let bufferingTimeout: number | null = null
+let seekingTimeout: number | null = null
+const BUFFERING_TIMEOUT = 3000 // Timeout max pour forcer la fin du buffering (3s)
+const SEEKING_DEBOUNCE = 150 // Debounce pour les événements seeking/seeked
+
 // Constantes pour le décalage de synchronisation
 const FRAME_OFFSET = 8 // Décalage de 8 frames
 const FPS = 25 // Frames par seconde
+
+/**
+ * Fonction helper pour vérifier si la vidéo est vraiment prête
+ */
+function isVideoReallyReady(): boolean {
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (!videoEl) return false
+
+  // readyState >= 3 signifie HAVE_FUTURE_DATA (assez de données pour jouer)
+  // readyState === 4 signifie HAVE_ENOUGH_DATA (peut jouer jusqu'à la fin)
+  return videoEl.readyState >= 3
+}
+
+/**
+ * Force la fin du buffering (sécurité anti-bug)
+ */
+function forceEndBuffering() {
+  if (bufferingTimeout !== null) {
+    clearTimeout(bufferingTimeout)
+    bufferingTimeout = null
+  }
+
+  // Vérifier l'état réel de la vidéo avant de désactiver
+  if (isVideoReallyReady() || !isVideoLoading.value) {
+    isVideoBuffering.value = false
+    isSeeking.value = false
+  }
+}
+
+/**
+ * Démarre le buffering avec timeout de sécurité
+ */
+function startBuffering() {
+  isVideoBuffering.value = true
+
+  // Clear ancien timeout
+  if (bufferingTimeout !== null) {
+    clearTimeout(bufferingTimeout)
+  }
+
+  // Timeout de sécurité pour forcer la fin du buffering
+  bufferingTimeout = window.setTimeout(() => {
+    forceEndBuffering()
+  }, BUFFERING_TIMEOUT)
+}
+
+/**
+ * Termine le buffering (avec vérification)
+ */
+function endBuffering() {
+  if (bufferingTimeout !== null) {
+    clearTimeout(bufferingTimeout)
+    bufferingTimeout = null
+  }
+
+  // Attendre un tick pour s'assurer que tous les événements sont traités
+  setTimeout(() => {
+    if (isVideoReallyReady()) {
+      isVideoBuffering.value = false
+    }
+  }, 50)
+}
 // Flag global indiquant qu'on est dans un champ texte (désactive les raccourcis)
 const isEditingText = ref(false)
 // Pour savoir si on doit reprendre la lecture après édition
@@ -1561,9 +1629,8 @@ function onVideoCanPlayThrough() {
   if (isVideoLoading.value) {
     isVideoLoading.value = false
   }
-  if (isVideoBuffering.value) {
-    isVideoBuffering.value = false
-  }
+  // Arrêter le buffering de manière sécurisée
+  endBuffering()
 }
 
 function onVideoLoadedData() {
@@ -1571,48 +1638,47 @@ function onVideoLoadedData() {
   if (isVideoLoading.value) {
     isVideoLoading.value = false
   }
+  // Arrêter le buffering si la vidéo est prête
+  endBuffering()
 }
 
 function onVideoSeeking() {
   // La vidéo cherche une nouvelle position
-  isVideoBuffering.value = true
+  startBuffering()
   isSeeking.value = true
 }
 
 function onVideoSeeked() {
-  // La vidéo a trouvé la position
-  const videoEl = document.querySelector('video') as HTMLVideoElement | null
-  // Désactiver buffering seulement si on a assez de données
-  if (videoEl && videoEl.readyState >= 3) {
-    isVideoBuffering.value = false
+  // La vidéo a trouvé la position - utiliser debounce pour éviter les fluctuations
+  if (seekingTimeout !== null) {
+    clearTimeout(seekingTimeout)
   }
-  // Garder isSeeking à true un moment pour éviter les animations
-  setTimeout(() => {
+
+  seekingTimeout = window.setTimeout(() => {
     isSeeking.value = false
-  }, 200)
+    endBuffering()
+    seekingTimeout = null
+  }, SEEKING_DEBOUNCE)
 }
 
 function onVideoWaiting() {
   // La vidéo attend des données
-  isVideoBuffering.value = true
+  startBuffering()
 }
 
 function onVideoPlaying() {
-  // La vidéo joue - désactiver buffering seulement si readyState OK
-  const videoEl = document.querySelector('video') as HTMLVideoElement | null
-  if (videoEl && videoEl.readyState >= 3) {
-    isVideoBuffering.value = false
-  }
+  // La vidéo joue - arrêter le buffering de manière sécurisée
+  endBuffering()
 }
 
 function onVideoStalled() {
   // Le téléchargement est bloqué
-  isVideoBuffering.value = true
+  startBuffering()
 }
 
 function onVideoError(error: MediaError | null) {
   // Erreur de chargement vidéo - afficher le buffering
-  isVideoBuffering.value = true
+  startBuffering()
 
   // Retry automatique pour les erreurs réseau (code 2)
   if (error?.code === 2) {
@@ -1626,30 +1692,33 @@ function onVideoError(error: MediaError | null) {
 }
 
 function seek(delta: number) {
-  isSeeking.value = true
-
   const videoEl = document.querySelector('video') as HTMLVideoElement | null
+
   if (delta === 0) {
     // Toggle play/pause
     if (videoEl) {
       if (videoEl.paused) {
-        isVideoBuffering.value = true
+        startBuffering()
         videoEl.play().catch(() => {
           // Si échec, on réessaie après avoir forcé le chargement
           videoEl.load()
+          forceEndBuffering()
         })
         instantRythmoScroll.value = false
       } else {
         videoEl.pause()
         instantRythmoScroll.value = true
+        forceEndBuffering()
       }
       isVideoPaused.value = videoEl.paused
     }
-    isSeeking.value = false
     return
   }
 
   // Avance/recul d'une seconde
+  isSeeking.value = true
+  startBuffering()
+
   let t = currentTime.value + delta
   t = Math.max(0, Math.min(videoDuration.value, t))
   currentTime.value = t
@@ -1658,13 +1727,11 @@ function seek(delta: number) {
     videoEl.currentTime = t
   }
   instantRythmoScroll.value = true
-
-  setTimeout(() => {
-    isSeeking.value = false
-  }, 200)
 }
+
 function seekFrame(delta: number) {
   isSeeking.value = true
+  startBuffering()
 
   const frameDuration = 1 / videoFps.value
   let t = currentTime.value + delta * frameDuration
@@ -1676,10 +1743,6 @@ function seekFrame(delta: number) {
     videoEl.currentTime = t
   }
   instantRythmoScroll.value = true
-
-  setTimeout(() => {
-    isSeeking.value = false
-  }, 200)
 }
 
 function updatePlayPauseState() {
@@ -2176,6 +2239,16 @@ onUnmounted(() => {
 
   // Arrêter le polling de l'analyse si actif
   stopAnalysisPolling()
+
+  // Nettoyer les timeouts de buffering/seeking pour éviter les fuites mémoire
+  if (bufferingTimeout !== null) {
+    clearTimeout(bufferingTimeout)
+    bufferingTimeout = null
+  }
+  if (seekingTimeout !== null) {
+    clearTimeout(seekingTimeout)
+    seekingTimeout = null
+  }
 })
 
 // Seek déclenché par clic sur un bloc de la bande rythmo
