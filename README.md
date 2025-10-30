@@ -676,13 +676,10 @@ sudo nano /etc/apache2/sites-available/agfarythmo-backend.conf
     Options -Indexes +FollowSymLinks
   </Directory>
 
-  # Headers CORS
-  <IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "https://agfarythmo.agfagoofay.fr"
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-    Header set Access-Control-Allow-Credentials "true"
-  </IfModule>
+  # CORS : NE PAS ajouter de Header dans Apache !
+  # Gérer CORS uniquement via Laravel (config/cors.php) :
+  # 'allowed_origins' => ['https://agfarythmo.agfagoofay.fr'],
+  # Si vous ajoutez le header CORS dans Apache ET dans Laravel, l’en-tête sera dupliqué et bloqué par le navigateur.
 
   # Logs
   ErrorLog ${APACHE_LOG_DIR}/agfarythmo_backend_error.log
