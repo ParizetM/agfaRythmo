@@ -3,7 +3,7 @@
     :show="show"
     title="Fonctionnalités IA"
     @update:show="$emit('update:show', $event)"
-    max-width="2xl"
+    size="2xl"
   >
     <template #icon>
       <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
