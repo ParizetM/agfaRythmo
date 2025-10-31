@@ -2,7 +2,7 @@
 
 Application web professionnelle pour la génération de bandes rythmo destinées au doublage vidéo. Solution complète permettant la synchronisation précise de textes sur des timecodes vidéo, avec collaboration multi-utilisateurs et analyse IA automatique.
 
-**Version** : 2.1.0-beta | **Mise à jour** : 29 octobre 2025
+**Version** : 2.2.0-beta | **Mise à jour** : 31 octobre 2025
 
 ---
 
@@ -76,6 +76,30 @@ Application web professionnelle pour la génération de bandes rythmo destinées
 - **Visualisation timeline** : indicateurs sur la bande rythmo
 - **Navigation rapide** : saut au plan suivant/précédent
 - **Export/Import** : inclus dans les fichiers `.agfa`
+
+### 🎤 Extraction Automatique de Dialogues (IA)
+
+- **Transcription multi-langue** : support de 12 langues (fr, en, zh, ja, es, de, it, pt, ru, ko, ar, hi)
+- **Détection des locuteurs** : diarization automatique avec pyannote-audio
+- **Création automatique** : timecodes et personnages générés instantanément
+- **Progression temps réel** : suivi détaillé en 4 étapes (audio, whisper, diarization, timecodes)
+- **Optimisé 2GB RAM** : modèles Whisper légers (tiny/base/small)
+- **Traitement local** : aucune donnée envoyée vers des services externes
+- **Cancellation** : arrêt possible à tout moment avec rollback automatique
+
+### 🌍 Traduction Automatique de Dialogues (IA)
+
+- **4 providers au choix** :
+  - **DeepL** ⭐⭐⭐⭐⭐ : Meilleure qualité, 500k chars/mois gratuit
+  - **Google Translate** ⭐⭐⭐⭐ : Très bonne qualité, $300 crédits gratuits
+  - **MyMemory** ⭐⭐⭐ : Bonne qualité, 10k chars/jour gratuit, aucune config
+  - **LibreTranslate** ⭐⭐⭐ : Open-source, API publique gratuite
+- **Support 30+ langues** : selon le provider choisi
+- **Contexte personnages** : amélioration automatique de la qualité
+- **Auto-détection langue source** : ou sélection manuelle
+- **Progression temps réel** : suivi, stats, annulation possible
+- **Aucune installation** : API cloud uniquement (pas de Docker requis)
+- **Configuration simple** : 2 lignes dans `.env`
 
 ### 👥 Collaboration
 
@@ -1138,23 +1162,45 @@ php artisan config:clear
 
 ## 📚 Documentation
 
-### Guides utilisateur
-- **[SCENE_DETECTION_GUIDE.md](SCENE_DETECTION_GUIDE.md)** - Guide complet détection IA
-- **[TESTING_SCENE_DETECTION.md](TESTING_SCENE_DETECTION.md)** - Tests et validation
-- **[MAINTENANCE_GUIDE.md](MAINTENANCE_GUIDE.md)** - Activer/désactiver maintenance
+### 📖 Documentation complète
 
-### Guides techniques
-- **[DEPLOYMENT_WORKERS.md](DEPLOYMENT_WORKERS.md)** - Configuration workers production
-- **[SCENE_DETECTION_IA.md](SCENE_DETECTION_IA.md)** - Analyse IA avec FFmpeg
-- **[SERVER_CAPABILITIES.md](SERVER_CAPABILITIES.md)** - Détection capacités serveur
-- **[AI_CONFIG.md](AI_CONFIG.md)** - Configuration menu IA
-- **[.github/instructions/instructions_projets.instructions.md](.github/instructions/instructions_projets.instructions.md)** - Instructions GitHub Copilot
+Toute la documentation technique est désormais centralisée dans le dossier **[`docs/`](docs/)**
 
-### Ressources externes
+👉 **[Accéder à l'index de la documentation](docs/README.md)**
+
+### 🚀 Guides de démarrage rapide
+
+| Guide | Description |
+|-------|-------------|
+| **[Configuration IA](docs/AI_CONFIG.md)** | Configuration .env des fonctionnalités IA |
+| **[Traduction - Obtenir clés API](docs/TRANSLATION_API_KEYS.md)** | DeepL, Google, MyMemory (guide rapide) |
+| **[Mode Maintenance](docs/MAINTENANCE_GUIDE.md)** | Activer/désactiver le mode maintenance |
+
+### 🤖 Guides fonctionnalités IA
+
+| Fonctionnalité | Guide principal | Guides techniques |
+|----------------|----------------|-------------------|
+| **Détection scène** | [Guide utilisateur](docs/SCENE_DETECTION_GUIDE.md) | [Architecture IA](docs/SCENE_DETECTION_IA.md), [Tests](docs/TESTING_SCENE_DETECTION.md) |
+| **Extraction dialogues** | [Guide complet](docs/DIALOGUE_EXTRACTION_GUIDE.md) | Whisper + Diarization, 12 langues |
+| **Traduction** | [Guide complet](docs/TRANSLATION_GUIDE.md) | DeepL ⭐⭐⭐⭐⭐, Google, MyMemory, LibreTranslate |
+
+### ⚙️ Guides administration
+
+| Guide | Description |
+|-------|-------------|
+| **[Workers Laravel](docs/DEPLOYMENT_WORKERS.md)** | Configuration Supervisor/systemd pour production |
+| **[Capacités Serveur](docs/SERVER_CAPABILITIES.md)** | Auto-détection FFmpeg, Python, etc. |
+
+### 📝 Ressources développeurs
+
+- **[Instructions GitHub Copilot](.github/instructions/instructions_projets.instructions.md)** - Règles et conventions du projet
+
+### 🔗 Ressources externes
 - [Laravel 12 Documentation](https://laravel.com/docs/12.x)
 - [Vue 3 Documentation](https://vuejs.org/)
 - [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
-- [Supervisor Documentation](http://supervisord.org/)
+- [Whisper Documentation](https://github.com/openai/whisper)
+- [DeepL API](https://www.deepl.com/docs-api)
 
 ---
 
@@ -1254,6 +1300,19 @@ Et toute la communauté open-source ! ❤️
 ---
 
 ## 📝 Changelog
+
+### v2.2.0-beta (31 octobre 2025)
+
+**🎤 Extraction automatique de dialogues (IA)**
+- ✅ Transcription multi-langue avec Whisper (OpenAI)
+- ✅ Détection automatique des locuteurs (diarization avec pyannote-audio)
+- ✅ Support de 12 langues (fr, en, zh, ja, es, de, it, pt, ru, ko, ar, hi)
+- ✅ Création automatique des timecodes et personnages
+- ✅ Progression temps réel en 4 étapes
+- ✅ Optimisé pour 2GB RAM (modèles Whisper tiny/base/small)
+- ✅ Rollback automatique en cas d'échec
+- ✅ UI complète avec modales de configuration et progression
+- ✅ Documentation : `DIALOGUE_EXTRACTION_GUIDE.md`
 
 ### v2.1.0-beta (29 octobre 2025)
 

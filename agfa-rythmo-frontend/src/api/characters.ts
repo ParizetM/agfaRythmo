@@ -32,6 +32,18 @@ export interface CloneCharacterData {
   target_project_id: number
 }
 
+export interface MergeCharacterData {
+  character_ids: number[]
+  merged_name: string
+}
+
+export interface MergeCharacterResponse {
+  message: string
+  merged_character: Character
+  timecodes_reassigned: number
+  characters_deleted: number
+}
+
 export const characterApi = {
   // Récupérer tous les personnages d'un projet
   getAll: (projectId: number) => {
@@ -65,5 +77,10 @@ export const characterApi = {
     return api.get<{ characters: Character[] }>('/characters/for-cloning', {
       params: excludeProjectId ? { exclude_project_id: excludeProjectId } : {}
     })
+  },
+
+  // Fusionner plusieurs personnages en un seul
+  merge: (data: MergeCharacterData) => {
+    return api.post<MergeCharacterResponse>('/characters/merge', data)
   }
 }

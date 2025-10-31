@@ -31,6 +31,8 @@ export function useServerCapabilities() {
       // Valeurs par défaut en cas d'erreur (mode dégradé)
       capabilities.value = {
         scene_detection: false,
+        dialogue_extraction: false,
+        translation: false,
         auto_subtitles: false,
         voice_recognition: false,
         audio_analysis: false
@@ -50,7 +52,7 @@ export function useServerCapabilities() {
   }
 
   return {
-    capabilities: readonly(capabilities),
+    capabilities: capabilities as Readonly<typeof capabilities>,
     isLoading: readonly(isLoading),
     error: readonly(error),
     loadCapabilities,

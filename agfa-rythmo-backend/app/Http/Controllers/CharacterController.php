@@ -125,4 +125,63 @@ class CharacterController extends Controller
             'characters' => $characters
         ]);
     }
+
+    /**
+     * Merge multiple characters into one.
+     * All timecodes from source characters will be reassigned to the new merged character.
+     */
+    public function merge(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'character_ids' => 'required|array|min:2',
+            'character_ids.*' => 'required|exists:characters,id',
+            'merged_name' => 'required|string|max:255',
+        ]);
+
+        $characterIds = $validated['character_ids'];
+        $mergedName = $validated['merged_name'];
+
+        // Récupérer tous les personnages à fusionner
+        $characters = Character::whereIn('id', $characterIds)->get();
+
+        if ($characters->count() < 2) {
+            throw ValidationException::withMessages([
+                'character_ids' => 'At least 2 characters are required for merging'
+            ]);
+        }
+
+        // Vérifier que tous les personnages appartiennent au même projet
+        $projectId = $characters->first()->project_id;
+        if ($characters->pluck('project_id')->unique()->count() > 1) {
+            throw ValidationException::withMessages([
+                'character_ids' => 'All characters must belong to the same project'
+            ]);
+        }
+
+        // Créer le nouveau personnage fusionné (utiliser la couleur du premier)
+        $firstCharacter = $characters->first();
+        $mergedCharacter = Character::create([
+            'project_id' => $projectId,
+            'name' => $mergedName,
+            'color' => $firstCharacter->color,
+            'text_color' => $firstCharacter->text_color,
+        ]);
+
+        // Réassigner tous les timecodes au nouveau personnage
+        $totalReassigned = 0;
+        foreach ($characters as $character) {
+            $count = $character->timecodes()->update(['character_id' => $mergedCharacter->id]);
+            $totalReassigned += $count;
+        }
+
+        // Supprimer les anciens personnages
+        Character::whereIn('id', $characterIds)->delete();
+
+        return response()->json([
+            'message' => 'Characters merged successfully',
+            'merged_character' => $mergedCharacter,
+            'timecodes_reassigned' => $totalReassigned,
+            'characters_deleted' => $characters->count()
+        ]);
+    }
 }

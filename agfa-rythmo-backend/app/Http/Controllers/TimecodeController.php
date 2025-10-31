@@ -92,6 +92,20 @@ class TimecodeController extends Controller
         ]);
     }
 
+    /**
+     * Supprime tous les timecodes d'un projet
+     */
+    public function destroyAll(Project $project)
+    {
+        $count = $project->timecodes()->count();
+        $project->timecodes()->delete();
+
+        return response()->json([
+            'message' => 'All timecodes deleted successfully',
+            'count' => $count
+        ]);
+    }
+
     public function getByLine(Project $project, $lineNumber)
     {
         if ($lineNumber < 1 || $lineNumber > 6) {

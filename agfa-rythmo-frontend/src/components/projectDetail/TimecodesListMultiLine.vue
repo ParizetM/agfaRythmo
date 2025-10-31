@@ -117,6 +117,17 @@ timecodes.length
         </ul>
       </div>
     </div>
+
+    <div class="mt-4 flex gap-2">
+      <button
+        v-if="timecodes.length > 0"
+        @click="emit('deleteAll')"
+        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded text-sm transition-colors"
+        title="Supprimer tous les timecodes"
+      >
+        🗑️ Tout supprimer
+      </button>
+    </div>
   </div>
 </template>
 
@@ -157,6 +168,7 @@ const emit = defineEmits<{
   (e: 'add'): void
   (e: 'add-to-line', lineNumber: number): void
   (e: 'updated'): void
+  (e: 'deleteAll'): void
 }>()
 
 const foldedLines = ref<Record<number, boolean>>({})

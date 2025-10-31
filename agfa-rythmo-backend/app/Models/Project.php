@@ -20,6 +20,14 @@ class Project extends Model
         'analysis_status',
         'analysis_progress',
         'analysis_message',
+        'dialogue_extraction_status',
+        'dialogue_extraction_progress',
+        'dialogue_extraction_message',
+        'translation_status',
+        'translation_progress',
+        'translation_message',
+        'source_language',
+        'target_language',
     ];
 
     protected $casts = [

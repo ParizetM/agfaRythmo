@@ -182,7 +182,7 @@
         <transition name="fade">
           <div
             v-if="!isTimecodesCollapsed"
-            class="fixed top-[88px] left-0 z-40 h-fit w-80 max-w-full flex flex-col overflow-y-auto"
+            class="fixed top-[58px] left-0 z-40 h-fit w-80 max-w-full flex flex-col overflow-y-auto"
           >
             <TimecodesListMultiLine
               :timecodes="compatibleTimecodes"
@@ -194,6 +194,7 @@
               @delete="deleteTimecode"
               @add="onAddTimecode"
               @add-to-line="addTimecodeToLine"
+              @deleteAll="onDeleteAllTimecodes"
               @updated="loadTimecodes"
             />
           </div>
@@ -405,8 +406,11 @@
       v-model:show="showAiMenu"
       :capabilities="serverCapabilities"
       :has-scene-changes="hasSceneChanges"
+      :has-timecodes="hasTimecodes"
       :is-analyzing="isAnalyzing"
       @start-analysis="handleStartAnalysis"
+      @start-dialogue-extraction="handleStartDialogueExtraction"
+      @start-translation="handleStartTranslation"
     />
 
     <!-- Modal des paramètres d'analyse IA -->
@@ -423,6 +427,63 @@
       :message="analysisMessage"
       :showDetails="true"
       @cancel="handleCancelAnalysis"
+    />
+
+    <!-- Modal d'extraction de dialogues - Configuration -->
+    <DialogueExtractionModal
+      v-model:show="showDialogueExtractionSettings"
+      @start="handleDialogueExtractionStart"
+    />
+
+    <!-- Modal d'extraction de dialogues - Progression -->
+    <DialogueExtractionProgress
+      v-if="project"
+      :show="showDialogueExtractionProgress"
+      :project-id="project.id"
+      @update:show="showDialogueExtractionProgress = $event"
+      @completed="handleDialogueExtractionCompleted"
+      @failed="handleDialogueExtractionFailed"
+      @cancelled="handleDialogueExtractionCancelled"
+    />
+
+    <!-- Modal d'extraction de dialogues - Résultat / Post-traitement -->
+    <DialogueExtractionResultModal
+      ref="dialogueExtractionResultModalRef"
+      :show="showDialogueExtractionResult"
+      @update:show="(value) => { showDialogueExtractionResult = value }"
+      :result="dialogueExtractionResult || { timecodes_count: 0, characters_count: 0 }"
+      :project-id="project?.id || 0"
+      :translation-enabled="serverCapabilities?.translation || false"
+      @translate="handleTranslateFromExtraction"
+      @merge-characters="showCharacterMergeModal = true"
+    />
+
+    <!-- Modal de fusion de personnages -->
+    <CharacterMergeModal
+      v-if="project"
+      v-model:show="showCharacterMergeModal"
+      :characters="allCharacters"
+      :dialogue-counts="dialogueCounts"
+      @merge="handleCharactersMerged"
+    />
+
+    <!-- Modal de traduction - Configuration -->
+    <TranslateDialoguesModal
+      v-model:show="showTranslationSettings"
+      :availableLanguages="(serverCapabilities?.supported_languages || []) as any"
+      :provider="serverCapabilities?.translation_provider || 'unknown'"
+      @start="handleTranslationStart"
+    />
+
+    <!-- Composant de traduction - Progression -->
+    <TranslationProgress
+      v-if="project"
+      :show="showTranslationProgress"
+      :project-id="project.id"
+      @update:show="showTranslationProgress = $event"
+      @completed="handleTranslationCompleted"
+      @failed="handleTranslationFailed"
+      @cancelled="handleTranslationCancelled"
     />
 
     <!-- Dialog de confirmation d'annulation -->
@@ -447,6 +508,18 @@
       cancel-text="Annuler"
       type="danger"
       @confirm="confirmDeleteAllSceneChanges"
+    />
+
+    <!-- Modal de confirmation pour suppression de tous les timecodes -->
+    <ConfirmModal
+      v-model:show="showDeleteAllTimecodesConfirm"
+      title="Supprimer tous les timecodes ?"
+      :message="`Êtes-vous sûr de vouloir supprimer tous les ${allTimecodes.length} timecodes ?`"
+      details="Cette action est irréversible et supprimera tous les dialogues du projet."
+      confirm-text="Oui, tout supprimer"
+      cancel-text="Annuler"
+      type="danger"
+      @confirm="confirmDeleteAllTimecodes"
     />
 
     <!-- Modal de gestion des collaborateurs -->
@@ -498,6 +571,9 @@ import { characterApi, type Character } from '../api/characters'
 import * as sceneChangesApi from '../api/sceneChanges'
 import { exportProject } from '../api/projects'
 import { startSceneAnalysis, getAnalysisStatus, cancelSceneAnalysis } from '../api/sceneAnalysis'
+import { startDialogueExtraction } from '../api/dialogueExtraction'
+import type { DialogueExtractionOptions } from '../api/dialogueExtraction'
+import { startTranslation } from '../api/translation'
 import { notificationService } from '../services/notifications'
 import TimecodesListMultiLine from '../components/projectDetail/TimecodesListMultiLine.vue'
 import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
@@ -567,6 +643,35 @@ async function confirmDeleteAllSceneChanges() {
   }
 }
 
+// ===== SUPPRESSION DE TOUS LES TIMECODES =====
+
+async function onDeleteAllTimecodes() {
+  if (!project.value) return
+
+  // Afficher la modal de confirmation
+  showDeleteAllTimecodesConfirm.value = true
+}
+
+async function confirmDeleteAllTimecodes() {
+  if (!project.value) return
+
+  try {
+    // Supprimer tous les timecodes du projet via l'API
+    await api.delete(`/projects/${project.value.id}/timecodes`)
+
+    // Vider le tableau local
+    allTimecodes.value = []
+
+    // Rafraîchir les bandes rythmo
+    refreshRythmoBands()
+
+    notificationService.success('Succès', 'Tous les timecodes ont été supprimés')
+  } catch (error) {
+    console.error('Erreur lors de la suppression des timecodes:', error)
+    notificationService.error('Erreur', 'Impossible de supprimer les timecodes')
+  }
+}
+
 // Nouveaux gestionnaires pour les événements des bandes rythmo
 async function onUpdateSceneChangeFromBand(payload: {
   id: number
@@ -617,6 +722,12 @@ import MultiRythmoBand from '../components/projectDetail/MultiRythmoBand.vue'
 import SceneAnalysisModal from '../components/SceneAnalysisModal.vue'
 import SceneAnalysisSettingsModal from '../components/SceneAnalysisSettingsModal.vue'
 import AiMenuModal from '../components/AiMenuModal.vue'
+import DialogueExtractionModal from '../components/DialogueExtractionModal.vue'
+import DialogueExtractionProgress from '../components/DialogueExtractionProgress.vue'
+import DialogueExtractionResultModal from '../components/DialogueExtractionResultModal.vue'
+import CharacterMergeModal from '../components/CharacterMergeModal.vue'
+import TranslateDialoguesModal from '../components/TranslateDialoguesModal.vue'
+import TranslationProgress from '../components/TranslationProgress.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ConfirmModal from '../components/ConfirmModal.vue'
 
@@ -837,12 +948,31 @@ const analysisProgress = ref(0)  // 0-100
 const analysisMessage = ref('')
 let analysisPollingInterval: number | null = null
 
+// Gestion de l'extraction de dialogues
+const showDialogueExtractionSettings = ref(false)
+const showDialogueExtractionProgress = ref(false)
+const showDialogueExtractionResult = ref(false)
+const showCharacterMergeModal = ref(false)
+const dialogueExtractionResultModalRef = ref<InstanceType<typeof DialogueExtractionResultModal> | null>(null)
+const dialogueExtractionResult = ref<{
+  timecodes_count: number
+  characters_count: number
+  source_language?: string
+} | null>(null)
+
+// Gestion de la traduction
+const showTranslationSettings = ref(false)
+const showTranslationProgress = ref(false)
+
 // Dialog de confirmation pour annulation
 const showCancelConfirm = ref(false)
 const pendingCancelAction = ref<(() => void) | null>(null)
 
 // Dialog de confirmation pour suppression de tous les scene changes
 const showDeleteAllConfirm = ref(false)
+
+// Dialog de confirmation pour suppression de tous les timecodes
+const showDeleteAllTimecodesConfirm = ref(false)
 
 // Ligne actuellement sélectionnée (pour création de nouveaux timecodes)
 const selectedLineNumber = ref<number>(1)
@@ -898,9 +1028,26 @@ const uniqueSceneChangeTimecodes = computed(() => {
   return uniqueTimecodes.sort((a, b) => a - b)
 })
 
+// Computed pour compter les dialogues par personnage
+const dialogueCounts = computed<Record<number, number>>(() => {
+  const counts: Record<number, number> = {}
+  compatibleTimecodes.value.forEach((tc) => {
+    // Vérifier si le timecode a un character_id (car peut être différents types)
+    if ('character_id' in tc && tc.character_id) {
+      counts[tc.character_id] = (counts[tc.character_id] || 0) + 1
+    }
+  })
+  return counts
+})
+
 // Computed pour vérifier s'il y a des changements de plan existants
 const hasSceneChanges = computed(() => {
   return sceneChanges.value.length > 0
+})
+
+// Computed pour vérifier s'il y a des timecodes existants
+const hasTimecodes = computed(() => {
+  return allTimecodes.value.length > 0
 })
 
 // Fonction pour trouver une position libre pour un nouveau timecode
@@ -1560,6 +1707,226 @@ function stopAnalysisPolling() {
     clearInterval(analysisPollingInterval)
     analysisPollingInterval = null
   }
+}
+
+// ======== Extraction de dialogues IA ========
+
+/**
+ * Ouvrir la modale de paramètres pour l'extraction de dialogues
+ */
+async function handleStartDialogueExtraction() {
+  if (!project.value || hasTimecodes.value) return
+
+  // Fermer le menu IA et afficher la modale de paramètres
+  showAiMenu.value = false
+  showDialogueExtractionSettings.value = true
+}
+
+/**
+ * Lancer l'extraction de dialogues avec les paramètres choisis
+ */
+async function handleDialogueExtractionStart(options: DialogueExtractionOptions) {
+  if (!project.value || hasTimecodes.value) return
+
+  try {
+    // Lancer l'extraction avec les paramètres
+    await startDialogueExtraction(project.value.id, options)
+
+    // Fermer la modale de paramètres et afficher celle de progression
+    showDialogueExtractionSettings.value = false
+    showDialogueExtractionProgress.value = true
+
+    // Notification de lancement
+    notificationService.success('Extraction lancée', 'L\'extraction des dialogues a démarré. Cela peut prendre plusieurs minutes.')
+  } catch (error) {
+    console.error('Erreur lors du lancement de l\'extraction de dialogues:', error)
+    notificationService.error('Erreur', 'Erreur lors du lancement de l\'extraction. Veuillez réessayer.')
+  }
+}
+
+/**
+ * Extraction de dialogues terminée avec succès
+ */
+async function handleDialogueExtractionCompleted(result?: {
+  timecodes_count?: number
+  characters_count?: number
+  source_language?: string
+}) {
+  console.log('🎯 handleDialogueExtractionCompleted called with result:', result)
+
+  showDialogueExtractionProgress.value = false
+
+  // Stocker le résultat pour le modal
+  if (result && result.timecodes_count !== undefined && result.characters_count !== undefined) {
+    console.log('✅ Result valid, recharging data...')
+
+    // Recharger les timecodes et personnages AVANT d'ouvrir le modal
+    await loadTimecodes()
+    await loadCharacters()
+    refreshRythmoBands()
+
+    dialogueExtractionResult.value = {
+      timecodes_count: result.timecodes_count || 0,
+      characters_count: result.characters_count || 0,
+      source_language: result.source_language,
+    }
+
+    // Ouvrir le modal de post-traitement
+    showDialogueExtractionResult.value = true
+    console.log('✅ Modal opened with data loaded')
+  } else {
+    // Si pas de résultat valide, juste recharger les données
+    console.log('⚠️ No valid result, reloading data anyway')
+    await loadTimecodes()
+    await loadCharacters()
+    refreshRythmoBands()
+  }
+}
+
+/**
+ * Lancer la traduction directement depuis le modal de résultat
+ */
+async function handleTranslateFromExtraction(options: {
+  source_language: string
+  target_language: string
+}) {
+  // Fermer le modal de résultat
+  showDialogueExtractionResult.value = false
+
+  // Lancer la traduction directement
+  await startTranslation(project.value!.id, {
+    target_language: options.target_language,
+    source_language: options.source_language,
+    use_character_context: true,
+  })
+
+  // Ouvrir la progress modal
+  showTranslationProgress.value = true
+
+  notificationService.success(
+    'Traduction lancée',
+    `Traduction vers ${options.target_language.toUpperCase()} en cours...`,
+  )
+}
+
+/**
+ * Gestion de la fusion de personnages
+ */
+async function handleCharactersMerged(data: { characterIds: number[]; mergedName: string }) {
+  if (!project.value) return
+
+  try {
+    // Convertir camelCase → snake_case pour l'API
+    const response = await characterApi.merge({
+      character_ids: data.characterIds,
+      merged_name: data.mergedName
+    })
+
+    // Afficher notification de succès
+    notificationService.success(
+      'Personnages fusionnés',
+      `${response.data.characters_deleted} personnages fusionnés en "${response.data.merged_character.name}". ${response.data.timecodes_reassigned} dialogues réassignés.`
+    )
+
+    // Recharger les personnages et timecodes
+    await loadCharacters()
+    await loadTimecodes()
+
+    // Recharger les personnages dans le modal de résultat (si ouvert)
+    if (dialogueExtractionResultModalRef.value) {
+      await dialogueExtractionResultModalRef.value.loadCharacters()
+    }
+
+    // Fermer le modal
+    showCharacterMergeModal.value = false
+
+    // Rafraîchir les bandes rythmo
+    refreshRythmoBands()
+  } catch (error) {
+    console.error('Erreur lors de la fusion des personnages:', error)
+    notificationService.error('Erreur', 'Erreur lors de la fusion des personnages')
+  }
+}
+
+/**
+ * Extraction de dialogues échouée
+ */
+function handleDialogueExtractionFailed(message: string) {
+  showDialogueExtractionProgress.value = false
+  notificationService.error('Échec', message || 'L\'extraction des dialogues a échoué. Veuillez réessayer.')
+}
+
+/**
+ * Extraction de dialogues annulée
+ */
+function handleDialogueExtractionCancelled() {
+  showDialogueExtractionProgress.value = false
+  notificationService.success('Annulée', 'L\'extraction des dialogues a été annulée.')
+}
+
+/**
+ * Ouvrir la modale de paramètres pour la traduction
+ */
+async function handleStartTranslation() {
+  if (!project.value || !hasTimecodes.value) return
+
+  // Fermer le menu IA et afficher la modale de paramètres
+  showAiMenu.value = false
+  showTranslationSettings.value = true
+}
+
+/**
+ * Lancer la traduction avec les paramètres choisis
+ */
+async function handleTranslationStart(options: import('@/api/translation').TranslationOptions) {
+  if (!project.value || !hasTimecodes.value) return
+
+  try {
+    // Lancer la traduction avec les paramètres
+    await import('@/api/translation').then(api => api.startTranslation(project.value!.id, options))
+
+    // Fermer la modale de paramètres et afficher celle de progression
+    showTranslationSettings.value = false
+    showTranslationProgress.value = true
+
+    // Notification de lancement
+    notificationService.success('Traduction lancée', 'La traduction des dialogues a démarré. Cela peut prendre plusieurs minutes.')
+  } catch (error) {
+    console.error('Erreur lors du lancement de la traduction:', error)
+    notificationService.error('Erreur', 'Erreur lors du lancement de la traduction. Veuillez réessayer.')
+  }
+}
+
+/**
+ * Traduction terminée avec succès
+ */
+async function handleTranslationCompleted() {
+  showTranslationProgress.value = false
+
+  // Recharger les timecodes
+  await loadTimecodes()
+
+  // Rafraîchir les bandes rythmo
+  refreshRythmoBands()
+
+  // Notification de succès
+  notificationService.success('Succès', 'La traduction des dialogues est terminée !')
+}
+
+/**
+ * Traduction échouée
+ */
+function handleTranslationFailed(message: string) {
+  showTranslationProgress.value = false
+  notificationService.error('Échec', message || 'La traduction des dialogues a échoué. Veuillez réessayer.')
+}
+
+/**
+ * Traduction annulée
+ */
+function handleTranslationCancelled() {
+  showTranslationProgress.value = false
+  notificationService.success('Annulée', 'La traduction des dialogues a été annulée.')
 }
 
 // Modal d'édition/ajout de timecode

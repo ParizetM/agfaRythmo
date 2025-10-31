@@ -4,7 +4,7 @@ applyTo: '**'
 
 # AgfaRythmo - Instructions GitHub Copilot
 
-**Version** : 2.1.0-beta | **Mise à jour** : 27 octobre 2025
+**Version** : 2.2.0-beta | **Mise à jour** : 31 octobre 2025
 
 ## 🚨 Règles Strictes
 
@@ -364,6 +364,123 @@ agfa-rythmo-frontend/
 - Configuration `.env.example` documentée
 - Instructions ajout nouvelles fonctionnalités
 
+### 🎤 Extraction Automatique de Dialogues (IA)
+**Transcription automatique des dialogues avec détection des locuteurs**
+
+#### Objectif :
+- Extraire automatiquement les dialogues parlés d'une vidéo
+- Créer les timecodes et personnages automatiquement
+- Détection intelligente des différents speakers (diarization)
+- Support multi-langue (12 langues : fr, en, zh, ja, es, de, it, pt, ru, ko, ar, hi)
+
+#### Architecture Backend :
+- **Migration** : `2025_10_31_120000_add_dialogue_extraction_to_projects_table.php`
+  - Ajoute `dialogue_extraction_status`, `dialogue_extraction_progress`, `dialogue_extraction_message` à table projects
+- **Script Python** : `scripts/extract_dialogues.py`
+  - **Whisper** (OpenAI) : Transcription multi-langue avec 3 modèles (tiny/base/small)
+  - **pyannote-audio** : Diarization pour détection des locuteurs
+  - **FFmpeg** : Extraction audio de la vidéo (WAV 16kHz mono)
+  - Output JSON avec timecodes + speakers + metadata
+  - Optimisé 2GB RAM (model tiny, gc.collect(), model unloading)
+- **Job** : `app/Jobs/ExtractDialogues.php`
+  - Appelle script Python avec proc_open()
+  - Progression temps réel (4 étapes) :
+    - 0-20% : Extraction audio
+    - 20-70% : Transcription Whisper
+    - 70-90% : Diarization
+    - 90-100% : Création timecodes + personnages
+  - Vérification cancellation toutes les 2s
+  - **Rollback automatique** si échec (supprime timecodes/characters créés)
+  - **Auto-création personnages** : palette 10 couleurs distinctives
+  - **Distribution speakers** : sur lignes rythmo si plusieurs lignes
+  - Timeout 30 minutes
+- **Controller** : `app/Http/Controllers/Api/DialogueExtractionController.php`
+  - `startExtraction()` : Valide pas de timecodes existants, dispatch Job
+  - `getStatus()` : Retourne statut/progression/message
+  - `cancelExtraction()` : Annule Job en cours
+- **Routes** : 3 routes dans `routes/api.php`
+  - `POST /projects/{project}/dialogue-extraction/start`
+  - `GET /projects/{project}/dialogue-extraction/status`
+  - `POST /projects/{project}/dialogue-extraction/cancel`
+
+#### Configuration `.env` :
+```bash
+AI_DIALOGUE_EXTRACTION_ENABLED=true
+WHISPER_MODEL=tiny              # tiny/base/small
+DIARIZATION_ENABLED=true
+MAX_SPEAKERS=10
+SUPPORTED_LANGUAGES=fr,en,zh,ja,es,de,it,pt,ru,ko,ar,hi
+```
+
+#### Architecture Frontend :
+- **Service API** : `src/api/dialogueExtraction.ts`
+  - Types : `DialogueExtractionOptions`, `DialogueExtractionStatus`
+  - Fonctions : `startDialogueExtraction()`, `getDialogueExtractionStatus()`, `cancelDialogueExtraction()`
+- **ServerCapabilities** : ajout `dialogue_extraction: boolean`
+- **Composant `DialogueExtractionModal.vue`** :
+  - Sélecteur langue (12 langues)
+  - Slider max speakers (2-20)
+  - Dropdown modèle Whisper (tiny/base/small)
+  - Warning auto-création timecodes/personnages
+  - Émit événement `@start` avec options
+- **Composant `DialogueExtractionProgress.vue`** :
+  - Visualisation 4 étapes avec progression
+  - Polling status toutes les 2s
+  - Statistiques (timecodes count, characters count)
+  - Bouton annulation
+  - Événements : `@completed`, `@failed`, `@cancelled`
+- **Intégration `ProjectDetailView.vue`** :
+  - `hasTimecodes` computed : vérifie si timecodes existent
+  - 5 handlers :
+    - `handleStartDialogueExtraction()` : ouvre modal settings
+    - `handleDialogueExtractionStart()` : lance extraction via API
+    - `handleDialogueExtractionCompleted()` : recharge timecodes/characters
+    - `handleDialogueExtractionFailed()` : affiche erreur
+    - `handleDialogueExtractionCancelled()` : notification annulation
+  - Refresh automatique après extraction réussie
+- **Mise à jour `AiMenuModal.vue`** :
+  - Carte "Extraction de dialogues" (gradient blue/violet, icône microphone)
+  - Désactivée si `hasTimecodes === true` (inverse de scene detection)
+  - Message warning si déjà des timecodes
+  - Émit événement `@start-dialogue-extraction`
+
+#### UX :
+- **Condition** : Désactivé si projet a déjà des timecodes (inverse de détection scène)
+- **Workflow** :
+  1. Clic bouton "IA" → ouvre AiMenuModal
+  2. Clic "Extraction de dialogues" → ouvre DialogueExtractionModal
+  3. Configuration (langue/speakers/model) → clic "Lancer"
+  4. DialogueExtractionProgress s'affiche avec progression temps réel
+  5. À la fin : timecodes + personnages créés automatiquement
+- **Fallbacks** :
+  - Si diarization échoue → single speaker utilisé
+  - Si échec total → rollback automatique
+- **Performances** : 2-10 minutes selon modèle et durée vidéo
+
+#### Palette couleurs personnages auto-créés :
+1. Speaker 1 : `#3b82f6` (Bleu)
+2. Speaker 2 : `#ef4444` (Rouge)
+3. Speaker 3 : `#10b981` (Vert)
+4. Speaker 4 : `#f59e0b` (Orange)
+5. Speaker 5 : `#8b5cf6` (Violet)
+6. Speaker 6 : `#ec4899` (Rose)
+7. Speaker 7 : `#14b8a6` (Teal)
+8. Speaker 8 : `#f97316` (Orange vif)
+9. Speaker 9 : `#6366f1` (Indigo)
+10. Speaker 10+ : `#64748b` (Gris)
+
+#### Documentation :
+- Guide complet : `DIALOGUE_EXTRACTION_GUIDE.md`
+- Installation dépendances : `pip install -r scripts/requirements.txt`
+- Configuration `.env` détaillée
+- Troubleshooting (FFmpeg, RAM, modèles)
+
+#### Futures améliorations (Phase 2) :
+- Traduction automatique avec contexte
+- UI validation/édition post-extraction
+- Fusion speakers mal identifiés
+- Support GPU (CUDA) pour accélération
+
 
 ## Scripts de développement
 
@@ -433,13 +550,29 @@ Système centralisé de notifications :
 
 ---
 
-**Dernière mise à jour** : 27 octobre 2025
-**Version du projet** : 2.1.0-beta
+**Dernière mise à jour** : 31 octobre 2025
+**Version du projet** : 2.2.0-beta
 **Maintainer** : Martin P. (@ParizetM)
 
 ---
 
 ## 📝 Changelog récent
+
+### v2.2.0-beta (31 octobre 2025)
+- ✅ **Extraction automatique de dialogues (IA)** : Transcription multi-langue avec Whisper
+- ✅ **Détection locuteurs** : Diarization automatique avec pyannote-audio
+- ✅ **Support 12 langues** : fr, en, zh, ja, es, de, it, pt, ru, ko, ar, hi
+- ✅ **Auto-création personnages** : Palette 10 couleurs + distribution sur lignes rythmo
+- ✅ **Progression temps réel** : 4 étapes (audio/whisper/diarization/timecodes)
+- ✅ **Optimisé 2GB RAM** : Modèle Whisper tiny, gestion mémoire intelligente
+- ✅ **Rollback automatique** : Suppression timecodes/personnages si échec
+- ✅ **Traduction automatique (IA)** : 4 providers (DeepL ⭐⭐⭐⭐⭐, Google ⭐⭐⭐⭐, MyMemory, LibreTranslate)
+- ✅ **Support multi-langues** : 30+ langues selon provider
+- ✅ **Contexte personnages** : Amélioration qualité traduction
+- ✅ **Auto-détection langue** : Source auto ou manuelle
+- ✅ **Progression temps réel** : Polling, stats, annulation
+- ✅ **UI complète** : Modales configuration + progression avec polling
+- ✅ **Documentation** : Guides complets (`DIALOGUE_EXTRACTION_GUIDE.md`, `TRANSLATION_GUIDE.md`, `TRANSLATION_API_KEYS.md`)
 
 ### v2.1.1-beta (28 octobre 2025)
 - ✅ **Menu IA unifié** : Interface centralisée pour toutes les fonctionnalités IA

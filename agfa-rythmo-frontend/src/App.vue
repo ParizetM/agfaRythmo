@@ -173,7 +173,7 @@ import Logo_titre_largeSvg from './assets/icons/logo_titre_large.svg'
 const authStore = useAuthStore()
 const router = useRouter()
 const { invitationCount } = useInvitations()
-const { loadCapabilities } = useServerCapabilities()
+const { refreshCapabilities } = useServerCapabilities()
 
 const mobileMenuOpen = ref(false)
 
@@ -215,8 +215,8 @@ const stopAuthCheck = () => {
 
 onMounted(() => {
   startAuthCheck()
-  // Charger les capacités du serveur au démarrage
-  loadCapabilities()
+  // Charger les capacités du serveur au démarrage (force refresh)
+  refreshCapabilities()
 })
 
 onUnmounted(() => {

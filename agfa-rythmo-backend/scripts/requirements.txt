@@ -1,0 +1,15 @@
+# Dépendances Python pour extraction de dialogues
+openai-whisper>=20231117
+torch>=2.0.0
+torchaudio>=2.0.0
+ffmpeg-python>=0.2.0
+
+# Diarization (séparation automatique des locuteurs)
+pyannote.audio>=3.1.0
+# Nécessite token HuggingFace gratuit: https://huggingface.co/settings/tokens
+# Puis accepter les conditions: https://huggingface.co/pyannote/speaker-diarization-3.1
+
+# Dépendances pour traduction NLLB-200
+transformers>=4.30.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0

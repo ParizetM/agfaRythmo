@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\ProjectCollaboratorController;
 use App\Http\Controllers\Api\ProjectInvitationController;
 use App\Http\Controllers\Api\SettingsPresetController;
 use App\Http\Controllers\Api\SceneAnalysisController;
+use App\Http\Controllers\Api\DialogueExtractionController;
+use App\Http\Controllers\Api\TranslationController;
 
 // Routes publiques (pas d'authentification requise)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -55,9 +57,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/analysis-status', [SceneAnalysisController::class, 'getStatus']);
     Route::post('/projects/{project}/cancel-analysis', [SceneAnalysisController::class, 'cancelAnalysis']);
 
+    // Extraction automatique de dialogues (Whisper + diarization)
+    Route::post('/projects/{project}/dialogue-extraction/start', [DialogueExtractionController::class, 'startExtraction']);
+    Route::get('/projects/{project}/dialogue-extraction/status', [DialogueExtractionController::class, 'getStatus']);
+    Route::post('/projects/{project}/dialogue-extraction/cancel', [DialogueExtractionController::class, 'cancelExtraction']);
+
+    // Traduction automatique de dialogues
+    Route::post('/projects/{project}/translation/start', [TranslationController::class, 'startTranslation']);
+    Route::get('/projects/{project}/translation/status', [TranslationController::class, 'getStatus']);
+    Route::post('/projects/{project}/translation/cancel', [TranslationController::class, 'cancelTranslation']);
+    Route::get('/translation/supported-languages', [TranslationController::class, 'getSupportedLanguages']);
+
     // Timecodes multi-lignes
     Route::get('/projects/{project}/timecodes', [TimecodeController::class, 'index']);
     Route::post('/projects/{project}/timecodes', [TimecodeController::class, 'store']);
+    Route::delete('/projects/{project}/timecodes', [TimecodeController::class, 'destroyAll']);
     Route::post('/projects/{project}/timecodes/import-srt', [TimecodeController::class, 'importSrt']);
     Route::get('/projects/{project}/timecodes/{timecode}', [TimecodeController::class, 'show']);
     Route::put('/projects/{project}/timecodes/{timecode}', [TimecodeController::class, 'update']);
@@ -70,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/characters/{character}', [CharacterController::class, 'update']);
     Route::delete('/characters/{character}', [CharacterController::class, 'destroy']);
     Route::post('/characters/clone', [CharacterController::class, 'clone']);
+    Route::post('/characters/merge', [CharacterController::class, 'merge']);
     Route::get('/characters/for-cloning', [CharacterController::class, 'getForCloning']);
 
     // Settings Presets (max 5 par utilisateur)

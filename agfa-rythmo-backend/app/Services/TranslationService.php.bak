@@ -1,0 +1,647 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Exception;
+
+class TranslationService
+{
+    private string $provider;
+    private ?string $apiKey;
+    private string $apiUrl;
+
+    public function __construct()
+    {
+        $this->provider = config('ai.translation.provider', 'libretranslate');
+        $this->apiKey = config('ai.translation.api_key');
+        $this->apiUrl = config('ai.translation.api_url', 'https://libretranslate.com');
+    }
+
+    /**
+     * Traduire un texte
+     *
+     * @param string $text Texte à traduire
+     * @param string $targetLang Langue cible (en, fr, zh, ja, etc.)
+     * @param string|null $sourceLang Langue source (null = auto-détection)
+     * @param array $context Contexte optionnel (personnages, etc.)
+     * @return string Texte traduit
+     * @throws Exception
+     */
+    public function translate(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $context = []
+    ): string {
+        if ($this->provider === 'deepl') {
+            return $this->translateDeepL($text, $targetLang, $sourceLang, $context);
+        }
+
+        if ($this->provider === 'libretranslate') {
+            try {
+                return $this->translateLibreTranslate($text, $targetLang, $sourceLang, $context);
+            } catch (Exception $e) {
+                // Fallback vers MyMemory si LibreTranslate échoue (API key manquante)
+                Log::warning("LibreTranslate traduction échouée, fallback vers MyMemory: " . $e->getMessage());
+                return $this->translateMyMemory($text, $targetLang, $sourceLang);
+            }
+        }
+
+        if ($this->provider === 'mymemory') {
+            return $this->translateMyMemory($text, $targetLang, $sourceLang);
+        }
+
+        throw new Exception("Provider de traduction non supporté: {$this->provider}");
+    }
+
+    /**
+     * Traduire un batch de textes (DeepL uniquement)
+     * 
+     * @param array $texts Tableau de textes à traduire
+     * @param string $targetLang Langue cible
+     * @param string|null $sourceLang Langue source (null = auto-détection)
+     * @param string|null $globalContext Contexte global appliqué à tous les textes
+     * @return array Tableau de textes traduits dans le même ordre
+     * @throws Exception
+     */
+    public function translateBatch(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang = null,
+        ?string $globalContext = null
+    ): array {
+        if ($this->provider === 'deepl') {
+            return $this->translateBatchDeepL($texts, $targetLang, $sourceLang, $globalContext);
+        }
+
+        // Les autres providers ne supportent PAS le batch : traduire un par un
+        Log::warning("Provider {$this->provider} ne supporte pas batch, fallback vers traduction individuelle");
+        
+        $translations = [];
+        foreach ($texts as $text) {
+            $translations[] = $this->translate($text, $targetLang, $sourceLang);
+        }
+        
+        return $translations;
+    }    /**
+     * Détecter la langue d'un texte
+     *
+     * @param string $text
+     * @return string Code langue (en, fr, zh, ja, etc.)
+     * @throws Exception
+     */
+    public function detectLanguage(string $text): string
+    {
+        if ($this->provider === 'deepl') {
+            return $this->detectLanguageSimple($text); // DeepL auto-détecte en interne
+        }
+
+        if ($this->provider === 'libretranslate') {
+            try {
+                return $this->detectLanguageLibreTranslate($text);
+            } catch (Exception $e) {
+                // Fallback vers détection simple si LibreTranslate échoue (API key manquante)
+                Log::warning("LibreTranslate détection échouée, fallback vers détection simple: " . $e->getMessage());
+                return $this->detectLanguageSimple($text);
+            }
+        }
+
+        // MyMemory ne supporte pas la détection de langue, fallback vers estimation simple
+        return $this->detectLanguageSimple($text);
+    }
+
+    /**
+     * Obtenir les langues supportées par le provider
+     *
+     * @return array [['code' => 'en', 'name' => 'English'], ...]
+     * @throws Exception
+     */
+    public function getSupportedLanguages(): array
+    {
+        if ($this->provider === 'deepl') {
+            return $this->getSupportedLanguagesDeepL();
+        }
+
+        if ($this->provider === 'libretranslate') {
+            return $this->getSupportedLanguagesLibreTranslate();
+        }
+
+        if ($this->provider === 'mymemory') {
+            return $this->getSupportedLanguagesMyMemory();
+        }
+
+        throw new Exception("Provider de traduction non supporté: {$this->provider}");
+    }
+
+    /**
+     * Traduction via LibreTranslate
+     */
+    private function translateLibreTranslate(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang,
+        array $context
+    ): string {
+        $url = rtrim($this->apiUrl, '/') . '/translate';
+
+        $data = [
+            'q' => $text,
+            'target' => $targetLang,
+            'source' => $sourceLang ?? 'auto',
+            'format' => 'text',
+        ];
+
+        // Ajouter API key si disponible
+        if ($this->apiKey) {
+            $data['api_key'] = $this->apiKey;
+        }
+
+        Log::info("Traduction LibreTranslate", [
+            'source' => $sourceLang ?? 'auto',
+            'target' => $targetLang,
+            'text_length' => strlen($text),
+        ]);
+
+        $response = Http::timeout(30)->post($url, $data);
+
+        if (!$response->successful()) {
+            throw new Exception("Erreur LibreTranslate: " . $response->body());
+        }
+
+        $result = $response->json();
+
+        if (!isset($result['translatedText'])) {
+            throw new Exception("Réponse LibreTranslate invalide");
+        }
+
+        return $result['translatedText'];
+    }
+
+    /**
+     * Traduction via MyMemory
+     * LIMITE : 500 caractères par requête
+     */
+    private function translateMyMemory(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang
+    ): string {
+        // MyMemory a une limite de 500 caractères
+        if (strlen($text) > 500) {
+            throw new Exception("QUERY LENGTH LIMIT EXCEEDED. MAX ALLOWED QUERY : 500 CHARS");
+        }
+
+        $langPair = ($sourceLang ?? 'en') . '|' . $targetLang;
+
+        $url = 'https://api.mymemory.translated.net/get';
+
+        Log::info("Traduction MyMemory", [
+            'lang_pair' => $langPair,
+            'text_length' => strlen($text),
+        ]);
+
+        $response = Http::timeout(30)->get($url, [
+            'q' => $text,
+            'langpair' => $langPair,
+        ]);
+
+        if (!$response->successful()) {
+            throw new Exception("Erreur MyMemory: " . $response->body());
+        }
+
+        $result = $response->json();
+
+        // Vérifier si erreur de limite
+        if (isset($result['responseData']['translatedText']) &&
+            str_contains($result['responseData']['translatedText'], 'QUERY LENGTH LIMIT EXCEEDED')) {
+            throw new Exception("MyMemory: Texte trop long (max 500 caractères)");
+        }
+
+        if (!isset($result['responseData']['translatedText'])) {
+            throw new Exception("Réponse MyMemory invalide");
+        }
+
+        return $result['responseData']['translatedText'];
+    }
+
+    /**
+     * Détection de langue via LibreTranslate
+     */
+    private function detectLanguageLibreTranslate(string $text): string
+    {
+        $url = rtrim($this->apiUrl, '/') . '/detect';
+
+        $data = [
+            'q' => $text,
+        ];
+
+        if ($this->apiKey) {
+            $data['api_key'] = $this->apiKey;
+        }
+
+        $response = Http::timeout(10)->post($url, $data);
+
+        if (!$response->successful()) {
+            throw new Exception("Erreur détection langue LibreTranslate: " . $response->body());
+        }
+
+        $result = $response->json();
+
+        if (!isset($result[0]['language'])) {
+            throw new Exception("Réponse détection langue invalide");
+        }
+
+        return $result[0]['language'];
+    }
+
+    /**
+     * Détection de langue simple (fallback)
+     */
+    private function detectLanguageSimple(string $text): string
+    {
+        // Détection basique basée sur les caractères
+        if (preg_match('/[\x{4E00}-\x{9FFF}]/u', $text)) {
+            return 'zh'; // Chinois
+        }
+        if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}]/u', $text)) {
+            return 'ja'; // Japonais
+        }
+        if (preg_match('/[\x{AC00}-\x{D7AF}]/u', $text)) {
+            return 'ko'; // Coréen
+        }
+        if (preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
+            return 'ar'; // Arabe
+        }
+        if (preg_match('/[\x{0400}-\x{04FF}]/u', $text)) {
+            return 'ru'; // Russe
+        }
+
+        // Par défaut, anglais
+        return 'en';
+    }
+
+    /**
+     * Langues supportées par LibreTranslate
+     */
+    private function getSupportedLanguagesLibreTranslate(): array
+    {
+        $url = rtrim($this->apiUrl, '/') . '/languages';
+
+        $params = [];
+        if ($this->apiKey) {
+            $params['api_key'] = $this->apiKey;
+        }
+
+        $response = Http::timeout(10)->get($url, $params);
+
+        if (!$response->successful()) {
+            // Fallback vers langues par défaut si erreur
+            return $this->getDefaultLanguages();
+        }
+
+        $languages = $response->json();
+
+        return array_map(function ($lang) {
+            return [
+                'code' => $lang['code'],
+                'name' => $lang['name'],
+            ];
+        }, $languages);
+    }
+
+    /**
+     * Langues supportées par MyMemory
+     */
+    private function getSupportedLanguagesMyMemory(): array
+    {
+        // MyMemory supporte beaucoup de langues, retourner liste par défaut
+        return $this->getDefaultLanguages();
+    }
+
+    /**
+     * Liste de langues par défaut
+     */
+    public function getDefaultLanguages(): array
+    {
+        return [
+            ['code' => 'en', 'name' => 'English'],
+            ['code' => 'fr', 'name' => 'Français'],
+            ['code' => 'es', 'name' => 'Español'],
+            ['code' => 'de', 'name' => 'Deutsch'],
+            ['code' => 'it', 'name' => 'Italiano'],
+            ['code' => 'pt', 'name' => 'Português'],
+            ['code' => 'ru', 'name' => 'Русский'],
+            ['code' => 'zh', 'name' => '中文'],
+            ['code' => 'ja', 'name' => '日本語'],
+            ['code' => 'ko', 'name' => '한국어'],
+            ['code' => 'ar', 'name' => 'العربية'],
+            ['code' => 'hi', 'name' => 'हिन्दी'],
+            ['code' => 'nl', 'name' => 'Nederlands'],
+            ['code' => 'pl', 'name' => 'Polski'],
+            ['code' => 'tr', 'name' => 'Türkçe'],
+        ];
+    }
+
+    /**
+     * Traduction avec DeepL API (texte unique)
+     * Documentation : https://developers.deepl.com/docs/api-reference/translate
+     */
+    private function translateDeepL(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang,
+        array $context = []
+    ): string {
+        if (!$this->apiKey) {
+            throw new Exception('DeepL API key est requise. Configurez AI_DEEPL_API_KEY dans .env');
+        }
+
+        // DeepL ne supporte PAS le chinois, japonais, coréen comme LANGUE SOURCE
+        // Liste langues source supportées : https://www.deepl.com/docs-api/translate-text/
+        $unsupportedSourceLangs = ['zh', 'ja', 'ko', 'ar', 'hi', 'tr', 'id'];
+
+        if ($sourceLang && in_array(strtolower($sourceLang), $unsupportedSourceLangs)) {
+            Log::warning("DeepL ne supporte pas {$sourceLang} comme langue source, fallback vers MyMemory");
+            return $this->translateMyMemory($text, $targetLang, $sourceLang);
+        }
+
+        // DeepL utilise des codes spéciaux pour certaines langues
+        $targetLang = $this->normalizeDeepLLangCode($targetLang, true);
+        $sourceLang = $sourceLang ? $this->normalizeDeepLLangCode($sourceLang, false) : null;
+
+        $url = 'https://api-free.deepl.com/v2/translate'; // API gratuite
+
+        $params = [
+            'auth_key' => $this->apiKey,
+            'text' => [$text], // DeepL accepte array
+            'target_lang' => $targetLang,
+        ];
+
+        if ($sourceLang) {
+            $params['source_lang'] = $sourceLang;
+        }
+
+        // Ajouter contexte si disponible (gratuit, améliore qualité)
+        if (!empty($context['character'])) {
+            $params['context'] = "Character speaking: {$context['character']}";
+        }
+
+        $response = Http::timeout(30)->post($url, $params);
+
+        if (!$response->successful()) {
+            $error = $response->json('message') ?? 'Erreur DeepL API';
+            throw new Exception("DeepL API error: {$error}");
+        }
+
+        $translations = $response->json('translations');
+        return $translations[0]['text'] ?? $text;
+    }
+
+    /**
+     * Traduction batch avec DeepL API (jusqu'à 50 textes par requête)
+     * Utilise le paramètre 'context' pour améliorer la qualité (gratuit)
+     * Documentation : https://developers.deepl.com/docs/api-reference/translate
+     */
+    private function translateBatchDeepL(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang,
+        ?string $globalContext = null
+    ): array {
+        if (!$this->apiKey) {
+            throw new Exception('DeepL API key est requise. Configurez AI_DEEPL_API_KEY dans .env');
+        }
+
+        // DeepL ne supporte PAS zh/ja/ko comme langue SOURCE
+        $unsupportedSourceLangs = ['zh', 'ja', 'ko', 'ar', 'hi', 'tr', 'id'];
+
+        if ($sourceLang && in_array(strtolower($sourceLang), $unsupportedSourceLangs)) {
+            Log::warning("DeepL ne supporte pas {$sourceLang} comme langue source, fallback vers MyMemory phrase par phrase");
+            
+            // Fallback : traduire un par un avec MyMemory (limite 500 chars)
+            $translations = [];
+            foreach ($texts as $text) {
+                try {
+                    $translations[] = $this->translateMyMemory($text, $targetLang, $sourceLang);
+                } catch (Exception $e) {
+                    Log::error("MyMemory fallback échoué pour texte: " . $e->getMessage());
+                    // Garder texte original si échec
+                    $translations[] = $text;
+                }
+            }
+            return $translations;
+        }        // DeepL limite : 50 textes par requête
+        $batchSize = 50;
+        $allTranslations = [];
+
+        // Normaliser codes langues
+        $targetLang = $this->normalizeDeepLLangCode($targetLang, true);
+        $sourceLang = $sourceLang ? $this->normalizeDeepLLangCode($sourceLang, false) : null;
+
+        $url = 'https://api-free.deepl.com/v2/translate';
+
+        // Traiter par batches de 50
+        foreach (array_chunk($texts, $batchSize) as $batch) {
+            $params = [
+                'auth_key' => $this->apiKey,
+                'text' => $batch, // Array de textes
+                'target_lang' => $targetLang,
+            ];
+
+            if ($sourceLang) {
+                $params['source_lang'] = $sourceLang;
+            }
+
+            // Contexte global GRATUIT (améliore qualité pour textes courts)
+            if ($globalContext) {
+                $params['context'] = $globalContext;
+            }
+
+            Log::info("Traduction batch DeepL", [
+                'batch_size' => count($batch),
+                'has_context' => !empty($globalContext),
+            ]);
+
+            $response = Http::timeout(60)->post($url, $params);
+
+            if (!$response->successful()) {
+                $error = $response->json('message') ?? 'Erreur DeepL API';
+                throw new Exception("DeepL batch API error: {$error}");
+            }
+
+            $translations = $response->json('translations');
+
+            // Extraire les textes traduits (même ordre que l'input)
+            foreach ($translations as $translation) {
+                $allTranslations[] = $translation['text'];
+            }
+
+            // Petite pause entre batches pour éviter rate limiting
+            if (count($texts) > $batchSize) {
+                usleep(200000); // 200ms
+            }
+        }
+
+        return $allTranslations;
+    }
+
+    /**
+     * Détection de langue via LibreTranslate
+     */
+    private function detectLanguageLibreTranslate(string $text): string
+
+    /**
+     * Traduction batch avec Google Cloud Translation API
+     * Supporte plusieurs textes en une requête
+     * Documentation : https://cloud.google.com/translate/docs/advanced/translating-text-v3
+     */
+    private function translateBatchGoogle(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang
+    ): array {
+        if (!$this->apiKey) {
+            throw new Exception('Google Translate API key est requise. Configurez AI_GOOGLE_API_KEY dans .env');
+        }
+
+        $url = 'https://translation.googleapis.com/language/translate/v2';
+
+        $params = [
+            'key' => $this->apiKey,
+            'q' => $texts, // Array de textes
+            'target' => $targetLang,
+            'format' => 'text',
+        ];
+
+        if ($sourceLang) {
+            $params['source'] = $sourceLang;
+        }
+
+        Log::info("Traduction batch Google", [
+            'batch_size' => count($texts),
+            'source' => $sourceLang ?? 'auto',
+            'target' => $targetLang,
+        ]);
+
+        $response = Http::timeout(60)->post($url, $params);
+
+        if (!$response->successful()) {
+            $error = $response->json('error.message') ?? 'Erreur Google Translate API';
+            throw new Exception("Google batch API error: {$error}");
+        }
+
+        $translations = $response->json('data.translations');
+
+        // Extraire les textes traduits (même ordre que l'input)
+        $translatedTexts = [];
+        foreach ($translations as $translation) {
+            $translatedTexts[] = $translation['translatedText'];
+        }
+
+        return $translatedTexts;
+    }
+
+    /**
+     * Détection de langue avec Google Cloud Translation API
+     */
+    private function detectLanguageGoogle(string $text): string
+    {
+        if (!$this->apiKey) {
+            return $this->detectLanguageSimple($text);
+        }
+
+        $url = 'https://translation.googleapis.com/language/translate/v2/detect';
+
+        $params = [
+            'key' => $this->apiKey,
+            'q' => $text,
+        ];
+
+        $response = Http::timeout(10)->post($url, $params);
+
+        if (!$response->successful()) {
+            return $this->detectLanguageSimple($text);
+        }
+
+        $detections = $response->json('data.detections');
+        return $detections[0][0]['language'] ?? 'en';
+    }
+
+    /**
+     * Langues supportées par DeepL
+     */
+    private function getSupportedLanguagesDeepL(): array
+    {
+        // DeepL supporte ~30 langues
+        // Liste complète : https://www.deepl.com/docs-api/translate-text
+        return [
+            ['code' => 'en', 'name' => 'English'],
+            ['code' => 'fr', 'name' => 'Français'],
+            ['code' => 'de', 'name' => 'Deutsch'],
+            ['code' => 'es', 'name' => 'Español'],
+            ['code' => 'it', 'name' => 'Italiano'],
+            ['code' => 'pt', 'name' => 'Português'],
+            ['code' => 'pl', 'name' => 'Polski'],
+            ['code' => 'nl', 'name' => 'Nederlands'],
+            ['code' => 'ru', 'name' => 'Русский'],
+            ['code' => 'zh', 'name' => '中文'],
+            ['code' => 'ja', 'name' => '日本語'],
+            ['code' => 'ko', 'name' => '한국어'],
+            ['code' => 'tr', 'name' => 'Türkçe'],
+            ['code' => 'uk', 'name' => 'Українська'],
+            ['code' => 'ar', 'name' => 'العربية'],
+            ['code' => 'id', 'name' => 'Bahasa Indonesia'],
+            ['code' => 'sv', 'name' => 'Svenska'],
+            ['code' => 'no', 'name' => 'Norsk'],
+            ['code' => 'da', 'name' => 'Dansk'],
+            ['code' => 'fi', 'name' => 'Suomi'],
+        ];
+    }
+
+    /**
+     * Langues supportées par Google Translate
+     */
+    private function getSupportedLanguagesGoogle(): array
+    {
+        // Google Translate supporte 100+ langues
+        // Retourner liste étendue des langues principales
+        return array_merge($this->getDefaultLanguages(), [
+            ['code' => 'bg', 'name' => 'Български'],
+            ['code' => 'cs', 'name' => 'Čeština'],
+            ['code' => 'da', 'name' => 'Dansk'],
+            ['code' => 'el', 'name' => 'Ελληνικά'],
+            ['code' => 'fi', 'name' => 'Suomi'],
+            ['code' => 'hu', 'name' => 'Magyar'],
+            ['code' => 'id', 'name' => 'Bahasa Indonesia'],
+            ['code' => 'no', 'name' => 'Norsk'],
+            ['code' => 'ro', 'name' => 'Română'],
+            ['code' => 'sv', 'name' => 'Svenska'],
+            ['code' => 'th', 'name' => 'ไทย'],
+            ['code' => 'uk', 'name' => 'Українська'],
+            ['code' => 'vi', 'name' => 'Tiếng Việt'],
+        ]);
+    }
+
+    /**
+     * Normaliser les codes langues pour DeepL
+     * DeepL utilise EN-US, EN-GB, PT-BR, PT-PT, etc.
+     */
+    private function normalizeDeepLLangCode(string $lang, bool $isTarget): string
+    {
+        $lang = strtoupper($lang);
+
+        // Pour target lang, DeepL exige des codes spécifiques
+        if ($isTarget) {
+            $mapping = [
+                'EN' => 'EN-US', // ou EN-GB
+                'PT' => 'PT-BR', // ou PT-PT
+            ];
+            return $mapping[$lang] ?? $lang;
+        }
+
+        // Pour source lang, codes simples
+        return $lang;
+    }
+}
