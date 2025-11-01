@@ -190,7 +190,7 @@ class DialogueExtractor:
         """
         # Vérifier si diarization activée
         diarization_enabled = os.getenv('AI_DIARIZATION_ENABLED', 'false').lower() == 'true'
-        
+
         if not diarization_enabled:
             print("", file=sys.stderr)
             print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
@@ -212,25 +212,25 @@ class DialogueExtractor:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tf:
                 json.dump(transcription, tf, ensure_ascii=False)
                 transcription_temp = tf.name
-            
+
             # Fichier output temporaire
             output_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False).name
-            
+
             # Choisir le script de diarization selon la méthode configurée
             diarization_method = os.environ.get('AI_DIARIZATION_METHOD', 'mfcc').lower()
-            
+
             if diarization_method == 'resemblyzer':
                 script_name = 'resemblyzer_diarization.py'
                 print("🎤 Utilisation: Resemblyzer (embeddings 256D)", file=sys.stderr)
             else:
                 script_name = 'simple_diarization.py'
                 print("🎵 Utilisation: MFCC clustering (112D)", file=sys.stderr)
-            
+
             script_path = Path(__file__).parent / script_name
-            
+
             if not script_path.exists():
                 raise FileNotFoundError(f"Script de diarization introuvable: {script_path}")
-            
+
             # Appeler le script de diarization
             cmd = [
                 sys.executable,
@@ -240,27 +240,27 @@ class DialogueExtractor:
                 output_temp,
                 '--max-speakers', str(self.max_speakers)
             ]
-            
+
             # Ajouter --skip-spleeter pour Resemblyzer (Spleeter pas encore installé)
             if diarization_method == 'resemblyzer':
                 cmd.append('--skip-spleeter')
-            
+
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            
+
             # Afficher stderr (progression)
             if result.stderr:
                 print(result.stderr, file=sys.stderr, end='')
-            
+
             # Charger résultat
             with open(output_temp, 'r', encoding='utf-8') as f:
                 diarization_result = json.load(f)
-            
+
             # Nettoyer fichiers temporaires
             os.unlink(transcription_temp)
             os.unlink(output_temp)
-            
+
             return diarization_result['dialogues']
-            
+
         except subprocess.CalledProcessError as e:
             print(f"❌ ERREUR Diarization: {e.stderr}", file=sys.stderr)
             print("⚠️  Fallback: Attribution de tous les dialogues à SPEAKER_00", file=sys.stderr)

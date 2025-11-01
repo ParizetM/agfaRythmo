@@ -102,6 +102,39 @@
         </p>
       </div>
 
+      <!-- Méthode de diarization -->
+      <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-300">Méthode de diarization</span>
+          <div :class="`px-3 py-1 rounded-full text-xs font-medium border ${diarizationMethodBadge.classes}`">
+            {{ diarizationMethodBadge.text }}
+          </div>
+        </div>
+        <p class="text-xs text-gray-400">
+          {{ diarizationMethodLabel }}
+        </p>
+        <p class="text-xs text-gray-500 mt-1">
+          {{ diarizationMethodBadge.subtitle }}
+        </p>
+      </div>
+
+      <!-- Warning RAM insuffisante -->
+      <div v-if="showRamWarning" class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <div class="text-sm">
+            <p class="text-orange-500 font-medium mb-1">⚠️ Précision réduite</p>
+            <p class="text-orange-400/80">
+              {{ capabilities?.diarization_fallback_reason }}. 
+              Méthode MFCC utilisée (précision 30-50%). 
+              Pour une meilleure précision, passez à un serveur 4GB RAM minimum et activez Resemblyzer.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Estimation durée -->
       <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center gap-2 text-sm">
@@ -157,6 +190,7 @@
 import { ref, computed } from 'vue'
 import BaseModal from './BaseModal.vue'
 import type { DialogueExtractionOptions } from '@/api/dialogueExtraction'
+import { useServerCapabilities } from '@/composables/useServerCapabilities'
 
 defineProps<{
   show: boolean
@@ -167,17 +201,57 @@ const emit = defineEmits<{
   'start': [options: DialogueExtractionOptions]
 }>()
 
+const { capabilities } = useServerCapabilities()
+
 const formData = ref<DialogueExtractionOptions>({
   language: 'auto',
   max_speakers: 10,
   whisper_model: 'tiny'
 })
 
+const diarizationMethodLabel = computed(() => {
+  const method = capabilities.value?.diarization_method
+  if (method === 'resemblyzer') {
+    return '🎤 Resemblyzer (embeddings 256D, précision 85-95%)'
+  }
+  return '🎵 MFCC Clustering (précision 30-50%)'
+})
+
+const diarizationMethodBadge = computed(() => {
+  const method = capabilities.value?.diarization_method
+  if (method === 'resemblyzer') {
+    return {
+      text: 'Resemblyzer',
+      subtitle: 'Serveur 4GB+ RAM',
+      classes: 'bg-blue-500/20 border-blue-500/40 text-blue-400'
+    }
+  }
+  return {
+    text: 'MFCC',
+    subtitle: 'Serveur 2GB RAM',
+    classes: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
+  }
+})
+
+const showRamWarning = computed(() => {
+  return capabilities.value?.diarization_fallback_reason !== undefined
+})
+
 const estimatedDuration = computed(() => {
   const model = formData.value.whisper_model
-  if (model === 'tiny') return 'Variable (rapide)'
-  if (model === 'base') return 'Variable (moyen)'
-  return 'Variable (lent)'
+  const method = capabilities.value?.diarization_method
+  
+  let base = 'Variable'
+  if (model === 'tiny') base = 'Variable (rapide)'
+  if (model === 'base') base = 'Variable (moyen)'
+  if (model === 'small') base = 'Variable (lent)'
+  
+  // Resemblyzer ajoute ~1-2min de plus
+  if (method === 'resemblyzer') {
+    base += ' + embeddings (~2min)'
+  }
+  
+  return base
 })
 
 const handleStart = () => {

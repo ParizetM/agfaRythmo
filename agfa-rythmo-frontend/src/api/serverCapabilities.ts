@@ -18,6 +18,9 @@ export interface ServerCapabilities {
   audio_analysis: boolean;
   supported_languages?: SupportedLanguage[];
   translation_provider?: string;
+  diarization_method?: 'mfcc' | 'resemblyzer';
+  diarization_fallback_reason?: string;
+  available_ram_mb?: number;
 }
 
 /**

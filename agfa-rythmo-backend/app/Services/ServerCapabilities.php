@@ -22,7 +22,7 @@ class ServerCapabilities
         if ($capabilities['dialogue_extraction']) {
             $configuredMethod = config('ai.diarization_method', 'mfcc');
             $availableRam = self::getAvailableRamMB();
-            
+
             // Si Resemblyzer configuré mais RAM insuffisante, fallback vers MFCC
             if ($configuredMethod === 'resemblyzer' && $availableRam < 4000) {
                 $capabilities['diarization_method'] = 'mfcc';

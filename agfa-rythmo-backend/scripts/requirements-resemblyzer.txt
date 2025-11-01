@@ -51,7 +51,7 @@ tqdm==4.67.1                 # Progress bars
 # Overhead:      ~300MB RAM
 # ────────────────────────────
 # TOTAL:         ~2GB RAM
-# 
+#
 # ✅ Compatible serveur 4GB RAM
 # ✅ Précision >>> MFCC clustering
 # ✅ Production-ready
