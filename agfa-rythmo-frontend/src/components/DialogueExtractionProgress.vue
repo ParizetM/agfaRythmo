@@ -43,7 +43,7 @@
         </p>
       </div>
 
-      <!-- Étapes de progression -->
+      <!-- Étapes de progression détaillées -->
       <div class="space-y-3">
         <div
           v-for="step in steps"
@@ -55,6 +55,25 @@
             'bg-gray-800/30 border border-gray-700'
           ]"
         >
+          <!-- Émoji de l'étape -->
+          <div class="flex-shrink-0 text-2xl">
+            {{ step.emoji }}
+          </div>
+
+          <!-- Texte de l'étape -->
+          <div class="flex-1">
+            <p
+              class="text-sm font-medium"
+              :class="[
+                step.status === 'completed' ? 'text-green-400' :
+                step.status === 'in-progress' ? 'text-blue-400' :
+                'text-gray-500'
+              ]"
+            >
+              {{ step.label }}
+            </p>
+          </div>
+
           <!-- Icône de statut -->
           <div class="flex-shrink-0">
             <svg
@@ -75,35 +94,15 @@
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
-            <svg
+            <div
               v-else
-              class="w-5 h-5 text-gray-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-
-          <!-- Texte de l'étape -->
-          <div class="flex-1">
-            <p
-              class="text-sm font-medium"
-              :class="[
-                step.status === 'completed' ? 'text-green-400' :
-                step.status === 'in-progress' ? 'text-blue-400' :
-                'text-gray-500'
-              ]"
-            >
-              {{ step.label }}
-            </p>
+              class="w-5 h-5 rounded-full border-2 border-gray-600"
+            ></div>
           </div>
 
           <!-- Pourcentage de l'étape -->
           <div
-            v-if="step.status !== 'pending'"
-            class="text-xs font-semibold"
+            class="text-xs font-semibold min-w-[60px] text-right"
             :class="[
               step.status === 'completed' ? 'text-green-400' :
               step.status === 'in-progress' ? 'text-blue-400' :
@@ -198,31 +197,49 @@ const isCancelling = ref(false)
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 
-// Étapes de progression
+// Étapes de progression détaillées
 const steps = computed(() => [
   {
     id: 1,
-    label: 'Extraction audio',
-    range: '0-20%',
-    status: progress.value >= 20 ? 'completed' : progress.value > 0 ? 'in-progress' : 'pending'
+    emoji: '📹',
+    label: 'Extraction audio de la vidéo',
+    range: '0-10%',
+    status: progress.value >= 10 ? 'completed' : progress.value > 0 ? 'in-progress' : 'pending'
   },
   {
     id: 2,
-    label: 'Transcription Whisper',
+    emoji: '🎵',
+    label: 'Séparation des voix',
+    range: '10-20%',
+    status: progress.value >= 20 ? 'completed' : progress.value >= 10 ? 'in-progress' : 'pending'
+  },
+  {
+    id: 3,
+    emoji: '📝',
+    label: 'Transcription des dialogues',
     range: '20-70%',
     status: progress.value >= 70 ? 'completed' : progress.value >= 20 ? 'in-progress' : 'pending'
   },
   {
-    id: 3,
-    label: 'Séparation des locuteurs',
+    id: 4,
+    emoji: '🎤',
+    label: 'Identification des locuteurs',
     range: '70-90%',
     status: progress.value >= 90 ? 'completed' : progress.value >= 70 ? 'in-progress' : 'pending'
   },
   {
-    id: 4,
-    label: 'Création timecodes & personnages',
-    range: '90-100%',
-    status: progress.value === 100 ? 'completed' : progress.value >= 90 ? 'in-progress' : 'pending'
+    id: 5,
+    emoji: '👥',
+    label: 'Attribution des personnages',
+    range: '90-95%',
+    status: progress.value >= 95 ? 'completed' : progress.value >= 90 ? 'in-progress' : 'pending'
+  },
+  {
+    id: 6,
+    emoji: '⏱️',
+    label: 'Création des timecodes',
+    range: '95-100%',
+    status: progress.value === 100 ? 'completed' : progress.value >= 95 ? 'in-progress' : 'pending'
   }
 ])
 

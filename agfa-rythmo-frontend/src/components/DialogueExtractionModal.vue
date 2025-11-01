@@ -22,8 +22,9 @@
             <p class="font-medium text-blue-400 mb-1">Comment ça fonctionne ?</p>
             <ul class="space-y-1 text-gray-400 list-disc list-inside">
               <li>Extraction audio de la vidéo</li>
-              <li>Transcription automatique avec Whisper AI</li>
-              <li>Détection et séparation des locuteurs</li>
+              <li>Séparation des voix</li>
+              <li>Transcription automatique des dialogues</li>
+              <li>Identification et séparation des locuteurs</li>
               <li>Création automatique des timecodes et personnages</li>
             </ul>
           </div>
@@ -83,29 +84,29 @@
         </p>
       </div>
 
-      <!-- Modèle Whisper -->
+      <!-- Modèle de transcription -->
       <div>
         <label for="whisperModel" class="block text-sm font-medium text-gray-300 mb-2">
-          Modèle de transcription
+          Qualité de transcription
         </label>
         <select
           id="whisperModel"
           v-model="formData.whisper_model"
           class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="tiny">⚡ Tiny - Rapide (recommandé pour 2GB RAM)</option>
-          <option value="base">🚀 Base - Équilibré</option>
-          <option value="small">🎯 Small - Précis (nécessite 2GB+ RAM)</option>
+          <option value="tiny">⚡ Rapide (recommandé pour 2GB RAM)</option>
+          <option value="base">🚀 Équilibré</option>
+          <option value="small">🎯 Précis (nécessite 2GB+ RAM)</option>
         </select>
         <p class="text-xs text-gray-500 mt-1">
           Compromis entre vitesse et précision de transcription
         </p>
       </div>
 
-      <!-- Méthode de diarization -->
+      <!-- Méthode d'identification des locuteurs -->
       <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-gray-300">Méthode de diarization</span>
+          <span class="text-sm font-medium text-gray-300">Méthode d'identification</span>
           <div :class="`px-3 py-1 rounded-full text-xs font-medium border ${diarizationMethodBadge.classes}`">
             {{ diarizationMethodBadge.text }}
           </div>
@@ -127,9 +128,9 @@
           <div class="text-sm">
             <p class="text-orange-500 font-medium mb-1">⚠️ Précision réduite</p>
             <p class="text-orange-400/80">
-              {{ capabilities?.diarization_fallback_reason }}. 
-              Méthode MFCC utilisée (précision 30-50%). 
-              Pour une meilleure précision, passez à un serveur 4GB RAM minimum et activez Resemblyzer.
+              {{ capabilities?.diarization_fallback_reason }}.
+              Méthode standard utilisée (précision 30-50%).
+              Pour une meilleure précision, passez à un serveur 4GB RAM minimum.
             </p>
           </div>
         </div>
@@ -212,22 +213,22 @@ const formData = ref<DialogueExtractionOptions>({
 const diarizationMethodLabel = computed(() => {
   const method = capabilities.value?.diarization_method
   if (method === 'resemblyzer') {
-    return '🎤 Resemblyzer (embeddings 256D, précision 85-95%)'
+    return '🎤 Méthode avancée (précision 85-95%)'
   }
-  return '🎵 MFCC Clustering (précision 30-50%)'
+  return '🎵 Méthode standard (précision 30-50%)'
 })
 
 const diarizationMethodBadge = computed(() => {
   const method = capabilities.value?.diarization_method
   if (method === 'resemblyzer') {
     return {
-      text: 'Resemblyzer',
+      text: 'Avancée',
       subtitle: 'Serveur 4GB+ RAM',
       classes: 'bg-blue-500/20 border-blue-500/40 text-blue-400'
     }
   }
   return {
-    text: 'MFCC',
+    text: 'Standard',
     subtitle: 'Serveur 2GB RAM',
     classes: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
   }
@@ -240,17 +241,17 @@ const showRamWarning = computed(() => {
 const estimatedDuration = computed(() => {
   const model = formData.value.whisper_model
   const method = capabilities.value?.diarization_method
-  
+
   let base = 'Variable'
   if (model === 'tiny') base = 'Variable (rapide)'
   if (model === 'base') base = 'Variable (moyen)'
   if (model === 'small') base = 'Variable (lent)'
-  
+
   // Resemblyzer ajoute ~1-2min de plus
   if (method === 'resemblyzer') {
     base += ' + embeddings (~2min)'
   }
-  
+
   return base
 })
 

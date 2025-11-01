@@ -837,7 +837,9 @@ def main():
         print("", file=sys.stderr)
 
         result = {
-            'dialogues': dialogues,
+            'segments': dialogues,  # Utilisé 'segments' pour cohérence avec resemblyzer
+            'num_speakers': num_speakers,
+            'method': 'mfcc',
             'speakers': speakers,
             'metadata': {
                 'duration': transcription.get('duration', 0),

@@ -15,6 +15,11 @@ class ExtractDialogues implements ShouldQueue
     use Queueable;
 
     /**
+     * Timeout du job en secondes (30 minutes pour vidéos longues avec Demucs)
+     */
+    public $timeout = 1800;
+
+    /**
      * Palette de couleurs distinctes pour les personnages auto-générés
      */
     private const COLOR_PALETTE = [

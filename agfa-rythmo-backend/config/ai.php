@@ -37,6 +37,11 @@ return [
     // Activer la diarization (séparation des locuteurs)
     'diarization_enabled' => env('AI_DIARIZATION_ENABLED', false),
 
+    // Séparation vocale avec Demucs (améliore qualité diarization)
+    // Nécessite : demucs Python package (~500MB modèle htdemucs)
+    // Recommandé si serveur >= 4GB RAM
+    'vocal_separation_enabled' => env('AI_VOCAL_SEPARATION_ENABLED', false),
+
     // Méthode de diarization :
     // - mfcc : MFCC clustering (léger, ~50MB RAM, précision 30-50%, serveur 2GB) ⭐⭐
     // - resemblyzer : Embeddings 256D pré-entraînés (lourd, ~2GB RAM, précision 85-95%, serveur 4GB) ⭐⭐⭐⭐⭐

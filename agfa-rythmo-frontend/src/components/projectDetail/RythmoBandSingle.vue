@@ -1939,7 +1939,7 @@ function onMoveEnd() {
 .scene-change-bar {
   position: absolute;
   bottom: -5%;
-  width: 5px;
+  width: 2px;
   height: 110%;
   background: v-bind('projectSettings.sceneChangeColor');
   opacity: 0.7;
