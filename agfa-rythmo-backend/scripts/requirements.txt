@@ -1,15 +1,61 @@
-# Dépendances Python pour extraction de dialogues
-openai-whisper>=20231117
-torch>=2.0.0
-torchaudio>=2.0.0
-ffmpeg-python>=0.2.0
+# ============================================
+# AgfaRythmo - Extraction Dialogues + Traduction
+# Requirements Python complet
+# Compatible: Linux, macOS (ARM/Intel)
+# RAM minimum: 4GB (recommandé: 8GB+)
+# Python: 3.8+
+# ============================================
 
-# Diarization (séparation automatique des locuteurs)
-pyannote.audio>=3.1.0
-# Nécessite token HuggingFace gratuit: https://huggingface.co/settings/tokens
-# Puis accepter les conditions: https://huggingface.co/pyannote/speaker-diarization-3.1
+# ============================================
+# 1. TRANSCRIPTION (Whisper)
+# ============================================
+openai-whisper==20231117
+torch==2.5.1
+torchaudio==2.5.1
 
-# Dépendances pour traduction NLLB-200
-transformers>=4.30.0
-sentencepiece>=0.1.99
-protobuf>=3.20.0
+# ============================================
+# 2. SÉPARATION VOCALE (Demucs)
+# ============================================
+demucs==4.0.1
+
+# ============================================
+# 3. DIARIZATION - Méthode avancée (Resemblyzer)
+# ============================================
+# IMPORTANT: Resemblyzer nécessite numpy<2.0
+numpy==1.26.4
+Resemblyzer==0.1.1.dev0
+webrtcvad==2.0.10
+
+# ============================================
+# 4. DIARIZATION - Méthode standard (MFCC)
+# ============================================
+librosa==0.10.2.post1
+scikit-learn==1.6.1
+scipy==1.15.1
+
+# ============================================
+# 5. AUDIO PROCESSING
+# ============================================
+soundfile==0.13.1
+audioread==3.0.1
+
+# ============================================
+# 6. TRADUCTION (NLLB-200)
+# ============================================
+transformers==4.30.0
+sentencepiece==0.1.99
+protobuf==3.20.0
+
+# ============================================
+# 7. UTILITIES
+# ============================================
+tqdm==4.67.1
+
+# ============================================
+# NOTES
+# ============================================
+# - numpy 1.26.4 requis pour Resemblyzer (incompatible avec 2.x)
+# - torch/torchaudio pour Whisper + Demucs
+# - librosa pour MFCC (méthode standard)
+# - Resemblyzer pour embeddings vocaux (méthode avancée)
+# - pyannote.audio RETIRÉ (trop lourd, conflits dépendances)
