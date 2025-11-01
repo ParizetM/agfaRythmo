@@ -227,14 +227,18 @@ class ExtractDialogues implements ShouldQueue
     private function executeWithProgress(string $command, string $logPath): void
     {
         // Préparer les variables d'environnement
-        $env = null; // null = hérite de l'environnement parent
+        $env = getenv(); // Récupérer toutes les variables
+
+        // Passer AI_DIARIZATION_METHOD au script Python
+        $env['AI_DIARIZATION_METHOD'] = config('ai.diarization_method', 'mfcc');
 
         // Si HF_TOKEN est configuré, on doit le passer explicitement
         if ($hfToken = env('HF_TOKEN')) {
-            $env = getenv(); // Récupérer toutes les variables
             $env['HF_TOKEN'] = trim($hfToken, "'\"");
             Log::info("HF_TOKEN configuré pour la diarization");
         }
+
+        Log::info("Diarization method: {$env['AI_DIARIZATION_METHOD']}");
 
         $process = proc_open(
             $command,

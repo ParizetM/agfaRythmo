@@ -31,10 +31,9 @@ echo ""
 
 # 2. Transcription Whisper (modèle tiny pour test rapide)
 TRANSCRIPTION="$TEMP_DIR/transcription.json"
-echo "📝 Transcription Whisper (modèle tiny)..."
+echo "📝 Transcription Whisper (modèle tiny, auto-detect)..."
 whisper "$AUDIO" \
     --model tiny \
-    --language auto \
     --output_format json \
     --output_dir "$TEMP_DIR" 2>&1 | tail -10
     

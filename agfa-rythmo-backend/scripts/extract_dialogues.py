@@ -216,8 +216,22 @@ class DialogueExtractor:
             # Fichier output temporaire
             output_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False).name
             
+            # Choisir le script de diarization selon la méthode configurée
+            diarization_method = os.environ.get('AI_DIARIZATION_METHOD', 'mfcc').lower()
+            
+            if diarization_method == 'resemblyzer':
+                script_name = 'resemblyzer_diarization.py'
+                print("🎤 Utilisation: Resemblyzer (embeddings 256D)", file=sys.stderr)
+            else:
+                script_name = 'simple_diarization.py'
+                print("🎵 Utilisation: MFCC clustering (112D)", file=sys.stderr)
+            
+            script_path = Path(__file__).parent / script_name
+            
+            if not script_path.exists():
+                raise FileNotFoundError(f"Script de diarization introuvable: {script_path}")
+            
             # Appeler le script de diarization
-            script_path = Path(__file__).parent / 'simple_diarization.py'
             cmd = [
                 sys.executable,
                 str(script_path),
@@ -226,6 +240,10 @@ class DialogueExtractor:
                 output_temp,
                 '--max-speakers', str(self.max_speakers)
             ]
+            
+            # Ajouter --skip-spleeter pour Resemblyzer (Spleeter pas encore installé)
+            if diarization_method == 'resemblyzer':
+                cmd.append('--skip-spleeter')
             
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             
