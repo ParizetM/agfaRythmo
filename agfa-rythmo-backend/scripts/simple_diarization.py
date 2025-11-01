@@ -1,0 +1,857 @@
+#!/usr/bin/env python3
+"""
+Diarization ultra-light avec clustering MFCC
+Pour serveurs 2GB RAM - pas de deep learning
+
+Usage:
+    python simple_diarization.py <audio_path> <transcription_json> <output_json> [--max-speakers 10]
+"""
+
+import argparse
+import json
+import sys
+import numpy as np
+import soundfile as sf
+import librosa
+from sklearn.cluster import KMeans
+from typing import List, Dict, Tuple
+
+
+def classify_voice_type(pitch_mean: float, pitch_median: float, formants: np.ndarray,
+                        spec_cent_mean: float, spec_contrast_mean: np.ndarray,
+                        zcr_mean: float) -> Tuple[str, str, float]:
+    """
+    Classifier la voix par TESSITURE (hauteur) et TIMBRE (texture)
+    Plus précis que juste homme/femme pour différencier plusieurs personnes
+
+    TESSITURES (comme en chant) :
+    - Soprano (F aigu) : 250-350+ Hz
+    - Mezzo (F médium) : 180-250 Hz
+    - Alto (F grave) : 165-220 Hz
+    - Ténor (M aigu) : 130-200 Hz
+    - Baryton (M médium) : 100-150 Hz
+    - Basse (M grave) : 80-130 Hz
+
+    TIMBRES (texture) :
+    - Claire : spectral centroid élevé, peu de contraste
+    - Riche : spectral contrast élevé
+    - Rauque : zero-crossing élevé
+
+    Args:
+        pitch_mean: Pitch moyen (Hz)
+        pitch_median: Pitch médian (Hz)
+        formants: Vecteur des 3 formants
+        spec_cent_mean: Centroïde spectral
+        spec_contrast_mean: Contraste spectral (7 bands)
+        zcr_mean: Zero-crossing rate
+
+    Returns:
+        Tuple (tessiture, timbre, confiance)
+    """
+    if pitch_mean == 0:
+        return 'Unknown', 'Unknown', 0.0
+
+    # 1. DÉTERMINER LA TESSITURE (hauteur de voix)
+    tessiture = 'Unknown'
+    confidence = 0.0
+
+    if pitch_mean >= 250:  # 250+ Hz
+        tessiture = 'Soprano'
+        confidence = min(1.0, (pitch_mean - 250) / 100 + 0.7)
+    elif pitch_mean >= 180:  # 180-250 Hz
+        tessiture = 'Mezzo'
+        confidence = 0.8
+    elif pitch_mean >= 165:  # 165-220 Hz
+        tessiture = 'Alto'
+        confidence = 0.8
+    elif pitch_mean >= 130:  # 130-200 Hz
+        tessiture = 'Tenor'
+        confidence = 0.8
+    elif pitch_mean >= 100:  # 100-150 Hz
+        tessiture = 'Baryton'
+        confidence = 0.8
+    else:  # 80-130 Hz
+        tessiture = 'Basse'
+        confidence = min(1.0, (130 - pitch_mean) / 50 + 0.7)
+
+    # Ajuster confiance selon variance du pitch
+    # Si pitch très stable → plus de confiance
+    # Si pitch varie beaucoup → moins de confiance
+
+    # 2. DÉTERMINER LE TIMBRE (texture de la voix)
+    timbre_scores = {
+        'Claire': 0.0,    # Voix claire, cristalline
+        'Riche': 0.0,     # Voix chaleureuse, harmoniques riches
+        'Rauque': 0.0,    # Voix graveleuse, râpeuse
+        'Nasale': 0.0     # Voix nasale
+    }
+
+    # Analyse du spectral centroid
+    if spec_cent_mean > 0:
+        if spec_cent_mean > 3000:
+            timbre_scores['Claire'] += 1.0  # Voix brillante
+        elif spec_cent_mean < 1500:
+            timbre_scores['Rauque'] += 0.5  # Voix sombre
+
+    # Analyse du spectral contrast (richesse harmonique)
+    if len(spec_contrast_mean) >= 7:
+        avg_contrast = np.mean(spec_contrast_mean)
+        if avg_contrast > 20:
+            timbre_scores['Riche'] += 1.0  # Beaucoup d'harmoniques
+        elif avg_contrast < 10:
+            timbre_scores['Claire'] += 0.5  # Peu d'harmoniques
+
+    # Analyse du zero-crossing rate (rugosité)
+    if zcr_mean > 0.15:
+        timbre_scores['Rauque'] += 1.0  # Voix râpeuse
+    elif zcr_mean < 0.05:
+        timbre_scores['Riche'] += 0.5  # Voix lisse
+
+    # Analyse des formants (nasalité)
+    if len(formants) >= 2 and formants[0] > 0 and formants[1] > 0:
+        # Ratio F2/F1 élevé peut indiquer nasalité
+        if formants[1] / (formants[0] + 1) > 2.5:
+            timbre_scores['Nasale'] += 0.8
+
+    # Sélectionner le timbre dominant
+    timbre = max(timbre_scores.keys(), key=lambda k: timbre_scores[k])
+    timbre_confidence = timbre_scores[timbre] / 2.0  # Normaliser
+
+    # Si aucun timbre ne se démarque, utiliser "Neutre"
+    if timbre_confidence < 0.3:
+        timbre = 'Neutre'
+
+    return tessiture, timbre, confidence
+
+
+def detect_gender(pitch_mean: float, pitch_median: float, formants: np.ndarray, spec_cent_mean: float) -> Tuple[str, float]:
+    """
+    Détecter le genre de la voix (homme/femme) avec pourcentage de confiance
+
+    Critères physiologiques :
+    - Pitch homme : 85-180 Hz (moyenne ~120 Hz)
+    - Pitch femme : 165-255 Hz (moyenne ~210 Hz)
+    - Formant F1 homme : plus bas
+    - Spectral centroid femme : plus élevé
+
+    Args:
+        pitch_mean: Pitch moyen (Hz)
+        pitch_median: Pitch médian (Hz)
+        formants: Vecteur des 3 formants approximés
+        spec_cent_mean: Centroïde spectral moyen
+
+    Returns:
+        Tuple (genre, confiance) où genre = 'M' ou 'F' et confiance = 0.0-1.0
+    """
+    if pitch_mean == 0:
+        return 'U', 0.0  # Unknown si pas de pitch détecté
+
+    # Score basé sur le pitch (critère principal)
+    pitch_score = 0.0
+    if pitch_mean < 150:  # Zone masculine
+        pitch_score = -1.0 * min(1.0, (150 - pitch_mean) / 65)  # -1.0 à 0
+    elif pitch_mean > 180:  # Zone féminine
+        pitch_score = 1.0 * min(1.0, (pitch_mean - 180) / 75)  # 0 à 1.0
+    else:  # Zone ambiguë (150-180 Hz)
+        pitch_score = (pitch_mean - 165) / 15  # -1.0 à 1.0 autour de 165Hz
+
+    # Score basé sur le spectral centroid (critère secondaire)
+    # Femmes ont généralement un centroïde plus élevé (voix plus brillante)
+    spec_score = 0.0
+    if spec_cent_mean > 0:
+        # Normalisation empirique (centroid typique: 1000-4000 Hz)
+        if spec_cent_mean > 2500:
+            spec_score = 0.5  # Tendance féminine
+        elif spec_cent_mean < 1500:
+            spec_score = -0.5  # Tendance masculine
+
+    # Score basé sur F1 (premier formant)
+    # F1 homme: ~500-700 Hz, F1 femme: ~700-1000 Hz
+    formant_score = 0.0
+    if len(formants) > 0 and formants[0] > 0:
+        f1 = formants[0]
+        if f1 < 600:
+            formant_score = -0.3
+        elif f1 > 800:
+            formant_score = 0.3
+
+    # Score combiné (pitch = 70%, spectral = 20%, formant = 10%)
+    combined_score = 0.7 * pitch_score + 0.2 * spec_score + 0.1 * formant_score
+
+    # Déterminer le genre et la confiance
+    if combined_score > 0:
+        gender = 'F'
+        confidence = min(1.0, abs(combined_score))
+    else:
+        gender = 'M'
+        confidence = min(1.0, abs(combined_score))
+
+    return gender, confidence
+
+
+def extract_voice_features(audio_data: np.ndarray, sr: int, start: float, end: float):
+    """
+    Extraire des caractéristiques vocales PRÉCISES pour distinguer les locuteurs
+    Analyse MULTI-ÉCHELLE pour capturer les nuances de chaque voix
+
+    Chaque TIMECODE Whisper est analysé indépendamment pour maximum de précision
+
+    Args:
+        audio_data: Signal audio complet
+        sr: Sample rate
+        start: Début du timecode (secondes)
+        end: Fin du timecode (secondes)
+
+    Returns:
+        Vecteur de features vocales (90+ dimensions) ou None si segment trop court
+    """
+    start_sample = int(start * sr)
+    end_sample = int(end * sr)
+    segment = audio_data[start_sample:end_sample]
+
+    if len(segment) < 512:  # Trop court pour analyser
+        return None
+
+    # 🔧 Hop length court pour analyse fine (5ms au lieu de 10ms)
+    hop_length = int(sr * 0.005)
+
+    # 1. MFCC (13 coefficients) avec statistiques avancées
+    mfcc = librosa.feature.mfcc(y=segment, sr=sr, n_mfcc=13, hop_length=hop_length)
+    mfcc_delta = librosa.feature.delta(mfcc)
+    mfcc_delta2 = librosa.feature.delta(mfcc, order=2)
+
+    # Statistiques complètes (mean, std, median, percentiles)
+    mfcc_mean = np.mean(mfcc, axis=1)
+    mfcc_std = np.std(mfcc, axis=1)
+    mfcc_median = np.median(mfcc, axis=1)
+    delta_mean = np.mean(mfcc_delta, axis=1)
+    delta2_mean = np.mean(mfcc_delta2, axis=1)
+
+    # 2. PITCH (F0) - SUPER IMPORTANT pour différencier les voix
+    pitches, magnitudes = librosa.piptrack(y=segment, sr=sr, hop_length=hop_length)
+    pitch_values = []
+    for t in range(pitches.shape[1]):
+        index = magnitudes[:, t].argmax()
+        pitch = pitches[index, t]
+        if pitch > 0:  # Ignorer silences
+            pitch_values.append(pitch)
+
+    if len(pitch_values) > 0:
+        pitch_mean = float(np.mean(pitch_values))
+        pitch_std = float(np.std(pitch_values))
+        pitch_median = float(np.median(pitch_values))
+        pitch_min = float(np.min(pitch_values))
+        pitch_max = float(np.max(pitch_values))
+        pitch_range = pitch_max - pitch_min
+    else:
+        pitch_mean = pitch_std = pitch_median = pitch_min = pitch_max = pitch_range = 0.0
+
+    # 3. SPECTRAL FEATURES - texture et timbre de la voix
+    spectral_centroid = librosa.feature.spectral_centroid(y=segment, sr=sr, hop_length=hop_length)
+    spectral_rolloff = librosa.feature.spectral_rolloff(y=segment, sr=sr, hop_length=hop_length)
+    spectral_bandwidth = librosa.feature.spectral_bandwidth(y=segment, sr=sr, hop_length=hop_length)
+    spectral_contrast = librosa.feature.spectral_contrast(y=segment, sr=sr, hop_length=hop_length)
+    zcr = librosa.feature.zero_crossing_rate(segment, hop_length=hop_length)
+
+    # Statistiques (mean + std pour capturer variations)
+    spec_cent_mean = float(np.mean(spectral_centroid))
+    spec_cent_std = float(np.std(spectral_centroid))
+    spec_roll_mean = float(np.mean(spectral_rolloff))
+    spec_roll_std = float(np.std(spectral_rolloff))
+    spec_bw_mean = float(np.mean(spectral_bandwidth))
+    spec_bw_std = float(np.std(spectral_bandwidth))
+    spec_contrast_mean = np.mean(spectral_contrast, axis=1)  # 7 bands
+    zcr_mean = float(np.mean(zcr))
+
+    # 4. CHROMA (harmoniques) - qualité vocale
+    chroma = librosa.feature.chroma_stft(y=segment, sr=sr, hop_length=hop_length)
+    chroma_mean = np.mean(chroma, axis=1)  # 12 dimensions
+    chroma_std = np.std(chroma, axis=1)    # 12 dimensions
+
+    # 5. FORMANTS approximés via spectral peaks
+    # Les 3 premiers formants (F1, F2, F3) caractérisent les voyelles
+    spec = np.abs(librosa.stft(segment))
+    freqs = librosa.fft_frequencies(sr=sr)
+    spec_mean = np.mean(spec, axis=1)
+
+    # Trouver les 3 pics principaux (formants approximés)
+    from scipy.signal import find_peaks
+    peaks, _ = find_peaks(spec_mean, height=np.max(spec_mean) * 0.1)
+    if len(peaks) >= 3:
+        formant_freqs = freqs[peaks[:3]]
+    else:
+        formant_freqs = np.zeros(3)
+
+    # Combiner toutes les features
+    # Total: 13 (MFCC mean) + 13 (MFCC median) + 13 (MFCC std) + 13 (delta) + 13 (delta2)
+    #        + 6 (pitch: mean, std, median, min, max, range)
+    #        + 7 (spectral: cent_mean, cent_std, roll_mean, roll_std, bw_mean, bw_std, zcr)
+    #        + 7 (spectral contrast)
+    #        + 12 (chroma mean) + 12 (chroma std)
+    #        + 3 (formants)
+    #        = 112 dimensions
+    features = np.concatenate([
+        mfcc_mean,                                                              # 13
+        mfcc_median,                                                            # 13
+        mfcc_std,                                                               # 13
+        delta_mean,                                                             # 13
+        delta2_mean,                                                            # 13
+        np.array([pitch_mean, pitch_std, pitch_median, pitch_min, pitch_max, pitch_range]),  # 6
+        np.array([spec_cent_mean, spec_cent_std, spec_roll_mean, spec_roll_std,
+                  spec_bw_mean, spec_bw_std, zcr_mean]),                       # 7
+        spec_contrast_mean,                                                     # 7
+        chroma_mean,                                                            # 12
+        chroma_std,                                                             # 12
+        formant_freqs                                                           # 3
+    ])
+
+    # Normalisation Z-score robuste
+    features = (features - np.mean(features)) / (np.std(features) + 1e-8)
+
+    # Classifier la voix par tessiture et timbre
+    tessiture, timbre, confidence = classify_voice_type(
+        pitch_mean, pitch_median, formant_freqs,
+        spec_cent_mean, spec_contrast_mean, zcr_mean
+    )
+
+    # Aussi détecter le genre pour compatibilité
+    gender, gender_conf = detect_gender(pitch_mean, pitch_median, formant_freqs, spec_cent_mean)
+
+    return features, {
+        'tessiture': tessiture,        # Soprano/Mezzo/Alto/Tenor/Baryton/Basse
+        'timbre': timbre,              # Claire/Riche/Rauque/Nasale/Neutre
+        'voice_confidence': confidence,
+        'gender': gender,              # M/F/U (pour rétro-compatibilité)
+        'gender_confidence': gender_conf,
+        'pitch_mean': pitch_mean,
+        'pitch_median': pitch_median,
+        'formants': formant_freqs.tolist()
+    }
+
+
+def find_optimal_clusters(features_array: np.ndarray, max_k: int) -> int:
+    """
+    Trouver le nombre optimal de clusters avec méthode AMÉLIORÉE
+    Combine silhouette score + gap statistic pour meilleure détection
+
+    Args:
+        features_array: Array de features
+        max_k: Nombre max de clusters à tester
+
+    Returns:
+        Nombre optimal de clusters
+    """
+    from sklearn.metrics import silhouette_score, calinski_harabasz_score
+
+    n_samples = len(features_array)
+    max_k = min(max_k, n_samples // 3)  # Au moins 3 segments par locuteur (plus permissif)
+    max_k = max(2, max_k)
+
+    if max_k <= 2:
+        return 2
+
+    # Tester différents nombres de clusters (2 à max_k)
+    silhouette_scores = []
+    calinski_scores = []
+    K_range = range(2, min(max_k + 1, 10))  # Augmenté à 10 max pour détecter plus de personnes
+
+    for k in K_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=20)  # Plus d'initialisations
+        labels = kmeans.fit_predict(features_array)
+
+        # Silhouette: mesure séparation entre clusters (-1 à 1, plus haut = mieux)
+        sil_score = silhouette_score(features_array, labels)
+        silhouette_scores.append(sil_score)
+
+        # Calinski-Harabasz: ratio variance inter/intra clusters (plus haut = mieux)
+        cal_score = calinski_harabasz_score(features_array, labels)
+        calinski_scores.append(cal_score)
+
+    # Normaliser les scores pour pouvoir les combiner
+    sil_normalized = np.array(silhouette_scores)
+    cal_normalized = (np.array(calinski_scores) - np.min(calinski_scores)) / (np.max(calinski_scores) - np.min(calinski_scores) + 1e-8)
+
+    # Score combiné (70% silhouette + 30% calinski)
+    combined_scores = 0.7 * sil_normalized + 0.3 * cal_normalized
+
+    # Trouver le k optimal
+    best_idx = np.argmax(combined_scores)
+    best_k = K_range[best_idx]
+
+    # ⚠️ SEUIL DE QUALITÉ : si silhouette trop bas, augmenter k
+    # Un score < 0.3 indique des clusters mal séparés, probablement trop peu de clusters
+    if silhouette_scores[best_idx] < 0.35 and best_idx < len(K_range) - 1:
+        # Essayer k+1 si score pas bon
+        next_k = K_range[best_idx + 1]
+        print(f"⚠️  Silhouette faible ({silhouette_scores[best_idx]:.3f}), essai k={next_k}", file=sys.stderr)
+        best_k = next_k
+
+    print(f"📊 Scores silhouette: {dict(zip(K_range, [f'{s:.3f}' for s in silhouette_scores]))}", file=sys.stderr)
+    print(f"📊 Scores calinski: {dict(zip(K_range, [f'{s:.1f}' for s in calinski_scores]))}", file=sys.stderr)
+    print(f"📊 Scores combinés: {dict(zip(K_range, [f'{s:.3f}' for s in combined_scores]))}", file=sys.stderr)
+    print(f"🎯 Nombre optimal de locuteurs détecté: {best_k}", file=sys.stderr)
+
+    return best_k
+
+
+def sequential_clustering(features: List[np.ndarray], voice_info: List[Dict], max_speakers: int, similarity_threshold: float = 0.75) -> np.ndarray:
+    """
+    Clustering SÉQUENTIEL intelligent avec CONTRAINTE DE TESSITURE + TIMBRE
+    Compare chaque timecode aux locuteurs existants en tenant compte du type de voix
+
+    🎯 RÈGLE CLÉ : Deux voix de tessitures très différentes NE PEUVENT PAS être la même personne !
+    Exemple : Un Baryton ne peut pas être confondu avec un Soprano
+
+    Processus :
+    1. Premier timecode = premier locuteur
+    2. Pour chaque nouveau timecode :
+       - Vérifier tessiture (Soprano/Mezzo/Alto/Tenor/Baryton/Basse)
+       - Vérifier timbre (Claire/Riche/Rauque/Nasale)
+       - Calculer similarité avec locuteurs compatibles
+       - Si similarité > seuil ET tessiture compatible → assigner
+       - Sinon → créer nouveau locuteur
+    3. Max locuteurs = max_speakers
+
+    Args:
+        features: Liste de vecteurs features (ordre temporel)
+        voice_info: Liste de dicts avec tessiture, timbre, confidence pour chaque timecode
+        max_speakers: Nombre maximum de locuteurs
+        similarity_threshold: Seuil de similarité (0.75 = 75% similaire, plus permissif)
+
+    Returns:
+        Array de labels (speaker IDs)
+    """
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    n_segments = len(features)
+    features_array = np.array(features)
+    labels = np.zeros(n_segments, dtype=int)
+
+    # Stocker les centroïdes ET les caractéristiques vocales de chaque locuteur
+    speaker_centroids = []
+    speaker_features = {}  # {speaker_id: [liste des features]}
+    speaker_voices = {}    # {speaker_id: {'tessiture': 'X', 'timbre': 'Y', 'confidence': Z}}
+
+    # Mapping des tessitures pour compatibilité
+    # STRICT : seules les tessitures très proches peuvent être confondues
+    tessiture_groups = {
+        'Soprano': ['Soprano'],           # Femme aiguë uniquement
+        'Mezzo': ['Mezzo', 'Alto'],       # Femme médium/grave
+        'Alto': ['Mezzo', 'Alto'],        # Femme médium/grave
+        'Tenor': ['Tenor'],               # Homme aigu uniquement
+        'Baryton': ['Baryton', 'Basse'],  # Homme médium/grave
+        'Basse': ['Baryton', 'Basse'],    # Homme médium/grave
+        'Unknown': ['Soprano', 'Mezzo', 'Alto', 'Tenor', 'Baryton', 'Basse', 'Unknown']
+    }
+
+    # Emojis pour les tessitures
+    tessiture_emojis = {
+        'Soprano': '🎵',
+        'Mezzo': '🎶',
+        'Alto': '🎼',
+        'Tenor': '🎸',
+        'Baryton': '🎺',
+        'Basse': '🎻',
+        'Unknown': '❓'
+    }
+
+    print(f"🔍 Clustering séquentiel avec contrainte TESSITURE + TIMBRE (seuil: {similarity_threshold:.2f})...", file=sys.stderr)
+
+    # Premier timecode = premier locuteur
+    labels[0] = 0
+    speaker_centroids.append(features_array[0])
+    speaker_features[0] = [features_array[0]]
+    speaker_voices[0] = {
+        'tessiture': voice_info[0]['tessiture'],
+        'timbre': voice_info[0]['timbre'],
+        'confidence': voice_info[0]['voice_confidence']
+    }
+    current_speakers = 1
+
+    emoji = tessiture_emojis.get(voice_info[0]['tessiture'], '❓')
+    print(f"  {emoji} Timecode 1: Locuteur 0 ({voice_info[0]['tessiture']}/{voice_info[0]['timbre']}, conf: {voice_info[0]['voice_confidence']:.2f})", file=sys.stderr)
+
+    # Pour chaque timecode suivant
+    for i in range(1, n_segments):
+        current_feature = features_array[i].reshape(1, -1)
+        current_tessiture = voice_info[i]['tessiture']
+        current_timbre = voice_info[i]['timbre']
+        current_confidence = voice_info[i]['voice_confidence']
+
+        emoji = tessiture_emojis.get(current_tessiture, '❓')
+
+        # Calculer similarité avec locuteurs de tessiture compatible
+        max_similarity = -1
+        best_speaker = -1
+
+        for speaker_id in range(current_speakers):
+            speaker_tessiture = speaker_voices[speaker_id]['tessiture']
+            speaker_timbre = speaker_voices[speaker_id]['timbre']
+            speaker_conf = speaker_voices[speaker_id]['confidence']
+
+            # ✅ CONTRAINTE DE TESSITURE : vérifier compatibilité
+            compatible_tessitures = tessiture_groups.get(speaker_tessiture, [speaker_tessiture])
+
+            # Si confiance élevée (>0.5) et tessitures incompatibles → skip (ABAISSÉ à 0.5)
+            if current_confidence > 0.5 and speaker_conf > 0.5:
+                if current_tessiture not in compatible_tessitures and current_tessiture != 'Unknown' and speaker_tessiture != 'Unknown':
+                    print(f"    ⊗ Skip Locuteur {speaker_id}: tessiture incompatible ({speaker_tessiture} vs {current_tessiture})", file=sys.stderr)
+                    continue  # Tessitures incompatibles = personnes différentes !
+
+            # Bonus de similarité si même timbre
+            centroid = speaker_centroids[speaker_id].reshape(1, -1)
+            similarity = cosine_similarity(current_feature, centroid)[0][0]
+
+            print(f"    → Locuteur {speaker_id} ({speaker_tessiture}/{speaker_timbre}): sim={similarity:.3f}", file=sys.stderr)
+
+            # Ajuster similarité selon timbre
+            if current_timbre == speaker_timbre and current_timbre != 'Neutre':
+                similarity += 0.08  # Bonus de 8% si même timbre (augmenté)
+                print(f"       Bonus timbre +0.08 → {similarity:.3f}", file=sys.stderr)
+
+            if similarity > max_similarity:
+                max_similarity = similarity
+                best_speaker = speaker_id
+
+        # Décision : assigner à locuteur existant ou créer nouveau
+        if max_similarity >= similarity_threshold and best_speaker != -1:
+            # Assigner au locuteur le plus similaire
+            labels[i] = best_speaker
+            speaker_features[best_speaker].append(features_array[i])
+
+            # Mettre à jour le centroïde
+            speaker_centroids[best_speaker] = np.mean(speaker_features[best_speaker], axis=0)
+
+            # Mettre à jour les infos vocales si confiance augmente
+            if current_confidence > speaker_voices[best_speaker]['confidence']:
+                speaker_voices[best_speaker] = {
+                    'tessiture': current_tessiture,
+                    'timbre': current_timbre,
+                    'confidence': current_confidence
+                }
+
+            print(f"  {emoji} Timecode {i+1}: Locuteur {best_speaker} (sim: {max_similarity:.3f}, {current_tessiture}/{current_timbre})", file=sys.stderr)
+        else:
+            # Créer nouveau locuteur si pas atteint max
+            if current_speakers < max_speakers:
+                new_speaker_id = current_speakers
+                labels[i] = new_speaker_id
+                speaker_centroids.append(features_array[i])
+                speaker_features[new_speaker_id] = [features_array[i]]
+                speaker_voices[new_speaker_id] = {
+                    'tessiture': current_tessiture,
+                    'timbre': current_timbre,
+                    'confidence': current_confidence
+                }
+                current_speakers += 1
+
+                reason = f"tessiture incompatible ({current_tessiture})" if best_speaker != -1 else "faible similarité"
+                print(f"  {emoji} ➕ Timecode {i+1}: NOUVEAU Locuteur {new_speaker_id} ({reason}, sim: {max_similarity:.3f})", file=sys.stderr)
+            else:
+                # Max atteint, forcer à assigner au plus proche (ignore genre si nécessaire)
+                if best_speaker == -1:
+                    # Aucun locuteur compatible, forcer au premier
+                    best_speaker = 0
+
+                labels[i] = best_speaker
+                speaker_features[best_speaker].append(features_array[i])
+                speaker_centroids[best_speaker] = np.mean(speaker_features[best_speaker], axis=0)
+
+                print(f"  ⚠ Timecode {i+1}: Forcé Locuteur {best_speaker} (max {max_speakers} atteint)", file=sys.stderr)
+
+    # Debug: vérifier la répartition finale
+    unique, counts = np.unique(labels, return_counts=True)
+    print(f"✅ Clustering séquentiel terminé: {current_speakers} locuteurs détectés", file=sys.stderr)
+    print(f"📊 Distribution: {dict(zip(unique, counts))}", file=sys.stderr)
+
+    return labels
+
+
+def apply_clustering(features: List[np.ndarray], voice_info: List[Dict], max_speakers: int) -> np.ndarray:
+    """
+    Appliquer clustering HIÉRARCHIQUE AGGLOMÉRATIF - BEAUCOUP PLUS ROBUSTE
+
+    Au lieu de seuils arbitraires, utilise la distance naturelle entre les voix
+    pour les regrouper automatiquement.
+
+    Args:
+        features: Liste de vecteurs features
+        voice_info: Liste de dicts avec tessiture, timbre, confidence pour chaque timecode
+        max_speakers: Nombre maximum de locuteurs
+
+    Returns:
+        Array de labels (speaker IDs)
+    """
+    from sklearn.cluster import AgglomerativeClustering
+    from sklearn.metrics import silhouette_score
+
+    features_array = np.array(features)
+    n_segments = len(features_array)
+
+    print(f"🔍 Features shape: {features_array.shape}", file=sys.stderr)
+
+    # Afficher résumé des tessitures détectées
+    tessitures = [v['tessiture'] for v in voice_info]
+    timbres = [v['timbre'] for v in voice_info]
+    pitches = [v['pitch_mean'] for v in voice_info]
+
+    print(f"🎭 Tessitures: {set(tessitures)}", file=sys.stderr)
+    print(f"📊 Pitch range: {min(pitches):.1f} - {max(pitches):.1f} Hz", file=sys.stderr)
+
+    # CLUSTERING HIÉRARCHIQUE avec distance euclidienne
+    # NORMALISATION L2 : Convertir features en vecteurs unitaires (comme des embeddings)
+    from sklearn.preprocessing import normalize
+    features_normalized = normalize(features_array, norm='l2')
+    print(f"🔧 Features normalisées (L2) : {features_normalized.shape}", file=sys.stderr)
+
+    # CLUSTERING HIÉRARCHIQUE : Tester cosine ET euclidean
+    best_score = -1
+    best_labels = None
+    best_n_clusters = 2
+    best_method = None
+
+    print(f"\n🧪 Test clustering (2 à {min(max_speakers, 8)} clusters)...", file=sys.stderr)
+
+    # APPROCHE 1 : Cosine distance sur features normalisées (comme embeddings)
+    print("  📐 Méthode COSINE (sur features normalisées):", file=sys.stderr)
+    for n_clusters in range(2, min(max_speakers + 1, 9)):
+        clustering = AgglomerativeClustering(
+            n_clusters=n_clusters,
+            metric='cosine',
+            linkage='average'  # Average fonctionne avec cosine
+        )
+        labels = clustering.fit_predict(features_normalized)
+
+        # Vérifier que chaque cluster a au moins 2 segments
+        unique, counts = np.unique(labels, return_counts=True)
+        if np.any(counts < 2):
+            continue  # Skip si cluster trop petit
+
+        # Calculer silhouette score
+        score = silhouette_score(features_normalized, labels, metric='cosine')
+
+        print(f"    k={n_clusters}: silhouette={score:.3f}, distribution={dict(zip(unique, counts))}", file=sys.stderr)
+
+        if score > best_score:
+            best_score = score
+            best_labels = labels
+            best_n_clusters = n_clusters
+            best_method = 'cosine'
+
+    # APPROCHE 2 : Euclidean sur features brutes (fallback si cosine score faible)
+    if best_score < 0.35:
+        print("  📏 Méthode EUCLIDEAN (fallback):", file=sys.stderr)
+        for n_clusters in range(2, min(max_speakers + 1, 9)):
+            clustering = AgglomerativeClustering(
+                n_clusters=n_clusters,
+                metric='euclidean',
+                linkage='ward'
+            )
+            labels = clustering.fit_predict(features_array)
+
+            unique, counts = np.unique(labels, return_counts=True)
+            if np.any(counts < 2):
+                continue
+
+            score = silhouette_score(features_array, labels)
+
+            print(f"    k={n_clusters}: silhouette={score:.3f}, distribution={dict(zip(unique, counts))}", file=sys.stderr)
+
+            if score > best_score:
+                best_score = score
+                best_labels = labels
+                best_n_clusters = n_clusters
+                best_method = 'euclidean'
+
+    print(f"\n✅ Meilleur: {best_n_clusters} clusters (silhouette={best_score:.3f}, méthode={best_method})", file=sys.stderr)
+
+    # Afficher détails par cluster
+    if best_labels is not None:
+        for cluster_id in range(best_n_clusters):
+            cluster_indices = np.where(best_labels == cluster_id)[0]
+            cluster_tessitures = [tessitures[i] for i in cluster_indices]
+            cluster_pitches = [pitches[i] for i in cluster_indices]
+
+            # Tessiture majoritaire
+            from collections import Counter
+            most_common_tess = Counter(cluster_tessitures).most_common(1)[0][0]
+            avg_pitch = np.mean(cluster_pitches)
+
+            print(f"  Cluster {cluster_id}: {len(cluster_indices)} segments, {most_common_tess}, pitch_moy={avg_pitch:.1f}Hz", file=sys.stderr)
+
+    # Fallback si aucun bon clustering trouvé
+    if best_labels is None:
+        print("⚠️  Fallback: 2 clusters par défaut", file=sys.stderr)
+        clustering = AgglomerativeClustering(n_clusters=2, metric='euclidean', linkage='ward')
+        best_labels = clustering.fit_predict(features_array)
+
+    return best_labels
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Diarization ultra-light avec MFCC')
+    parser.add_argument('audio_path', help='Chemin vers le fichier audio WAV')
+    parser.add_argument('transcription_json', help='Chemin vers la transcription Whisper (JSON)')
+    parser.add_argument('output_json', help='Chemin vers le fichier JSON de sortie')
+    parser.add_argument('--max-speakers', type=int, default=10, help='Nombre max de locuteurs')
+
+    args = parser.parse_args()
+
+    print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
+    print("║  👥 DIARIZATION ULTRA-LIGHT - Clustering MFCC                 ║", file=sys.stderr)
+    print("║  (Optimisé pour serveurs 2GB RAM)                             ║", file=sys.stderr)
+    print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    # Charger la transcription Whisper
+    print("📥 Chargement transcription Whisper...", file=sys.stderr)
+    with open(args.transcription_json, 'r', encoding='utf-8') as f:
+        transcription = json.load(f)
+
+    segments = transcription.get('segments', [])
+    print(f"✅ {len(segments)} segments chargés", file=sys.stderr)
+
+    # Charger l'audio
+    print("📥 Chargement audio...", file=sys.stderr)
+    audio_data, sr = sf.read(args.audio_path)
+    print(f"✅ Audio chargé ({sr}Hz)", file=sys.stderr)
+
+    # Extraire features vocales pour chaque segment
+    print(f"🔍 Extraction features vocales ({len(segments)} segments)...", file=sys.stderr)
+    features = []
+    voice_info = []
+    valid_segments = []
+    segment_indices = []  # Pour mapper les segments valides aux originaux
+
+    for idx, segment in enumerate(segments):
+        start = segment['start']
+        end = segment['end']
+
+        # Skip segments trop courts
+        if (end - start) < 0.3:  # Moins de 300ms
+            continue
+
+        try:
+            result = extract_voice_features(audio_data, sr, start, end)
+            if result is not None:
+                voice_features, voice_data = result
+                features.append(voice_features)
+                voice_info.append(voice_data)
+                valid_segments.append(segment)
+                segment_indices.append(idx)
+        except Exception as e:
+            print(f"⚠️  Erreur extraction features segment {start:.2f}-{end:.2f}: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            continue
+
+    print(f"✅ {len(features)} features vocales extraites (112 dimensions: MFCC+Pitch+Spectral+Chroma+Formants)", file=sys.stderr)
+
+    # Afficher résumé des tessitures et timbres détectés
+    if len(voice_info) > 0:
+        tessitures_count = {}
+        timbres_count = {}
+        for v in voice_info:
+            tess = v['tessiture']
+            timb = v['timbre']
+            tessitures_count[tess] = tessitures_count.get(tess, 0) + 1
+            timbres_count[timb] = timbres_count.get(timb, 0) + 1
+        print(f"🎭 Tessitures détectées: {tessitures_count}", file=sys.stderr)
+        print(f"🎨 Timbres détectés: {timbres_count}", file=sys.stderr)
+
+    if len(features) < 2:
+        print("⚠️  Pas assez de segments, fallback sur 1 locuteur", file=sys.stderr)
+        # Tous les segments = SPEAKER_00
+        dialogues = []
+        for segment in segments:
+            dialogues.append({
+                'start': segment['start'],
+                'end': segment['end'],
+                'text': segment['text'].strip(),
+                'speaker': 'SPEAKER_00',
+                'confidence': 1.0,
+                'language': transcription.get('language', 'unknown')
+            })
+
+        result = {
+            'dialogues': dialogues,
+            'speakers': ['SPEAKER_00'],
+            'metadata': {
+                'duration': transcription.get('duration', 0),
+                'total_dialogues': len(dialogues),
+                'detected_speakers': 1
+            }
+        }
+    else:
+        # Clustering avec contrainte tessiture + timbre
+        speaker_labels = apply_clustering(features, voice_info, args.max_speakers)
+
+        # Debug: vérifier la distribution des labels du clustering
+        unique_labels, label_counts = np.unique(speaker_labels, return_counts=True)
+        print(f"🔍 Labels clustering: {dict(zip(unique_labels, label_counts))}", file=sys.stderr)
+
+        # Créer un mapping pour tous les segments (y compris ceux skippés)
+        segment_to_speaker = {}
+        for i, idx in enumerate(segment_indices):
+            segment_to_speaker[idx] = int(speaker_labels[i])  # Force int
+
+        # Assigner les segments courts au speaker le plus proche temporellement
+        for idx in range(len(segments)):
+            if idx not in segment_to_speaker:
+                # Trouver le segment valide le plus proche
+                closest_idx = min(segment_indices, key=lambda x: abs(x - idx))
+                segment_to_speaker[idx] = segment_to_speaker[closest_idx]
+
+        # Créer les dialogues avec speakers pour TOUS les segments
+        dialogues = []
+        for idx, segment in enumerate(segments):
+            speaker_id = f"SPEAKER_{segment_to_speaker[idx]:02d}"
+
+            dialogues.append({
+                'start': segment['start'],
+                'end': segment['end'],
+                'text': segment['text'].strip(),
+                'speaker': speaker_id,
+                'confidence': 1.0,
+                'language': transcription.get('language', 'unknown')
+            })
+
+        speakers = sorted(list(set(f"SPEAKER_{label:02d}" for label in speaker_labels)))
+        num_speakers = len(speakers)
+
+        # Debug: afficher distribution finale des speakers
+        final_speaker_counts = {}
+        for idx in range(len(segments)):
+            spk = segment_to_speaker[idx]
+            final_speaker_counts[spk] = final_speaker_counts.get(spk, 0) + 1
+
+        print(f"📊 Distribution finale: {dict(sorted(final_speaker_counts.items()))}", file=sys.stderr)
+
+        print("", file=sys.stderr)
+        print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
+        print(f"║  ✅ SUCCÈS: {num_speakers} locuteur(s) détecté(s)                           ║", file=sys.stderr)
+        print("╠════════════════════════════════════════════════════════════════╣", file=sys.stderr)
+        print(f"║  {num_speakers} personnage(s) seront créés automatiquement              ║", file=sys.stderr)
+        print("║  Méthode: Clustering MFCC (ultra-light)                        ║", file=sys.stderr)
+        print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
+        print("", file=sys.stderr)
+
+        result = {
+            'dialogues': dialogues,
+            'speakers': speakers,
+            'metadata': {
+                'duration': transcription.get('duration', 0),
+                'total_dialogues': len(dialogues),
+                'detected_speakers': num_speakers
+            }
+        }
+
+    # Sauvegarder résultat
+    with open(args.output_json, 'w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    print(f"✅ Résultat sauvegardé: {args.output_json}", file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()

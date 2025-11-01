@@ -275,9 +275,11 @@ const loadCharacters = async () => {
     // Compter les dialogues par personnage pour toutes les lignes
     const counts: Record<number, number> = {}
 
-    // Obtenir tous les timecodes du projet (ligne 1 pour commencer)
-    const timecodesResponse = await timecodeApi.getByLine(props.projectId, 1)
+    // Obtenir TOUS les timecodes du projet (toutes lignes confondues)
+    const timecodesResponse = await timecodeApi.getAll(props.projectId)
     const timecodes: Timecode[] = timecodesResponse.data.timecodes || []
+
+    console.log('📊 DialogueExtractionResultModal: Loaded timecodes:', timecodes.length)
 
     // Compter les occurrences de chaque personnage
     timecodes.forEach((timecode: Timecode) => {
@@ -286,6 +288,7 @@ const loadCharacters = async () => {
       }
     })
 
+    console.log('📊 DialogueExtractionResultModal: Dialogue counts:', counts)
     dialogueCounts.value = counts
   } catch (error) {
     console.error('Erreur lors du chargement des personnages:', error)

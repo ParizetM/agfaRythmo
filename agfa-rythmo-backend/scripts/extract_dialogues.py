@@ -43,21 +43,11 @@ import gc
 try:
     import whisper
     import torch
-    import soundfile as sf
-    import numpy as np
 except ImportError:
     print("❌ Erreur: whisper ou torch non installé", file=sys.stderr)
-    print("Installation: pip install openai-whisper torch soundfile numpy", file=sys.stderr)
+    print("Installation: pip install openai-whisper torch", file=sys.stderr)
     sys.exit(1)
 
-# Diarization est optionnelle
-DIARIZATION_AVAILABLE = False
-try:
-    from pyannote.audio import Pipeline
-    DIARIZATION_AVAILABLE = True
-except ImportError:
-    print("⚠️  Warning: pyannote.audio non installé, diarization désactivée", file=sys.stderr)
-    print("Installation: pip install pyannote.audio", file=sys.stderr)
 
 
 class DialogueExtractor:
@@ -188,7 +178,8 @@ class DialogueExtractor:
 
     def apply_diarization(self, audio_path: str, transcription: Dict) -> List[Dict]:
         """
-        Appliquer la diarization (séparation locuteurs)
+        Appliquer la diarization (séparation locuteurs) avec clustering MFCC ultra-light
+        Optimisé pour serveurs 2GB RAM - pas de deep learning
 
         Args:
             audio_path: Chemin vers l'audio
@@ -197,7 +188,10 @@ class DialogueExtractor:
         Returns:
             Liste de dialogues avec speakers assignés
         """
-        if not DIARIZATION_AVAILABLE:
+        # Vérifier si diarization activée
+        diarization_enabled = os.getenv('AI_DIARIZATION_ENABLED', 'false').lower() == 'true'
+        
+        if not diarization_enabled:
             print("", file=sys.stderr)
             print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
             print("║  ⚠️  DIARIZATION DÉSACTIVÉE                                   ║", file=sys.stderr)
@@ -207,189 +201,67 @@ class DialogueExtractor:
             print("║  Résultat : UN SEUL locuteur (SPEAKER_00)                      ║", file=sys.stderr)
             print("║                                                                ║", file=sys.stderr)
             print("║  Pour activer la détection multi-locuteurs :                  ║", file=sys.stderr)
-            print("║  1. Mettre AI_DIARIZATION_ENABLED=true dans .env              ║", file=sys.stderr)
-            print("║  2. Configurer HF_TOKEN (voir .env.example)                   ║", file=sys.stderr)
-            print("║  3. Installer: pip install pyannote.audio                     ║", file=sys.stderr)
+            print("║  Mettre AI_DIARIZATION_ENABLED=true dans .env                 ║", file=sys.stderr)
             print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
             print("", file=sys.stderr)
             return self._assign_single_speaker(transcription)
 
-        print("", file=sys.stderr)
-        print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
-        print("║  👥 DIARIZATION ACTIVÉE - Détection des locuteurs            ║", file=sys.stderr)
-        print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
-        print("", file=sys.stderr)
-
+        # Utiliser le script de diarization ultra-light (clustering MFCC)
         try:
-            # Charger le modèle de diarization si pas déjà fait
-            if self.diarization_pipeline is None:
-                from pyannote.audio import Pipeline
-                print("📥 Chargement du modèle de diarization...", file=sys.stderr)
-
-                # Nécessite un token HuggingFace (gratuit)
-                # Export HF_TOKEN="your_token" dans .env ou environnement
-                hf_token = os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN')
-
-                # Nettoyer le token (enlever guillemets si présents)
-                if hf_token:
-                    hf_token = hf_token.strip().strip("'\"")
-
-                if not hf_token:
-                    print("⚠️  Warning: HF_TOKEN non trouvé, diarization peut échouer", file=sys.stderr)
-                    print("⚠️  Obtenez un token gratuit sur: https://huggingface.co/settings/tokens", file=sys.stderr)
-
-                self.diarization_pipeline = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization-3.1",
-                    token=hf_token  # Changé de use_auth_token à token (nouvelle API pyannote)
-                )
-                print("✅ Modèle de diarization chargé", file=sys.stderr)
-
-            # Appliquer la diarization
-            print(f"🔍 Analyse des locuteurs (max {self.max_speakers})...", file=sys.stderr)
+            # Sauvegarder temporairement la transcription
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tf:
+                json.dump(transcription, tf, ensure_ascii=False)
+                transcription_temp = tf.name
             
-            # Charger l'audio avec soundfile (évite le problème torchcodec)
-            waveform, sample_rate = sf.read(audio_path)
-            # Convertir en tensor PyTorch et ajouter dimension channel si nécessaire
-            waveform = torch.from_numpy(waveform.T).float()
-            if waveform.dim() == 1:
-                waveform = waveform.unsqueeze(0)  # Ajouter dimension channel
+            # Fichier output temporaire
+            output_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False).name
             
-            # Pyannote attend un dict avec 'waveform' et 'sample_rate'
-            audio_dict = {
-                "waveform": waveform,
-                "sample_rate": sample_rate
-            }
+            # Appeler le script de diarization
+            script_path = Path(__file__).parent / 'simple_diarization.py'
+            cmd = [
+                sys.executable,
+                str(script_path),
+                audio_path,
+                transcription_temp,
+                output_temp,
+                '--max-speakers', str(self.max_speakers)
+            ]
             
-            diarization = self.diarization_pipeline(
-                audio_dict,
-                num_speakers=None,  # Auto-détection
-                min_speakers=1,
-                max_speakers=self.max_speakers
-            )            # Convertir les résultats de diarization en dict
-            speaker_segments = []
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
-                speaker_segments.append({
-                    'start': turn.start,
-                    'end': turn.end,
-                    'speaker': speaker
-                })
-
-            num_speakers = len(set(s['speaker'] for s in speaker_segments))
-
-            print("", file=sys.stderr)
-            print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
-            print(f"║  ✅ SUCCÈS: {num_speakers} locuteur(s) détecté(s)                           ║", file=sys.stderr)
-            print("╠════════════════════════════════════════════════════════════════╣", file=sys.stderr)
-            print(f"║  {num_speakers} personnage(s) seront créés automatiquement              ║", file=sys.stderr)
-            print("║  Vous pourrez les renommer ou fusionner après l'extraction     ║", file=sys.stderr)
-            print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
-            print("", file=sys.stderr)
-
-            # Assigner les speakers aux segments Whisper
-            return self._merge_transcription_with_diarization(transcription, speaker_segments)
-
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            # Afficher stderr (progression)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr, end='')
+            
+            # Charger résultat
+            with open(output_temp, 'r', encoding='utf-8') as f:
+                diarization_result = json.load(f)
+            
+            # Nettoyer fichiers temporaires
+            os.unlink(transcription_temp)
+            os.unlink(output_temp)
+            
+            return diarization_result['dialogues']
+            
+        except subprocess.CalledProcessError as e:
+            print(f"❌ ERREUR Diarization: {e.stderr}", file=sys.stderr)
+            print("⚠️  Fallback: Attribution de tous les dialogues à SPEAKER_00", file=sys.stderr)
+            return self._assign_single_speaker(transcription)
         except Exception as e:
-            error_msg = str(e)
-            print(f"❌ ERREUR Diarization: {error_msg}", file=sys.stderr)
-
-            # Messages d'erreur explicites selon le type d'erreur
-            if "token" in error_msg.lower() or "unauthorized" in error_msg.lower() or "403" in error_msg:
-                print("", file=sys.stderr)
-                print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
-                print("║  ❌ ERREUR: Token HuggingFace manquant ou invalide           ║", file=sys.stderr)
-                print("╠════════════════════════════════════════════════════════════════╣", file=sys.stderr)
-                print("║  La diarization (détection locuteurs) nécessite un token HF   ║", file=sys.stderr)
-                print("║                                                                ║", file=sys.stderr)
-                print("║  📝 SOLUTION (2 minutes) :                                    ║", file=sys.stderr)
-                print("║  1. Créer compte gratuit: https://huggingface.co              ║", file=sys.stderr)
-                print("║  2. Générer token: https://huggingface.co/settings/tokens     ║", file=sys.stderr)
-                print("║  3. Accepter conditions du modèle:                            ║", file=sys.stderr)
-                print("║     https://huggingface.co/pyannote/speaker-diarization-3.1   ║", file=sys.stderr)
-                print("║  4. Ajouter dans .env : HF_TOKEN=hf_xxxxx                     ║", file=sys.stderr)
-                print("║  5. Relancer l'extraction                                     ║", file=sys.stderr)
-                print("║                                                                ║", file=sys.stderr)
-                print("║  ⚠️  Sans token : UN SEUL locuteur sera créé                 ║", file=sys.stderr)
-                print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
-                print("", file=sys.stderr)
-            elif "model" in error_msg.lower() or "download" in error_msg.lower():
-                print("", file=sys.stderr)
-                print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
-                print("║  ❌ ERREUR: Échec du téléchargement du modèle                ║", file=sys.stderr)
-                print("╠════════════════════════════════════════════════════════════════╣", file=sys.stderr)
-                print("║  Le modèle de diarization n'a pas pu être téléchargé          ║", file=sys.stderr)
-                print("║                                                                ║", file=sys.stderr)
-                print("║  📝 VÉRIFIER :                                                ║", file=sys.stderr)
-                print("║  - Connexion internet active                                   ║", file=sys.stderr)
-                print("║  - Espace disque disponible (~1GB)                            ║", file=sys.stderr)
-                print("║  - Token HF valide et conditions acceptées                    ║", file=sys.stderr)
-                print("║                                                                ║", file=sys.stderr)
-                print("║  ⚠️  Fallback : UN SEUL locuteur sera créé                   ║", file=sys.stderr)
-                print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
-                print("", file=sys.stderr)
-            else:
-                print("", file=sys.stderr)
-                print("╔════════════════════════════════════════════════════════════════╗", file=sys.stderr)
-                print("║  ⚠️  AVERTISSEMENT: Diarization échouée                      ║", file=sys.stderr)
-                print("╠════════════════════════════════════════════════════════════════╣", file=sys.stderr)
-                print(f"║  Erreur: {error_msg[:54]:<54} ║", file=sys.stderr)
-                print("║                                                                ║", file=sys.stderr)
-                print("║  ⚠️  Fallback : UN SEUL locuteur sera créé                   ║", file=sys.stderr)
-                print("║  💡 Vous pourrez renommer/fusionner après l'extraction        ║", file=sys.stderr)
-                print("╚════════════════════════════════════════════════════════════════╝", file=sys.stderr)
-                print("", file=sys.stderr)
-
+            print(f"❌ ERREUR Diarization: {str(e)}", file=sys.stderr)
             print("⚠️  Fallback: Attribution de tous les dialogues à SPEAKER_00", file=sys.stderr)
             return self._assign_single_speaker(transcription)
 
-    def _merge_transcription_with_diarization(
-        self,
-        transcription: Dict,
-        speaker_segments: List[Dict]
-    ) -> List[Dict]:
+    def _assign_single_speaker(self, transcription: Dict) -> List[Dict]:
         """
-        Fusionner la transcription Whisper avec les résultats de diarization
+        Assigner tous les segments à un seul speaker (fallback)
 
         Args:
-            transcription: Résultat Whisper avec segments
-            speaker_segments: Résultats de diarization avec speakers
+            transcription: Résultat Whisper
 
         Returns:
-            Liste de dialogues avec speakers assignés
+            Liste de dialogues avec un seul speaker
         """
-        dialogues = []
-
-        for segment in transcription['segments']:
-            seg_start = segment['start']
-            seg_end = segment['end']
-            seg_mid = (seg_start + seg_end) / 2  # Point milieu du segment
-
-            # Trouver le speaker qui parle au milieu du segment
-            assigned_speaker = 'SPEAKER_00'  # Défaut
-            max_overlap = 0.0
-
-            for spk_seg in speaker_segments:
-                # Calculer le chevauchement
-                overlap_start = max(seg_start, spk_seg['start'])
-                overlap_end = min(seg_end, spk_seg['end'])
-                overlap = max(0, overlap_end - overlap_start)
-
-                if overlap > max_overlap:
-                    max_overlap = overlap
-                    assigned_speaker = spk_seg['speaker']
-
-            dialogues.append({
-                'start': seg_start,
-                'end': seg_end,
-                'text': segment['text'].strip(),
-                'speaker': assigned_speaker,
-                'confidence': segment.get('confidence', segment.get('no_speech_prob', 0.0)),
-                'language': transcription.get('language', 'unknown')
-            })
-
-        return dialogues
-
-    def _assign_single_speaker(self, transcription: Dict) -> List[Dict]:
-        """Assigner tous les segments à un speaker unique (fallback)"""
         dialogues = []
 
         for segment in transcription['segments']:
