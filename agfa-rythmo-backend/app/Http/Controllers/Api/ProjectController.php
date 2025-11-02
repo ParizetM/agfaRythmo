@@ -394,4 +394,91 @@ class ProjectController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Générer la piste instrumentale (sans voix) pour un projet
+     */
+    public function generateInstrumental(Project $project)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Vérifier permissions (edit minimum)
+        if (!$project->canModify($user)) {
+            return response()->json(['message' => 'Accès non autorisé'], 403);
+        }
+
+        // Vérifier que le projet a une vidéo
+        if (!$project->video_path) {
+            return response()->json(['message' => 'Ce projet n\'a pas de vidéo'], 400);
+        }
+
+        // Si déjà généré, retourner info
+        if ($project->instrumental_status === 'completed' && $project->instrumental_audio_path) {
+            return response()->json([
+                'message' => 'Piste instrumentale déjà générée',
+                'status' => $project->instrumental_status,
+                'progress' => $project->instrumental_progress,
+                'audio_path' => $project->instrumental_audio_path,
+            ]);
+        }
+
+        // Si en cours de génération
+        if ($project->instrumental_status === 'processing') {
+            return response()->json([
+                'message' => 'Génération déjà en cours',
+                'status' => $project->instrumental_status,
+                'progress' => $project->instrumental_progress,
+            ]);
+        }
+
+        // Dispatcher le job
+        \App\Jobs\ExtractInstrumental::dispatch($project);
+
+        return response()->json([
+            'message' => 'Génération de la piste instrumentale lancée',
+            'status' => 'processing',
+            'progress' => 0,
+        ], 202);
+    }
+
+    /**
+     * Récupérer le statut de génération de la piste instrumentale
+     */
+    public function instrumentalStatus(Project $project)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Vérifier permissions (view minimum)
+        if (!$project->hasAccess($user)) {
+            return response()->json(['message' => 'Accès non autorisé'], 403);
+        }
+
+        return response()->json([
+            'status' => $project->instrumental_status,
+            'progress' => $project->instrumental_progress,
+            'audio_path' => $project->instrumental_audio_path,
+        ]);
+    }
+
+    /**
+     * Supprimer la piste instrumentale générée
+     */
+    public function deleteInstrumental(Project $project)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Vérifier permissions (edit minimum)
+        if (!$project->canModify($user)) {
+            return response()->json(['message' => 'Accès non autorisé'], 403);
+        }
+
+        $project->deleteInstrumental();
+
+        return response()->json([
+            'message' => 'Piste instrumentale supprimée',
+        ]);
+    }
 }

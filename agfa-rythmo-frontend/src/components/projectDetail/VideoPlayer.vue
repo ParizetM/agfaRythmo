@@ -3,6 +3,7 @@
     <video
       ref="videoRef"
       :src="src"
+      crossorigin="anonymous"
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
       @canplay="onCanPlay"

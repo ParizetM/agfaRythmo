@@ -12,6 +12,10 @@ export interface Project {
   status: 'in_progress' | 'completed'
   created_at: string
   updated_at: string
+  // Instrumental audio feature
+  instrumental_audio_path?: string | null
+  instrumental_status?: 'not_generated' | 'processing' | 'completed' | 'failed'
+  instrumental_progress?: number
 }
 
 export interface ProjectExportData {

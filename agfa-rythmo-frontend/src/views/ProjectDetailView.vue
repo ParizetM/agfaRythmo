@@ -22,6 +22,16 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <!-- Bouton instrumental (mute vocals) -->
+        <InstrumentalButton
+          ref="instrumentalButtonRef"
+          v-if="project && project.video_path && canManageProject"
+          :project="project"
+          :muteVocals="muteVocals"
+          @update:muteVocals="muteVocals = $event"
+          @update:project="project = $event"
+        />
+
         <!-- Bouton paramètres du projet -->
         <button
           class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
@@ -84,21 +94,14 @@
         </button>
 
         <!-- Bouton export JSON -->
-        <button
+        <ExportDropdown
           v-if="project"
-          class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
-          @click="handleExportProject"
-          title="Exporter le projet en JSON"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            ></path>
-          </svg>
-        </button>
+          :projectName="project.name"
+          :videoPath="project.video_path"
+          :instrumentalPath="project.instrumental_audio_path"
+          @export="handleExport"
+          @generate-instrumental="handleGenerateInstrumental"
+        />
 
         <!-- Bouton aperçu final -->
         <button
@@ -559,11 +562,12 @@ function toggleTimecodesPanel() {
   isTimecodesCollapsed.value = !isTimecodesCollapsed.value
 }
 import { useRouter, useRoute } from 'vue-router'
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectSettingsStore } from '@/stores/projectSettings'
 import { useCollaborativeRefresh } from '@/composables/useCollaborativeRefresh'
 import { useServerCapabilities } from '@/composables/useServerCapabilities'
+import { useVideoAudioMixer } from '@/composables/useVideoAudioMixer'
 import api from '../api/axios'
 import { AxiosError } from 'axios'
 import { timecodeApi, type Timecode as ApiTimecode } from '../api/timecodes'
@@ -580,6 +584,8 @@ import SceneChangesList from '../components/projectDetail/SceneChangesList.vue'
 import CharacterModal from '../components/projectDetail/CharacterModal.vue'
 import SceneChangeEditModal from '../components/projectDetail/SceneChangeEditModal.vue'
 import CollaboratorsPanel from '../components/projectDetail/CollaboratorsPanel.vue'
+import InstrumentalButton from '../components/InstrumentalButton.vue'
+import ExportDropdown from '../components/ExportDropdown.vue'
 // Gestion du repli horizontal de la partie scene changes (fermé par défaut)
 const isSceneChangesCollapsed = ref(true)
 function toggleSceneChangesPanel() {
@@ -763,8 +769,87 @@ function goToFinalPreview() {
       rythmo: JSON.stringify(compatibleTimecodes.value),
       rythmoLinesCount: String(project.value.rythmo_lines_count || 1),
       sceneChanges: JSON.stringify(uniqueSceneChanges.value),
+      muteVocals: muteVocals.value ? 'true' : 'false', // Passer l'état mute
+      instrumentalAudio: instrumentalAudioUrl.value || '', // Passer l'URL de l'instrumental
     },
   })
+}
+
+// Fonction pour gérer les différents types d'export
+async function handleExport(type: 'project' | 'video' | 'audio' | 'instrumental') {
+  if (!project.value) return
+
+  try {
+    switch (type) {
+      case 'project':
+        // Export du projet complet en .agfa
+        await handleExportProject()
+        break
+
+      case 'video':
+        // Télécharger la vidéo source
+        if (project.value.video_path) {
+          const videoUrl = getVideoUrl(project.value.video_path)
+          const link = document.createElement('a')
+          link.href = videoUrl
+          link.download = `${project.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_video.mp4`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          notificationService.success('Succès', 'Téléchargement de la vidéo lancé')
+        }
+        break
+
+      case 'audio':
+        // Extraire et télécharger l'audio de la vidéo
+        if (project.value.video_path) {
+          notificationService.info('Extraction audio', 'Extraction de l\'audio en cours...')
+
+          // Utiliser la nouvelle route /audio-extract avec le path complet encodé
+          const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || ''
+          const audioUrl = `${apiBase}/api/audio-extract/${encodeURIComponent(project.value.video_path)}`
+
+          try {
+            // Créer un lien de téléchargement
+            const link = document.createElement('a')
+            link.href = audioUrl
+            link.download = `${project.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_audio.wav`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            notificationService.success('Succès', 'Téléchargement de l\'audio lancé')
+          } catch (error) {
+            console.error('Erreur lors de l\'extraction audio:', error)
+            notificationService.error('Erreur', 'Impossible d\'extraire l\'audio')
+          }
+        }
+        break
+
+      case 'instrumental':
+        // Télécharger la piste instrumentale
+        if (project.value.instrumental_audio_path) {
+          const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || ''
+          const instrumentalUrl = `${apiBase}/storage/${project.value.instrumental_audio_path}`
+          const link = document.createElement('a')
+          link.href = instrumentalUrl
+          link.download = `${project.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_instrumental.wav`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          notificationService.success('Succès', 'Téléchargement de la piste instrumentale lancé')
+        }
+        break
+    }
+  } catch (error) {
+    console.error('Erreur lors de l\'export:', error)
+    notificationService.error('Erreur', 'Erreur lors de l\'export')
+  }
+}
+
+// Fonction pour déclencher la génération de l'instrumental depuis ExportDropdown
+function handleGenerateInstrumental() {
+  // Déclencher la modal de confirmation du composant InstrumentalButton
+  instrumentalButtonRef.value?.handleInitialClick()
 }
 
 // Fonction pour exporter le projet en format .agfa crypté
@@ -808,8 +893,8 @@ interface Project {
   description?: string
   video_path?: string
   timecodes?: Timecode[]
-  rythmo_lines_count?: number
-  user_id?: number
+  rythmo_lines_count: number
+  user_id: number
   owner?: { id: number; name: string; email: string }
   collaborators?: Array<{
     id: number
@@ -818,6 +903,14 @@ interface Project {
     permission?: string
     pivot?: { permission: string; created_at: string }
   }>
+  // Instrumental audio feature
+  instrumental_audio_path?: string | null
+  instrumental_status?: 'not_generated' | 'processing' | 'completed' | 'failed'
+  instrumental_progress?: number
+  // Required by API Project type
+  status: 'in_progress' | 'completed'
+  created_at: string
+  updated_at: string
 }
 const project = ref<Project | null>(null)
 const loading = ref(true)
@@ -831,6 +924,28 @@ const selectedTimecodeIdx = ref<number | null>(null)
 const isVideoLoading = ref(true) // Indique si la vidéo est en cours de chargement
 const isSeeking = ref(false) // Indique si on est en train de scrubber la vidéo
 const isVideoBuffering = ref(false) // Indique si la vidéo est en train de buffer
+
+// État pour la fonctionnalité Instrumental (mute vocals)
+const muteVocals = ref(false)
+
+// Ref vers le composant InstrumentalButton pour accès programmatique
+const instrumentalButtonRef = ref<InstanceType<typeof InstrumentalButton> | null>(null)
+
+// URL de l'audio instrumental (si disponible)
+const instrumentalAudioUrl = computed(() => {
+  if (!project.value?.instrumental_audio_path) return null
+
+  // Extraire projectId et filename du path "instrumental/{projectId}/instrumental.wav"
+  const pathParts = project.value.instrumental_audio_path.split('/')
+  const projectId = pathParts[1] // "instrumental/32/instrumental.wav" -> "32"
+  const filename = pathParts[2] // "instrumental/32/instrumental.wav" -> "instrumental.wav"
+
+  const apiBase = import.meta.env.VITE_API_URL || ''
+  return `${apiBase}/instrumental/${projectId}/${filename}`
+})
+
+// Initialiser le mixer audio (Web Audio API)
+let audioMixer: ReturnType<typeof useVideoAudioMixer> | null = null
 
 // Throttle pour les mises à jour vidéo (optimisation mobile)
 let lastUpdateTime = 0
@@ -1982,6 +2097,13 @@ function onLoadedMetadata(duration: number) {
   if (isVideoLoading.value) {
     isVideoLoading.value = false
   }
+
+  // Initialiser le mixer audio une fois la vidéo chargée
+  const videoEl = document.querySelector('video') as HTMLVideoElement | null
+  if (videoEl && !audioMixer) {
+    audioMixer = useVideoAudioMixer(videoEl, instrumentalAudioUrl, muteVocals)
+    audioMixer.init()
+  }
 }
 
 function onVideoCanPlay() {
@@ -2506,6 +2628,12 @@ onMounted(async () => {
       startAnalysisPolling()
     }
 
+    // Restaurer l'état muteVocals depuis localStorage
+    const savedMuteVocals = localStorage.getItem(`muteVocals_${data.id}`)
+    if (savedMuteVocals !== null) {
+      muteVocals.value = savedMuteVocals === 'true'
+    }
+
     // Initialiser l'état de chargement vidéo APRÈS avoir chargé le projet
     // Seulement si la vidéo n'est pas déjà chargée (loadedmetadata pas encore déclenché)
     if (!project.value?.video_path) {
@@ -2542,6 +2670,13 @@ onMounted(async () => {
 
   // Ajouter les gestionnaires de raccourcis clavier
   window.addEventListener('keydown', handleGlobalKeydown)
+
+  // Sauvegarder automatiquement l'état muteVocals dans localStorage
+  watch(muteVocals, (newValue) => {
+    if (project.value?.id) {
+      localStorage.setItem(`muteVocals_${project.value.id}`, String(newValue))
+    }
+  })
 
   // Gestion focus/blur pour désactivation des raccourcis
   const onFocusIn = (ev: Event) => {
@@ -2606,6 +2741,11 @@ onUnmounted(() => {
 
   // Arrêter le polling de l'analyse si actif
   stopAnalysisPolling()
+
+  // Nettoyer le mixer audio
+  if (audioMixer) {
+    audioMixer.cleanup()
+  }
 
   // Nettoyer les timeouts de buffering/seeking pour éviter les fuites mémoire
   if (bufferingTimeout !== null) {

@@ -27,6 +27,14 @@ Route::get('/server/capabilities', function () {
 // Streaming vidéo (public pour compatibility avec les balises <video>)
 Route::get('/videos/{filename}', [VideoController::class, 'stream'])->where('filename', '.*');
 
+// Extraction audio de la vidéo (public) - route dédiée pour éviter conflits
+Route::get('/audio-extract/{filename}', [VideoController::class, 'extractAudio'])->where('filename', '.*');
+
+// Streaming audio instrumental (public pour compatibility avec Web Audio API)
+Route::get('/instrumental/{projectId}/{filename}', [VideoController::class, 'streamInstrumental'])
+    ->where('projectId', '[0-9]+')
+    ->where('filename', '.*');
+
 // Routes protégées (authentification requise)
 Route::middleware('auth:sanctum')->group(function () {
     // Authentification
@@ -41,6 +49,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
     Route::get('/projects/{project}/export', [ProjectController::class, 'export']);
     Route::post('/projects/import', [ProjectController::class, 'import']);
+
+    // Extraction piste instrumentale (sans voix)
+    Route::post('/projects/{project}/instrumental', [ProjectController::class, 'generateInstrumental']);
+    Route::get('/projects/{project}/instrumental/status', [ProjectController::class, 'instrumentalStatus']);
+    Route::delete('/projects/{project}/instrumental', [ProjectController::class, 'deleteInstrumental']);
 
     // Vidéos
     Route::post('/videos/upload', [VideoController::class, 'upload'])->name('videos.upload');

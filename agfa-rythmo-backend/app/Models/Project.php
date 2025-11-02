@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
@@ -10,6 +11,9 @@ class Project extends Model
         'name',
         'description',
         'video_path',
+        'instrumental_audio_path',
+        'instrumental_status',
+        'instrumental_progress',
         // 'timecodes', // DEPRECATED: champ legacy, utiliser la relation timecodes() à la place
         'text_content',
         'json_path',
@@ -123,5 +127,21 @@ class Project extends Model
             ->first();
 
         return $collaborator !== null;
+    }
+
+    /**
+     * Supprimer le fichier audio instrumental
+     */
+    public function deleteInstrumental(): void
+    {
+        if ($this->instrumental_audio_path && Storage::disk('public')->exists($this->instrumental_audio_path)) {
+            Storage::disk('public')->delete($this->instrumental_audio_path);
+        }
+
+        $this->update([
+            'instrumental_audio_path' => null,
+            'instrumental_status' => 'not_generated',
+            'instrumental_progress' => 0,
+        ]);
     }
 }

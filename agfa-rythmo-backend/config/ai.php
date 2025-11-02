@@ -15,6 +15,11 @@ return [
     // Nécessite : FFmpeg installé + Queue workers actifs
     'scene_detection' => env('AI_SCENE_DETECTION_ENABLED', false),
 
+    // Chemin vers FFmpeg (laisser vide pour utiliser 'ffmpeg' du PATH)
+    // Exemple macOS Homebrew : '/opt/homebrew/bin/ffmpeg'
+    // Exemple Linux : '/usr/bin/ffmpeg'
+    'ffmpeg_path' => env('AI_FFMPEG_PATH', '/opt/homebrew/bin/ffmpeg'),
+
     // Extraction automatique de dialogues avec Whisper + diarization
     // Nécessite : Python 3.8+, FFmpeg, openai-whisper, torch
     'dialogue_extraction' => env('AI_DIALOGUE_EXTRACTION_ENABLED', false),
