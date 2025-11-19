@@ -9,6 +9,8 @@ export interface GoogleFont {
 
 // Liste de polices populaires pré-sélectionnées pour l'interface
 export const POPULAR_FONTS: GoogleFont[] = [
+    { family: 'Lexend', category: 'sans-serif' },
+  { family: 'Atkinson Hyperlegible', category: 'sans-serif' },
   { family: 'Inter', category: 'sans-serif' },
   { family: 'Roboto', category: 'sans-serif' },
   { family: 'Open Sans', category: 'sans-serif' },
@@ -30,6 +32,15 @@ export const POPULAR_FONTS: GoogleFont[] = [
   { family: 'Source Code Pro', category: 'monospace' },
 ]
 
+// Pour charger Lexend Thin (200), il faut adapter la fonction getGoogleFontUrl :
+export function getGoogleFontUrl(fontFamily: string, weights: number[] = [400, 600, 700]): string {
+  // Cas particulier pour Lexend Thin (200)
+  if (fontFamily === 'Lexend') {
+    return `https://fonts.googleapis.com/css2?family=Lexend:wght@200&display=swap`
+  }
+  return `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@${weights.join(';')}&display=swap`
+}
+
 export async function fetchGoogleFonts(): Promise<GoogleFont[]> {
   try {
     // Pour l'instant, on retourne les polices populaires
@@ -46,9 +57,9 @@ export async function fetchGoogleFonts(): Promise<GoogleFont[]> {
   }
 }
 
-export function getGoogleFontUrl(fontFamily: string): string {
-  return `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;600;700&display=swap`
-}
+// export function getGoogleFontUrl(fontFamily: string): string {
+//   return `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;600;700&display=swap`
+// }
 
 // Cache des polices déjà chargées pour éviter les duplications
 const loadedFonts = new Set<string>()
