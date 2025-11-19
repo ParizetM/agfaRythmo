@@ -167,6 +167,32 @@
               </div>
             </div>
 
+            <!-- Poids de police -->
+            <div class="setting-group">
+              <label class="setting-label">Poids de police</label>
+              <div class="font-weights-grid">
+                <button
+                  v-for="weight in availableWeights"
+                  :key="weight"
+                  @click="localSettings.fontWeight = weight"
+                  :class="[
+                    'font-weight-card',
+                    { 'selected': localSettings.fontWeight === weight }
+                  ]"
+                >
+                  <div class="weight-sample" :style="{ fontFamily: localSettings.fontFamily, fontWeight: weight }">
+                    Aa
+                  </div>
+                  <div class="weight-label">
+                    {{ getWeightLabel(weight) }}
+                  </div>
+                </button>
+              </div>
+              <p v-if="availableWeights.length === 0" class="text-xs text-gray-500 mt-2 text-center">
+                Chargement des poids disponibles...
+              </p>
+            </div>
+
             <!-- Choix de police -->
             <div class="setting-group">
               <label class="setting-label">Police de caractères</label>
@@ -277,6 +303,7 @@
                     backgroundColor: localSettings.bandBackgroundColor,
                     fontFamily: localSettings.fontFamily,
                     fontSize: localSettings.fontSize + 'rem',
+                    fontWeight: localSettings.fontWeight,
                     opacity: localSettings.overlayPosition === 'over' ? '0.9' : '1',
                   }"
                 >
@@ -383,7 +410,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
-import { POPULAR_FONTS, type GoogleFont, loadGoogleFont, preloadPopularFonts } from '../../services/googleFonts'
+import { type GoogleFont, loadGoogleFont, preloadPopularFonts, getAvailableWeights, getLightestWeight, getWeightLabel, fetchGoogleFonts } from '../../services/googleFonts'
 import { notificationService } from '../../services/notifications'
 import PresetsManager from './PresetsManager.vue'
 import BaseModal from '../BaseModal.vue'
@@ -407,7 +434,10 @@ const activeTab = ref<'settings' | 'presets'>('settings')
 const localSettings = ref({ ...settingsStore.settings })
 
 // Polices disponibles
-const availableFonts = ref<GoogleFont[]>(POPULAR_FONTS)
+const availableFonts = ref<GoogleFont[]>([])
+
+// Poids disponibles pour la police sélectionnée
+const availableWeights = ref<number[]>([])
 
 // Presets utilisateur
 const userPresets = computed(() => settingsStore.userPresets)
@@ -429,7 +459,29 @@ watch(
 async function loadFonts() {
   // Pré-charger toutes les polices populaires
   await preloadPopularFonts()
-  availableFonts.value = POPULAR_FONTS
+  availableFonts.value = await fetchGoogleFonts()
+
+  // Charger les poids disponibles pour la police sélectionnée
+  await loadAvailableWeights()
+}
+
+// Charger les poids disponibles pour la police sélectionnée
+async function loadAvailableWeights() {
+  try {
+    const weights = await getAvailableWeights(localSettings.value.fontFamily)
+    availableWeights.value = weights
+
+    // Si le poids actuel n'est pas disponible, prendre le plus proche
+    if (!weights.includes(localSettings.value.fontWeight)) {
+      const closest = weights.reduce((prev, curr) =>
+        Math.abs(curr - localSettings.value.fontWeight) < Math.abs(prev - localSettings.value.fontWeight) ? curr : prev
+      )
+      localSettings.value.fontWeight = closest
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des poids disponibles:', error)
+    availableWeights.value = [400, 700] // Fallback
+  }
 }
 
 // Charger la police sélectionnée quand elle change
@@ -439,6 +491,8 @@ watch(
     if (newFont) {
       try {
         await loadGoogleFont(newFont)
+        // Recharger les poids disponibles pour la nouvelle police
+        await loadAvailableWeights()
       } catch (error) {
         console.error(`Impossible de charger la police ${newFont}:`, error)
       }
@@ -596,6 +650,74 @@ onUnmounted(() => {
   color: #e5e7eb;
   margin-bottom: 0.75rem;
   letter-spacing: 0.025em;
+}
+
+/* Grille de poids de police */
+.font-weights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .font-weights-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 1rem;
+  }
+}
+
+.font-weight-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+  background: rgba(55, 65, 81, 0.3);
+  border: 2px solid rgba(75, 85, 99, 0.3);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 90px;
+}
+
+.font-weight-card:hover {
+  background: rgba(55, 65, 81, 0.5);
+  border-color: rgba(132, 85, 246, 0.5);
+  transform: translateY(-2px);
+}
+
+.font-weight-card.selected {
+  background: rgba(132, 85, 246, 0.2);
+  border-color: #8455f6;
+  box-shadow: 0 0 0 3px rgba(132, 85, 246, 0.1);
+}
+
+.weight-sample {
+  font-size: 2rem;
+  line-height: 1;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.weight-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+  .weight-label {
+    font-size: 0.75rem;
+  }
+}
+
+.font-weight-card.selected .weight-label {
+  color: #8455f6;
+  font-weight: 600;
 }
 
 /* Sliders */

@@ -4,6 +4,7 @@ export interface ProjectSettings {
   bandHeight: number
   fontSize: number
   fontFamily: string
+  fontWeight: number
   bandBackgroundColor: string
   sceneChangeColor: string
   overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9'

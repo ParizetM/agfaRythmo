@@ -761,6 +761,7 @@ const rythmoTextStyle = computed(() => ({
   transform: `translateX(-${smoothScroll.value}px)`,
   fontFamily: projectSettings.value.fontFamily,
   fontSize: `${projectSettings.value.fontSize}rem`,
+  fontWeight: projectSettings.value.fontWeight,
   // plus de paddingLeft, tout est positionné en absolu
 }))
 
@@ -1078,6 +1079,7 @@ function getAbsoluteBlockStyle(el: BandBlock): CSSProperties {
     borderRadius: '4px',
     margin: '0',
     position: 'absolute',
+    fontWeight: projectSettings.value.fontWeight, // Appliquer le poids de police
   }
 
   // Si un personnage est assigné, appliquer sa couleur de fond
@@ -2146,7 +2148,7 @@ function onMoveEnd() {
   background: none;
   border-radius: 3px;
   font-size: v-bind('projectSettings.fontSize + "rem"');
-  font-weight: 600;
+  font-weight: v-bind('projectSettings.fontWeight');
   overflow: visible;
   flex-grow: 1;
   width: 100%;

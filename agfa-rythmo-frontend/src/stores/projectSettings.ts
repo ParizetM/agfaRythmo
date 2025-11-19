@@ -12,6 +12,7 @@ export interface ProjectSettings {
   bandHeight: number // Hauteur de la bande rythmo en pixels
   fontSize: number // Taille de la police en rem
   fontFamily: string // Famille de police
+  fontWeight: number // Poids de la police (100-900)
   bandBackgroundColor: string // Couleur de fond de la bande
   sceneChangeColor: string // Couleur des changements de scène
   overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' // Position de la bande par rapport à la vidéo
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   bandHeight: 50,
   fontSize: 2.1,
   fontFamily: 'Inter',
+  fontWeight: 200,
   bandBackgroundColor: '#202937',
   sceneChangeColor: '#8455F6',
   overlayPosition: 'under-full',
