@@ -21,13 +21,13 @@ export interface ProjectSettings {
 
 const DEFAULT_SETTINGS: ProjectSettings = {
   bandHeight: 50,
-  fontSize: 2.1,
-  fontFamily: 'Inter',
-  fontWeight: 200,
+  fontSize: 1.5,
+  fontFamily: 'Lexend',
+  fontWeight: 400,
   bandBackgroundColor: '#202937',
   sceneChangeColor: '#8455F6',
   overlayPosition: 'under-full',
-  bandScale: 1.0,
+  bandScale: 2,
 }
 
 export const useProjectSettingsStore = defineStore('projectSettings', () => {

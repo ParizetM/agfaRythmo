@@ -249,15 +249,15 @@
               <input
                 type="range"
                 v-model.number="localSettings.bandScale"
-                min="0.5"
-                max="2.0"
+                min="1.0"
+                max="3.0"
                 step="0.1"
                 class="w-full slider"
               />
               <div class="flex justify-between text-xs sm:text-sm text-gray-400 mt-2">
-                <span>50%</span>
+                <span>100%</span>
                 <span class="font-semibold text-white">{{ (localSettings.bandScale * 100).toFixed(0) }}%</span>
-                <span>200%</span>
+                <span>300%</span>
               </div>
               <p class="text-xs text-gray-500 mt-2">
                 Augmente la taille de la bande rythmo dans l'aperçu final pour une meilleure lisibilité
