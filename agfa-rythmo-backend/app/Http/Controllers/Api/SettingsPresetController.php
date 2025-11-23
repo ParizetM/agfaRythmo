@@ -41,9 +41,12 @@ class SettingsPresetController extends Controller
             'settings.bandHeight' => 'required|numeric|min:40|max:200',
             'settings.fontSize' => 'required|numeric|min:1.0|max:3.5',
             'settings.fontFamily' => 'required|string|max:255',
+            'settings.fontWeight' => 'required|integer|min:100|max:900',
             'settings.bandBackgroundColor' => 'required|string|max:7',
             'settings.sceneChangeColor' => 'required|string|max:7',
-            'settings.overlayPosition' => 'required|in:over,under-full,under-video-width,contained-16-9',
+            'settings.overlayPosition' => 'required|in:over,under-full,under-video-width,contained-16-9,audio-only',
+            'settings.bandScale' => 'required|numeric|min:1|max:5',
+            'settings.timecodeStyle' => 'required|in:default,character-color',
         ]);
 
         $preset = SettingsPreset::create([
@@ -71,9 +74,12 @@ class SettingsPresetController extends Controller
             'settings.bandHeight' => 'sometimes|required|numeric|min:40|max:200',
             'settings.fontSize' => 'sometimes|required|numeric|min:1.0|max:3.5',
             'settings.fontFamily' => 'sometimes|required|string|max:255',
+            'settings.fontWeight' => 'sometimes|required|integer|min:100|max:900',
             'settings.bandBackgroundColor' => 'sometimes|required|string|max:7',
             'settings.sceneChangeColor' => 'sometimes|required|string|max:7',
-            'settings.overlayPosition' => 'sometimes|required|in:over,under-full,under-video-width,contained-16-9',
+            'settings.overlayPosition' => 'sometimes|required|in:over,under-full,under-video-width,contained-16-9,audio-only',
+            'settings.bandScale' => 'sometimes|required|numeric|min:1|max:5',
+            'settings.timecodeStyle' => 'sometimes|required|in:default,character-color',
         ]);
 
         $preset->update($validated);

@@ -1,26 +1,26 @@
 <template>
   <div class="space-y-6">
     <!-- En-tête avec compteur -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mt-2">
       <h3 class="text-lg font-semibold text-white">Mes Presets</h3>
-      <span class="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm font-medium">
-        {{ userPresets.length }} / 5
-      </span>
+
     </div>
 
     <!-- Grille des presets -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
       <div
         v-for="index in 5"
         :key="index"
-        class="relative rounded-xl overflow-hidden transition-all duration-300"
-        :class="getPresetAtIndex(index - 1)
-          ? 'bg-gradient-to-br from-agfa-bg-primary to-agfa-bg-tertiary border-2 border-blue-500/30 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20'
-          : 'bg-agfa-bg-primary border-2 border-dashed border-gray-600 hover:border-gray-500'"
+        class="relative rounded-xl overflow-hidden transition-all duration-300 preset-card-wrapper"
+        :class="[
+          getPresetAtIndex(index - 1)
+            ? 'preset-filled bg-gradient-to-br from-agfa-bg-primary to-agfa-bg-tertiary border-2 border-blue-500/30 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20'
+            : 'bg-agfa-bg-primary border-2 border-dashed border-gray-600 hover:border-gray-500'
+        ]"
       >
         <template v-if="getPresetAtIndex(index - 1)">
           <!-- Preset rempli -->
-          <div class="p-4 space-y-3">
+          <div class="p-4 space-y-3 preset-card h-full flex flex-col">
             <!-- Header avec nom et numéro -->
             <div class="flex items-start justify-between pb-3 border-b border-gray-700">
               <h4 class="text-base font-semibold text-white truncate pr-2">
@@ -31,8 +31,8 @@
               </span>
             </div>
 
-            <!-- Informations du preset -->
-            <div class="space-y-2">
+            <!-- Informations compactes (visible par défaut) -->
+            <div class="preset-compact-info space-y-2">
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-400">Hauteur</span>
                 <span class="text-white font-medium">{{ getPresetAtIndex(index - 1)!.settings.bandHeight }}px</span>
@@ -49,8 +49,50 @@
               </div>
             </div>
 
+            <!-- Informations détaillées (visible au hover) -->
+            <div class="preset-expanded-info space-y-2">
+              <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                <div class="col-span-2 flex justify-between items-center border-b border-gray-700/50 pb-2">
+                  <span class="text-gray-400">Hauteur bande</span>
+                  <span class="text-white font-medium">{{ getPresetAtIndex(index - 1)!.settings.bandHeight }}px</span>
+                </div>
+
+                <span class="text-gray-400">Taille police</span>
+                <span class="text-white font-medium text-right">{{ getPresetAtIndex(index - 1)!.settings.fontSize }}rem</span>
+
+                <span class="text-gray-400">Police</span>
+                <span class="text-white font-medium text-right truncate" :title="getPresetAtIndex(index - 1)!.settings.fontFamily">
+                  {{ getPresetAtIndex(index - 1)!.settings.fontFamily }}
+                </span>
+
+                <span class="text-gray-400">Poids</span>
+                <span class="text-white font-medium text-right">{{ getPresetAtIndex(index - 1)!.settings.fontWeight }}</span>
+
+                <span class="text-gray-400">Fond bande</span>
+                <span class="flex items-center justify-end gap-1.5">
+                  <span class="w-3 h-3 rounded border border-gray-600" :style="{ backgroundColor: getPresetAtIndex(index - 1)!.settings.bandBackgroundColor }"></span>
+                  <span class="text-white font-mono text-[10px]">{{ getPresetAtIndex(index - 1)!.settings.bandBackgroundColor }}</span>
+                </span>
+
+                <span class="text-gray-400">Scènes</span>
+                <span class="flex items-center justify-end gap-1.5">
+                  <span class="w-3 h-3 rounded border border-gray-600" :style="{ backgroundColor: getPresetAtIndex(index - 1)!.settings.sceneChangeColor }"></span>
+                  <span class="text-white font-mono text-[10px]">{{ getPresetAtIndex(index - 1)!.settings.sceneChangeColor }}</span>
+                </span>
+
+                <span class="text-gray-400">Position</span>
+                <span class="text-white font-medium text-right text-[10px]">{{ formatPosition(getPresetAtIndex(index - 1)!.settings.overlayPosition) }}</span>
+
+                <span class="text-gray-400">Échelle</span>
+                <span class="text-white font-medium text-right">{{ getPresetAtIndex(index - 1)!.settings.bandScale }}x</span>
+
+                <span class="text-gray-400">Style timecode</span>
+                <span class="text-white font-medium text-right text-[10px]">{{ formatTimecodeStyle(getPresetAtIndex(index - 1)!.settings.timecodeStyle) }}</span>
+              </div>
+            </div>
+
             <!-- Boutons d'action -->
-            <div class="flex gap-2 pt-2">
+            <div class="flex gap-2 pt-2 mt-auto preset-actions">
               <button
                 @click="applyPreset(getPresetAtIndex(index - 1)!.id)"
                 class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md"
@@ -205,4 +247,91 @@ function confirmDelete(presetId: number) {
     settingsStore.deletePreset(presetId)
   }
 }
+
+// Formater le nom de la position
+function formatPosition(position: string): string {
+  const positions: Record<string, string> = {
+    'over': 'Sur vidéo',
+    'under-full': 'Sous (pleine largeur)',
+    'under-video-width': 'Sous (largeur vidéo)',
+    'contained-16-9': 'Contenue 16:9',
+    'audio-only': 'Audio seul'
+  }
+  return positions[position] || position
+}
+
+// Formater le style de timecode
+function formatTimecodeStyle(style: string): string {
+  return style === 'default' ? 'Fond coloré' : 'Texte coloré'
+}
 </script>
+
+<style scoped>
+/* Grille avec auto-rows pour expansion */
+.preset-card-wrapper {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Expansion de la carte au hover (2 cases de haut sur desktop) - uniquement pour les cartes remplies */
+@media (min-width: 1024px) {
+  .preset-card-wrapper.preset-filled:hover {
+    grid-row: span 2;
+    z-index: 10;
+  }
+}
+
+/* Carte preset */
+.preset-card {
+  position: relative;
+}
+
+/* Informations compactes visibles par défaut */
+.preset-compact-info {
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* Informations détaillées cachées par défaut */
+.preset-expanded-info {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Au hover : masquer le compact et afficher le détaillé */
+.preset-card-wrapper:hover .preset-compact-info {
+  display: none;
+}
+
+.preset-card-wrapper:hover .preset-expanded-info {
+  display: block;
+  opacity: 1;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sur mobile et tablette : pas d'expansion, juste le compact */
+@media (max-width: 1023px) {
+  .preset-card-wrapper.preset-filled:hover {
+    grid-row: span 1;
+  }
+
+  .preset-card-wrapper.preset-filled:hover .preset-compact-info {
+    display: block;
+  }
+
+  .preset-card-wrapper.preset-filled:hover .preset-expanded-info {
+    display: none;
+  }
+}
+</style>
