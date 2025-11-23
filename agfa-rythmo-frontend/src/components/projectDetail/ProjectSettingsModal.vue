@@ -243,11 +243,32 @@
               </div>
             </div>
 
+            <!-- Échelle de la bande dans l'aperçu final -->
+            <div class="setting-group">
+              <label class="setting-label">Échelle de la bande (aperçu final)</label>
+              <input
+                type="range"
+                v-model.number="localSettings.bandScale"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                class="w-full slider"
+              />
+              <div class="flex justify-between text-xs sm:text-sm text-gray-400 mt-2">
+                <span>50%</span>
+                <span class="font-semibold text-white">{{ (localSettings.bandScale * 100).toFixed(0) }}%</span>
+                <span>200%</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">
+                Augmente la taille de la bande rythmo dans l'aperçu final pour une meilleure lisibilité
+              </p>
+            </div>
+
 
           </div>
 
           <!-- Colonne Aperçu -->
-          <div class="space-y-4 order-1 xl:order-2">
+          <div class="space-y-4 order-1 xl:order-2 xl:sticky xl:top-8 xl:self-start" v-if="showPreview">
             <div class="text-center">
               <h3 class="text-base sm:text-lg font-semibold text-gray-300 mb-4">
                 Aperçu en direct
@@ -255,128 +276,231 @@
             </div>
 
             <!-- Container de l'aperçu avec ratio vidéo -->
-            <div
-              class="preview-container"
-              :class="{
-                'with-band-below':
-                  localSettings.overlayPosition === 'under-full' ||
-                  localSettings.overlayPosition === 'under-video-width',
-                'contained-mode': localSettings.overlayPosition === 'contained-16-9',
-              }"
-              :style="{ '--band-height': localSettings.bandHeight + 'px' }"
-            >
-              <div class="preview-video-area">
-                <div class="preview-video-placeholder">
-                  <svg
-                    class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-gray-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            <div class="preview-container">
+              <!-- Mode Par-dessus (overlay) -->
+              <div
+                v-if="localSettings.overlayPosition === 'over'"
+                class="preview-wrapper"
+              >
+                <div class="preview-video-container">
+                  <div class="preview-video-placeholder">
+                    <svg
+                      class="w-12 h-12 sm:w-16 sm:h-16 text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-gray-500 mt-2 text-xs">Vidéo 16:9</p>
+                  </div>
+
+                  <!-- Bande par-dessus -->
+                  <div
+                    class="preview-band-overlay"
+                    :style="{
+                      height: (localSettings.bandHeight * localSettings.bandScale) + 'px',
+                      backgroundColor: localSettings.bandBackgroundColor,
+                      fontFamily: localSettings.fontFamily,
+                      fontSize: (localSettings.fontSize * localSettings.bandScale) + 'rem',
+                      fontWeight: localSettings.fontWeight,
+                    }"
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                    ></path>
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
+                    <div class="preview-band-content">
+                      <!-- Ticks -->
+                      <div class="preview-tick" v-for="i in 5" :key="i" :style="{ left: i * 20 + '%' }"></div>
+
+                      <!-- Scene change -->
+                      <div class="preview-scene-change" :style="{
+                        backgroundColor: localSettings.sceneChangeColor,
+                        left: '60%'
+                      }"></div>
+
+                      <!-- Timecodes -->
+                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
+                      </div>
+                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mode Sous - Pleine largeur -->
+              <div
+                v-else-if="localSettings.overlayPosition === 'under-full'"
+                class="preview-wrapper"
+              >
+                <div class="preview-video-placeholder">
+                  <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p class="text-gray-500 mt-2 text-xs sm:text-sm">Vidéo de démo</p>
+                  <p class="text-gray-500 mt-2 text-xs">Vidéo 16:9</p>
                 </div>
 
-                <!-- Bande rythmo preview -->
+                <!-- Bande pleine largeur sous la vidéo -->
                 <div
-                  class="preview-rythmo-band"
-                  :class="{
-                    'mode-over': localSettings.overlayPosition === 'over',
-                    'mode-under-full': localSettings.overlayPosition === 'under-full',
-                    'mode-under-video': localSettings.overlayPosition === 'under-video-width',
-                    'mode-contained': localSettings.overlayPosition === 'contained-16-9',
-                  }"
+                  class="preview-band-below full-width"
                   :style="{
-                    height: localSettings.bandHeight + 'px',
+                    height: (localSettings.bandHeight * localSettings.bandScale) + 'px',
                     backgroundColor: localSettings.bandBackgroundColor,
                     fontFamily: localSettings.fontFamily,
-                    fontSize: localSettings.fontSize + 'rem',
+                    fontSize: (localSettings.fontSize * localSettings.bandScale) + 'rem',
                     fontWeight: localSettings.fontWeight,
-                    opacity: localSettings.overlayPosition === 'over' ? '0.9' : '1',
                   }"
                 >
-                  <!-- Ticks de temps -->
-                  <div class="preview-ticks">
-                    <div
-                      v-for="i in 5"
-                      :key="i"
-                      class="preview-tick"
-                      :style="{ left: i * 20 + '%' }"
-                    ></div>
-                  </div>
+                  <div class="preview-band-content">
+                    <!-- Ticks -->
+                    <div class="preview-tick" v-for="i in 5" :key="i" :style="{ left: i * 20 + '%' }"></div>
 
-                  <!-- Scene change preview -->
-                  <div
-                    class="preview-scene-change"
-                    :style="{
+                    <!-- Scene change -->
+                    <div class="preview-scene-change" :style="{
                       backgroundColor: localSettings.sceneChangeColor,
-                      left: '60%',
-                    }"
-                  ></div>
+                      left: '60%'
+                    }"></div>
 
-                  <!-- Blocs de texte preview -->
-                  <div class="preview-text-blocks">
-                    <div
-                      class="preview-block"
-                      :style="{
-                        left: '10%',
-                        width: '35%',
-                        backgroundColor: '#4a5568',
-                      }"
-                    >
-                      <span class="preview-text">Exemple de texte</span>
+                    <!-- Timecodes -->
+                    <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
+                      <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
                     </div>
-                    <div
-                      class="preview-block active"
-                      :style="{
-                        left: '50%',
-                        width: '40%',
-                        backgroundColor: '#48bb78',
-                      }"
-                    >
-                      <span class="preview-text">Texte actif</span>
+                    <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
+                      <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Description de l'aperçu -->
-              <div class="mt-4 p-3 sm:p-4 bg-agfa-button rounded-lg border border-gray-700">
-                <p class="text-xs sm:text-sm text-gray-400">
-                  <strong class="text-white">
-                    {{
-                      localSettings.overlayPosition === 'over'
-                        ? 'Par-dessus la vidéo'
-                        : localSettings.overlayPosition === 'under-full'
-                          ? 'Sous - Pleine largeur'
-                          : localSettings.overlayPosition === 'under-video-width'
-                            ? 'Sous - Largeur vidéo'
-                            : 'Contenu 16:9'
-                    }}:
-                  </strong>
+              <!-- Mode Sous - Largeur vidéo -->
+              <div
+                v-else-if="localSettings.overlayPosition === 'under-video-width'"
+                class="preview-wrapper centered"
+              >
+                <div class="preview-video-centered">
+                  <div class="preview-video-placeholder">
+                    <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-gray-500 mt-2 text-xs">Vidéo 16:9</p>
+                  </div>
+
+                  <!-- Bande alignée sur largeur vidéo -->
+                  <div
+                    class="preview-band-below video-width"
+                    :style="{
+                      height: (localSettings.bandHeight * localSettings.bandScale) + 'px',
+                      backgroundColor: localSettings.bandBackgroundColor,
+                      fontFamily: localSettings.fontFamily,
+                      fontSize: (localSettings.fontSize * localSettings.bandScale) + 'rem',
+                      fontWeight: localSettings.fontWeight,
+                    }"
+                  >
+                    <div class="preview-band-content">
+                      <!-- Ticks -->
+                      <div class="preview-tick" v-for="i in 5" :key="i" :style="{ left: i * 20 + '%' }"></div>
+
+                      <!-- Scene change -->
+                      <div class="preview-scene-change" :style="{
+                        backgroundColor: localSettings.sceneChangeColor,
+                        left: '60%'
+                      }"></div>
+
+                      <!-- Timecodes -->
+                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
+                      </div>
+                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mode Contenu 16:9 -->
+              <div
+                v-else-if="localSettings.overlayPosition === 'contained-16-9'"
+                class="preview-wrapper contained"
+              >
+                <div class="preview-contained-box">
+                  <div class="preview-video-placeholder small">
+                    <svg class="w-8 h-8 sm:w-12 sm:h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-gray-500 mt-1 text-xs">Vidéo</p>
+                  </div>
+
+                  <!-- Bande dans le conteneur 16:9 -->
+                  <div
+                    class="preview-band-below contained-width"
+                    :style="{
+                      height: (localSettings.bandHeight * localSettings.bandScale) + 'px',
+                      backgroundColor: localSettings.bandBackgroundColor,
+                      fontFamily: localSettings.fontFamily,
+                      fontSize: (localSettings.fontSize * localSettings.bandScale) + 'rem',
+                      fontWeight: localSettings.fontWeight,
+                    }"
+                  >
+                    <div class="preview-band-content">
+                      <!-- Ticks -->
+                      <div class="preview-tick" v-for="i in 5" :key="i" :style="{ left: i * 20 + '%' }"></div>
+
+                      <!-- Scene change -->
+                      <div class="preview-scene-change" :style="{
+                        backgroundColor: localSettings.sceneChangeColor,
+                        left: '60%'
+                      }"></div>
+
+                      <!-- Timecodes -->
+                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Ex.</span>
+                      </div>
+                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
+                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description de l'aperçu -->
+            <div class="mt-4 p-3 sm:p-4 bg-agfa-button rounded-lg border border-gray-700">
+              <p class="text-xs sm:text-sm text-gray-400">
+                <strong class="text-white">
                   {{
                     localSettings.overlayPosition === 'over'
-                      ? 'La bande rythmo sera superposée transparente en bas de la vidéo.'
+                      ? 'Par-dessus la vidéo'
                       : localSettings.overlayPosition === 'under-full'
-                        ? "La bande rythmo sera affichée sous la vidéo avec une largeur de 100% de l'écran."
+                        ? 'Sous - Pleine largeur'
                         : localSettings.overlayPosition === 'under-video-width'
-                          ? 'La bande rythmo sera affichée sous la vidéo, alignée sur sa largeur.'
-                          : 'La vidéo et la bande rythmo seront contenues dans un ratio 16:9 fixe.'
-                  }}
-                </p>
-              </div>
+                          ? 'Sous - Largeur vidéo'
+                          : 'Contenu 16:9'
+                  }}:
+                </strong>
+                {{
+                  localSettings.overlayPosition === 'over'
+                    ? 'La bande rythmo sera superposée transparente en bas de la vidéo.'
+                    : localSettings.overlayPosition === 'under-full'
+                      ? "La bande rythmo sera affichée sous la vidéo avec une largeur de 100% de l'écran."
+                      : localSettings.overlayPosition === 'under-video-width'
+                        ? 'La bande rythmo sera affichée sous la vidéo, alignée sur sa largeur.'
+                        : 'La vidéo et la bande rythmo seront contenues dans un ratio 16:9 fixe.'
+                }}
+              </p>
             </div>
           </div>
         </div>
@@ -410,7 +534,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useProjectSettingsStore } from '../../stores/projectSettings'
-import { type GoogleFont, loadGoogleFont, preloadPopularFonts, getAvailableWeights, getLightestWeight, getWeightLabel, fetchGoogleFonts } from '../../services/googleFonts'
+import { type GoogleFont, loadGoogleFont, preloadPopularFonts, getAvailableWeights, getWeightLabel, fetchGoogleFonts } from '../../services/googleFonts'
 import { notificationService } from '../../services/notifications'
 import PresetsManager from './PresetsManager.vue'
 import BaseModal from '../BaseModal.vue'
@@ -433,6 +557,9 @@ const activeTab = ref<'settings' | 'presets'>('settings')
 // Paramètres locaux (copie pour modification avant application)
 const localSettings = ref({ ...settingsStore.settings })
 
+// Contrôle de l'affichage de la preview (lazy loading)
+const showPreview = ref(false)
+
 // Polices disponibles
 const availableFonts = ref<GoogleFont[]>([])
 
@@ -452,6 +579,13 @@ watch(
       // Charger les polices et les presets
       loadFonts()
       settingsStore.loadUserPresets()
+      // Activer la preview après un court délai pour ne pas surcharger
+      setTimeout(() => {
+        showPreview.value = true
+      }, 100)
+    } else {
+      // Désactiver la preview quand on ferme pour économiser les ressources
+      showPreview.value = false
     }
   },
 )
@@ -804,32 +938,49 @@ onUnmounted(() => {
   border-radius: 0.75rem;
   overflow: hidden;
   border: 1px solid #374151;
-  display: flex;
-  flex-direction: column;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
     0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
 }
 
-.preview-video-area {
-  position: relative;
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  flex-shrink: 0;
-  transition: all 0.3s ease;
+.preview-wrapper {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
 }
 
-/* Mode "par-dessus" : la zone vidéo garde son aspect ratio 16:9 */
-.preview-container:not(.with-band-below) .preview-video-area {
+.preview-wrapper.centered {
+  align-items: center;
+}
+
+.preview-wrapper.contained {
   aspect-ratio: 16 / 9;
 }
 
-/* Mode "sous la vidéo" : la zone vidéo s'adapte au contenu */
-.preview-container.with-band-below .preview-video-area {
-  min-height: 0;
+.preview-video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.preview-video-centered {
+  width: 70%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-contained-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .preview-video-placeholder {
@@ -837,96 +988,58 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 3px dashed #8455f6;
-  transition: all 0.3s ease;
-  aspect-ratio: 16 / 9;
-  max-width: 100%;
   background: linear-gradient(135deg, #374151 0%, #2d3748 100%);
-  height: auto;
+  border: 2px dashed rgba(132, 85, 246, 0.5);
   border-radius: 0.5rem;
-}
-
-/* Mode "par-dessus" : le placeholder prend tout l'espace disponible */
-.preview-container:not(.with-band-below) .preview-video-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-}
-
-/* Mode "sous la vidéo" : le placeholder garde son ratio mais réduit à 70% de largeur */
-.preview-container.with-band-below .preview-video-placeholder {
-  width: 70%;
-  margin: 1rem;
-}
-
-/* Mode "contained 16:9" : tout le container a un ratio 16:9 */
-.preview-container.contained-mode {
+  padding: 2rem 1rem;
   aspect-ratio: 16 / 9;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
 }
 
-/* En mode contained, la zone vidéo doit laisser de la place pour la bande */
-.preview-container.contained-mode .preview-video-area {
+.preview-video-placeholder.small {
+  padding: 1rem;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
 }
 
-.preview-container.contained-mode .preview-video-placeholder {
-  width: 100%;
-  height: calc(100% - var(--band-height, 80px));
-  max-height: calc(100% - var(--band-height, 80px));
-  aspect-ratio: initial;
-  flex-shrink: 0;
-  margin: 0;
-  border-radius: 0;
-}
-
-/* Bande rythmo */
-.preview-rythmo-band {
-  position: relative;
+/* Bande par-dessus la vidéo (overlay) */
+.preview-band-overlay {
+  position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
   width: 100%;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  flex-shrink: 0;
+  opacity: 0.95;
+  backdrop-filter: blur(2px);
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* En mode "par-dessus", la bande est en position absolue au bas */
-.preview-rythmo-band.mode-over {
-  position: absolute;
-  bottom: 0;
-}
-
-/* En mode "sous", la bande suit le placeholder (flex) */
-.preview-rythmo-band.mode-under-full,
-.preview-rythmo-band.mode-under-video,
-.preview-rythmo-band.mode-contained {
+/* Bande sous la vidéo (below) */
+.preview-band-below {
+  width: 100%;
   position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* Mode under-video-width : bande alignée sur 70% comme la vidéo */
-.preview-container.with-band-below .preview-rythmo-band.mode-under-video {
-  width: 70%;
-  margin: 0 auto;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-/* Mode contained : la bande prend toute la largeur du container */
-.preview-container.contained-mode .preview-rythmo-band.mode-contained {
+.preview-band-below.full-width {
   width: 100%;
 }
 
-.preview-ticks {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.preview-band-below.video-width {
+  width: 100%;
+}
+
+.preview-band-below.contained-width {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Contenu de la bande */
+.preview-band-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .preview-tick {
@@ -934,72 +1047,49 @@ onUnmounted(() => {
   top: 0;
   bottom: 0;
   width: 1px;
-  background-color: #4b5563;
-  opacity: 0.5;
+  background-color: rgba(75, 85, 99, 0.5);
+  z-index: 1;
 }
 
 .preview-scene-change {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 0.25rem;
-  opacity: 0.8;
-  z-index: 10;
+  width: 3px;
+  opacity: 0.9;
+  z-index: 5;
   box-shadow: 0 0 8px currentColor;
 }
 
-.preview-text-blocks {
+.preview-timecode {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 0.75rem;
-}
-
-@media (min-width: 640px) {
-  .preview-text-blocks {
-    padding: 0 1rem;
-  }
-}
-
-.preview-block {
-  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60%;
+  border-radius: 0.375rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
   padding: 0 0.75rem;
-  height: 60%;
-  transition: all 0.3s ease;
+  z-index: 3;
+  transition: all 0.2s ease;
 }
 
-@media (min-width: 640px) {
-  .preview-block {
-    padding: 0 1rem;
-  }
-}
-
-.preview-block.active {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.5),
-    0 4px 12px rgba(72, 187, 120, 0.3);
-  transform: translateY(-2px);
-}
-
-.preview-text {
+.preview-timecode span {
   color: white;
   font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
-  font-size: 0.75rem;
+  font-size: 0.85em;
 }
 
-@media (min-width: 640px) {
-  .preview-text {
-    font-size: 0.875rem;
-  }
+.preview-timecode.active {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.6),
+    0 4px 12px rgba(72, 187, 120, 0.4);
+  z-index: 4;
 }
 
 /* Transitions pour le modal */

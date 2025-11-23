@@ -16,6 +16,7 @@ export interface ProjectSettings {
   bandBackgroundColor: string // Couleur de fond de la bande
   sceneChangeColor: string // Couleur des changements de scène
   overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' // Position de la bande par rapport à la vidéo
+  bandScale: number // Échelle de la bande dans l'aperçu final (1.0 = 100%)
 }
 
 const DEFAULT_SETTINGS: ProjectSettings = {
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   bandBackgroundColor: '#202937',
   sceneChangeColor: '#8455F6',
   overlayPosition: 'under-full',
+  bandScale: 1.0,
 }
 
 export const useProjectSettingsStore = defineStore('projectSettings', () => {

@@ -62,7 +62,8 @@
             :style="{
               width: rythmoBarWidth + 'px',
               left: '50%',
-              transform: 'translateX(-50%)',
+              transform: `translateX(-50%) scale(${projectSettings.bandScale})`,
+              transformOrigin: 'bottom center',
             }"
           >
             <MultiRythmoBand
@@ -80,25 +81,34 @@
         <!-- Bande rythmo sous la vidéo (ne chevauche pas) -->
         <div
           v-if="videoWidth && videoHeight && (projectSettings.overlayPosition === 'under-full' || projectSettings.overlayPosition === 'under-video-width' || projectSettings.overlayPosition === 'contained-16-9')"
-          class="preview-rythmo below-mode"
+          class="preview-rythmo-container below-mode"
           :class="{
             'full-width': projectSettings.overlayPosition === 'under-full',
             'video-width': projectSettings.overlayPosition === 'under-video-width',
             'contained-width': projectSettings.overlayPosition === 'contained-16-9'
           }"
           :style="{
-            height: rythmoBarHeight + 'px'
+            height: (rythmoBarHeight * projectSettings.bandScale) + 'px',
           }"
         >
-          <MultiRythmoBand
-            :timecodes="rythmoData"
-            :sceneChanges="sceneChangesData"
-            :currentTime="currentTime"
-            :videoDuration="videoDuration"
-            :rythmoLinesCount="getRythmoLinesCount"
-            :hideConfig="true"
-            :disableSelection="true"
-          />
+          <div
+            class="preview-rythmo"
+            :style="{
+              transform: `scale(${projectSettings.bandScale})`,
+              transformOrigin: 'top center',
+              height: rythmoBarHeight + 'px',
+            }"
+          >
+            <MultiRythmoBand
+              :timecodes="rythmoData"
+              :sceneChanges="sceneChangesData"
+              :currentTime="currentTime"
+              :videoDuration="videoDuration"
+              :rythmoLinesCount="getRythmoLinesCount"
+              :hideConfig="true"
+              :disableSelection="true"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -397,7 +407,7 @@ onUnmounted(() => {
 
 /* Mode below : la vidéo laisse de la place pour la bande */
 .video-wrapper.with-band-below .video-container {
-  max-height: calc(100vh - v-bind(rythmoBarHeight + 'px'));
+  max-height: calc(100vh - v-bind((rythmoBarHeight * projectSettings.bandScale) + 'px'));
 }
 
 /* Mode contained 16:9 : la vidéo s'adapte à l'espace restant */
@@ -430,24 +440,29 @@ onUnmounted(() => {
 }
 
 /* Bande rythmo en mode below (sous la vidéo, collée en haut de la bande) */
-.preview-rythmo.below-mode {
+.preview-rythmo-container.below-mode {
   position: relative;
   width: 100%;
   margin-top: 0;
   pointer-events: none;
   z-index: 2;
+  overflow: hidden;
+}
+
+.preview-rythmo {
+  width: 100%;
 }
 
 /* Modes de largeur pour la bande en dessous */
-.preview-rythmo.below-mode.full-width {
+.preview-rythmo-container.below-mode.full-width {
   width: 100vw;
 }
 
-.preview-rythmo.below-mode.video-width {
+.preview-rythmo-container.below-mode.video-width {
   width: v-bind(rythmoBarWidth + 'px');
 }
 
-.preview-rythmo.below-mode.contained-width {
+.preview-rythmo-container.below-mode.contained-width {
   width: 100%;
 }
 .play-error {
