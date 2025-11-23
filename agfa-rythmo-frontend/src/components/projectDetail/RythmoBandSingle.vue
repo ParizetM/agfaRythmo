@@ -1,5 +1,15 @@
 <template>
-  <div class="rythmo-band" @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="onBandClick" @wheel="onWheelScroll">
+  <div
+    class="rythmo-band"
+    :class="{
+      'selected': props.selectedLine === props.lineNumber,
+      'hide-config-mode': props.hideConfig
+    }"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+    @click="onBandClick"
+    @wheel="onWheelScroll"
+  >
     <!-- Triangle de sélection de ligne -->
     <div
       v-if="props.selectedLine === props.lineNumber && !props.hideConfig"
@@ -2057,6 +2067,15 @@ function onMoveEnd() {
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Contour violet pour la bande sélectionnée (seulement si pas hideConfig) */
+.rythmo-band.selected:not(.hide-config-mode) {
+  border-color: rgba(132, 85, 246, 0.6);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 0 0 2px rgba(132, 85, 246, 0.3);
 }
 .rythmo-track-container {
   position: relative;
