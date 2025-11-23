@@ -200,27 +200,27 @@
         <div class="control-group timecode-controls">
           <button
             @click="emit('navigateTimecode', 'previous')"
-            title="↑ Timecode précédent (↑)"
+            title="← Timecode précédent (Alt + ←)"
             class="control-button timecode-button"
             :class="{ 'pressed': pressedKey === 'timecode-previous' }"
             :disabled="!props.timecodes || props.timecodes.length === 0"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M18 15L12 9L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span class="control-label hidden sm:inline">TC</span>
           </button>
 
           <button
             @click="emit('navigateTimecode', 'next')"
-            title="↓ Timecode suivant (↓)"
+            title="→ Timecode suivant (Alt + →)"
             class="control-button timecode-button"
             :class="{ 'pressed': pressedKey === 'timecode-next' }"
             :disabled="!props.timecodes || props.timecodes.length === 0"
           >
             <span class="control-label hidden sm:inline">TC</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
@@ -577,12 +577,12 @@ function onKeyDown(event: KeyboardEvent) {
     emit('navigateSceneChange', 'next')
     event.preventDefault()
   }
-  // Navigation entre timecodes avec flèches haut/bas
-  else if (event.key === 'ArrowUp' && !event.shiftKey) {
+  // Navigation entre timecodes avec Alt + flèches gauche/droite
+  else if (event.altKey && event.key === 'ArrowLeft') {
     keyPressed = 'timecode-previous'
     emit('navigateTimecode', 'previous')
     event.preventDefault()
-  } else if (event.key === 'ArrowDown' && !event.shiftKey) {
+  } else if (event.altKey && event.key === 'ArrowRight') {
     keyPressed = 'timecode-next'
     emit('navigateTimecode', 'next')
     event.preventDefault()

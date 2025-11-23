@@ -2450,19 +2450,17 @@ function goToNextTimecode() {
   if (currentIdx !== -1) {
     // Aller au prochain timecode
     seekToTime(sortedTimecodes[currentIdx].start)
-  } else if (sortedTimecodes.length > 0) {
-    // Si on est après le dernier, aller au premier
-    seekToTime(sortedTimecodes[0].start)
   }
+  // Ne plus boucler au début si on est au dernier
 }
 
 function goToPreviousTimecode() {
   if (!allTimecodes.value.length) return
 
   const sortedTimecodes = [...allTimecodes.value].sort((a, b) => a.start - b.start)
-  // Trouver le dernier timecode avant le temps actuel avec une tolérance de 0.1s
-  // pour éviter de rester coincé sur le timecode actuel à cause de la compensation
-  const tolerance = 0.1
+  // Trouver le dernier timecode avant le temps actuel avec une tolérance plus grande
+  // pour gérer correctement la compensation de frames
+  const tolerance = 0.5 // Augmenté à 0.5s pour une meilleure détection
   let currentIdx = -1
   for (let i = sortedTimecodes.length - 1; i >= 0; i--) {
     if (sortedTimecodes[i].start < currentTime.value - tolerance) {
@@ -2474,10 +2472,8 @@ function goToPreviousTimecode() {
   if (currentIdx !== -1) {
     // Aller au timecode précédent
     seekToTime(sortedTimecodes[currentIdx].start)
-  } else if (sortedTimecodes.length > 0) {
-    // Si on est avant le premier, aller au dernier
-    seekToTime(sortedTimecodes[sortedTimecodes.length - 1].start)
   }
+  // Ne plus boucler à la fin si on est au premier
 }
 
 // Fonction helper pour seek avec compensation
