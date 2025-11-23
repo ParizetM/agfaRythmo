@@ -243,6 +243,40 @@
               </div>
             </div>
 
+            <!-- Style des timecodes -->
+            <div class="setting-group">
+              <label class="setting-label">Style des timecodes</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <!-- Style par défaut -->
+                <button
+                  @click="localSettings.timecodeStyle = 'default'"
+                  :class="[
+                    'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                    localSettings.timecodeStyle === 'default'
+                      ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white shadow-lg shadow-agfa-accent/20'
+                      : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500 hover:bg-gray-700',
+                  ]"
+                >
+                  <div class="font-semibold mb-1 text-sm">Fond coloré</div>
+                  <div class="text-xs opacity-80">Bloc avec fond personnage</div>
+                </button>
+
+                <!-- Style couleur personnage -->
+                <button
+                  @click="localSettings.timecodeStyle = 'character-color'"
+                  :class="[
+                    'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                    localSettings.timecodeStyle === 'character-color'
+                      ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white shadow-lg shadow-agfa-accent/20'
+                      : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500 hover:bg-gray-700',
+                  ]"
+                >
+                  <div class="font-semibold mb-1 text-sm">Texte coloré</div>
+                  <div class="text-xs opacity-80">Texte couleur personnage, sans fond</div>
+                </button>
+              </div>
+            </div>
+
             <!-- Échelle de la bande dans l'aperçu final -->
             <div class="setting-group">
               <label class="setting-label">Échelle de la bande (aperçu final)</label>
@@ -320,11 +354,21 @@
                       }"></div>
 
                       <!-- Timecodes -->
-                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
+                      <div class="preview-timecode" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '10%',
+                        width: '35%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#4a5568' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '1px solid #4a5568' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#4a5568' : 'white' }">Exemple</span>
                       </div>
-                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      <div class="preview-timecode active" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '50%',
+                        width: '40%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#48bb78' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '2px solid #48bb78' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#48bb78' : 'white' }">Actif</span>
                       </div>
                     </div>
                   </div>
@@ -368,11 +412,21 @@
                     }"></div>
 
                     <!-- Timecodes -->
-                    <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
-                      <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
+                    <div class="preview-timecode" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                      left: '10%',
+                      width: '35%',
+                      backgroundColor: localSettings.timecodeStyle === 'default' ? '#4a5568' : 'transparent',
+                      border: localSettings.timecodeStyle === 'character-color' ? '1px solid #4a5568' : 'none'
+                    }">
+                      <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#4a5568' : 'white' }">Exemple</span>
                     </div>
-                    <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
-                      <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                    <div class="preview-timecode active" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                      left: '50%',
+                      width: '40%',
+                      backgroundColor: localSettings.timecodeStyle === 'default' ? '#48bb78' : 'transparent',
+                      border: localSettings.timecodeStyle === 'character-color' ? '2px solid #48bb78' : 'none'
+                    }">
+                      <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#48bb78' : 'white' }">Actif</span>
                     </div>
                   </div>
                 </div>
@@ -416,11 +470,21 @@
                       }"></div>
 
                       <!-- Timecodes -->
-                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Exemple</span>
+                      <div class="preview-timecode" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '10%',
+                        width: '35%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#4a5568' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '1px solid #4a5568' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#4a5568' : 'white' }">Exemple</span>
                       </div>
-                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      <div class="preview-timecode active" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '50%',
+                        width: '40%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#48bb78' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '2px solid #48bb78' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#48bb78' : 'white' }">Actif</span>
                       </div>
                     </div>
                   </div>
@@ -465,11 +529,21 @@
                       }"></div>
 
                       <!-- Timecodes -->
-                      <div class="preview-timecode" :style="{ left: '10%', width: '35%', backgroundColor: '#4a5568' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Ex.</span>
+                      <div class="preview-timecode" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '10%',
+                        width: '35%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#4a5568' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '1px solid #4a5568' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#4a5568' : 'white' }">Ex.</span>
                       </div>
-                      <div class="preview-timecode active" :style="{ left: '50%', width: '40%', backgroundColor: '#48bb78' }">
-                        <span :style="{ fontWeight: localSettings.fontWeight }">Actif</span>
+                      <div class="preview-timecode active" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                        left: '50%',
+                        width: '40%',
+                        backgroundColor: localSettings.timecodeStyle === 'default' ? '#48bb78' : 'transparent',
+                        border: localSettings.timecodeStyle === 'character-color' ? '2px solid #48bb78' : 'none'
+                      }">
+                        <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#48bb78' : 'white' }">Actif</span>
                       </div>
                     </div>
                   </div>
@@ -1090,6 +1164,16 @@ onUnmounted(() => {
     0 0 0 2px rgba(255, 255, 255, 0.6),
     0 4px 12px rgba(72, 187, 120, 0.4);
   z-index: 4;
+}
+
+/* Style character-color dans l'aperçu */
+.preview-timecode.character-color-style {
+  background: transparent !important;
+}
+
+.preview-timecode.character-color-style.active {
+  box-shadow: none;
+  border-width: 2px !important;
 }
 
 /* Transitions pour le modal */

@@ -17,6 +17,7 @@ export interface ProjectSettings {
   sceneChangeColor: string // Couleur des changements de scène
   overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' // Position de la bande par rapport à la vidéo
   bandScale: number // Échelle de la bande dans l'aperçu final (1.0 = 100%)
+  timecodeStyle: 'default' | 'character-color' // Style des timecodes : fond coloré (default) ou texte coloré sans fond (character-color)
 }
 
 const DEFAULT_SETTINGS: ProjectSettings = {
@@ -28,6 +29,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   sceneChangeColor: '#8455F6',
   overlayPosition: 'under-full',
   bandScale: 2,
+  timecodeStyle: 'default',
 }
 
 export const useProjectSettingsStore = defineStore('projectSettings', () => {

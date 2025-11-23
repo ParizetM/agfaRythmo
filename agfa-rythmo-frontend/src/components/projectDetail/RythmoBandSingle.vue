@@ -35,6 +35,7 @@
                   active: el.tcIdx === activeIdx,
                   'is-dragged-block': isBlockBeingDragged(el.tcIdx),
                   'is-dragged-away': isBlockMovingAway(el.tcIdx),
+                  'character-color-style': projectSettings.timecodeStyle === 'character-color',
                 }"
                 :style="getAbsoluteBlockStyle(el)"
                 @click="onBlockClick(el.tcIdx)"
@@ -950,6 +951,14 @@ function shouldShowCharacter(idx: number): boolean {
 // Récupère la couleur de texte appropriée pour un timecode
 function getTimecodeTextColor(idx: number): string {
   const character = getTimecodeCharacter(idx)
+  const isCharacterColorStyle = projectSettings.value.timecodeStyle === 'character-color'
+
+  // En mode character-color, toujours retourner 'inherit' pour que le CSS prenne le relais
+  if (isCharacterColorStyle) {
+    return 'inherit'
+  }
+
+  // Mode default : calculer le contraste pour lisibilité sur fond coloré
   if (!character) return 'inherit'
 
   // Si le personnage a une couleur de texte définie, l'utiliser
@@ -1075,6 +1084,7 @@ function getSceneChangeDragTime(): number {
 }
 function getAbsoluteBlockStyle(el: BandBlock): CSSProperties {
   const character = getTimecodeCharacter(el.tcIdx)
+  const isCharacterColorStyle = projectSettings.value.timecodeStyle === 'character-color'
 
   // Styles de base
   const baseStyles: CSSProperties = {
@@ -1092,12 +1102,34 @@ function getAbsoluteBlockStyle(el: BandBlock): CSSProperties {
     fontWeight: projectSettings.value.fontWeight, // Appliquer le poids de police
   }
 
-  // Si un personnage est assigné, appliquer sa couleur de fond
+  // Si un personnage est assigné
   if (character) {
+    if (isCharacterColorStyle) {
+      // Style "character-color" : texte coloré, fond transparent, bordure (sauf en hideConfig)
+      return {
+        ...baseStyles,
+        background: 'transparent',
+        border: props.hideConfig ? 'none' : `1px solid ${character.color}`,
+        color: character.color,
+      }
+    } else {
+      // Style "default" : fond coloré
+      return {
+        ...baseStyles,
+        background: character.color,
+        border: `1px solid ${character.color}`,
+      }
+    }
+  }
+
+  // Sans personnage
+  if (isCharacterColorStyle) {
+    // Style "character-color" : texte blanc, fond transparent, bordure (sauf en hideConfig)
     return {
       ...baseStyles,
-      background: character.color,
-      border: `1px solid ${character.color}`,
+      background: 'transparent',
+      border: props.hideConfig ? 'none' : '1px solid rgba(59, 130, 246, 0.5)',
+      color: '#ffffff',
     }
   }
 
@@ -2140,9 +2172,20 @@ function onMoveEnd() {
   z-index: 4; /* Blocs de texte toujours devant les gaps */
 }
 
+/* Style character-color : bordure visible même en mode !hideConfig */
+.rythmo-block.character-color-style {
+  background: transparent !important;
+}
+
 .rythmo-block.active {
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
   /* Le background actif est appliqué conditionnellement */
+}
+
+/* Style character-color actif : bordure plus épaisse */
+.rythmo-block.character-color-style.active {
+  border-width: 2px;
+  box-shadow: none;
 }
 
 /* Si pas de personnage, appliquer le style actif vert */
@@ -2150,8 +2193,14 @@ function onMoveEnd() {
   background: linear-gradient(135deg, #10b981, #059669);
   border: 1px solid #10b981;
 }
+
+/* Si character-color ET actif ET pas de personnage */
+.rythmo-block.character-color-style.active:not([style*="color:"]) {
+  border-color: #10b981;
+  border-width: 2px;
+}
 .rythmo-block-gap {
-  background: var(--agfa-gray) !important;
+  background: rgba(75, 85, 99, 0.1) !important;
   opacity: 0.3;
   border: 1px solid rgba(75, 85, 99, 0.3);
   z-index: 1; /* Gaps toujours derrière les blocs de texte */
@@ -2176,11 +2225,22 @@ function onMoveEnd() {
   -moz-osx-font-smoothing: grayscale;
   backface-visibility: hidden;
   transform-origin: center center;
+  color: inherit; /* Hérite de la couleur du parent */
 }
+
 .rythmo-block.active .distort-text {
   opacity: 1;
-  color: #ffffff;
   /* font-weight: bold; */
+}
+
+/* Mode default (fond coloré) : texte blanc */
+.rythmo-block:not(.character-color-style) .distort-text {
+  color: #ffffff;
+}
+
+/* Mode character-color : le texte hérite de la couleur du bloc */
+.rythmo-block.character-color-style .distort-text {
+  color: inherit;
 }
 
 .character-tag {
