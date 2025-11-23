@@ -4,7 +4,7 @@ applyTo: '**'
 
 # AgfaRythmo - Instructions GitHub Copilot
 
-**Version** : 2.2.0-beta | **Mise à jour** : 31 octobre 2025
+**Version** : 2.2.1-beta | **Mise à jour** : 23 novembre 2025
 
 ## 🚨 Règles Strictes
 
@@ -550,13 +550,24 @@ Système centralisé de notifications :
 
 ---
 
-**Dernière mise à jour** : 31 octobre 2025
-**Version du projet** : 2.2.0-beta
+**Dernière mise à jour** : 23 novembre 2025
+**Version du projet** : 2.2.1-beta
 **Maintainer** : Martin P. (@ParizetM)
 
 ---
 
 ## 📝 Changelog récent
+
+### v2.2.1-beta (23 novembre 2025)
+- ✅ **Support tactile complet** : Touch events pour toutes les interactions sur mobile
+- ✅ **Scroll horizontal tactile** : Swipe pour naviguer dans la timeline
+- ✅ **Zones de contrôle agrandies** : Handles resize/move/separator 33-100% plus larges sur mobile
+- ✅ **Scene changes tactiles** : Déplacement au doigt avec grab handle toujours visible
+- ✅ **Composable useTouchAndMouse** : Gestion unifiée mouse/touch réutilisable
+- ✅ **Media queries responsive** : Adaptation automatique desktop/mobile (< 768px)
+- ✅ **Feedback visuel mobile** : Handles toujours visibles (pas besoin de hover)
+- ✅ **Cleanup automatique** : Gestion correcte des listeners touch/mouse
+- ✅ **Documentation complète** : Guide `MOBILE_TOUCH_IMPROVEMENTS.md`
 
 ### v2.2.0-beta (31 octobre 2025)
 - ✅ **Extraction automatique de dialogues (IA)** : Transcription multi-langue avec Whisper

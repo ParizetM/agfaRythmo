@@ -9,6 +9,9 @@
     @mouseleave="isHovered = false"
     @click="onBandClick"
     @wheel="onWheelScroll"
+    @touchstart="scrollHandler.handleTouchStart"
+    @touchmove="scrollHandler.handleTouchMove"
+    @touchend="scrollHandler.handleTouchEnd"
   >
     <!-- Triangle de sélection de ligne -->
     <div
@@ -46,6 +49,7 @@
                 <div
                   class="resize-handle resize-left"
                   @mousedown="onResizeStart(el.tcIdx, 'left', $event)"
+                  @touchstart="onResizeStart(el.tcIdx, 'left', $event)"
                   title="Redimensionner à gauche"
                 ></div>
 
@@ -53,6 +57,7 @@
                 <div
                   class="resize-handle resize-right"
                   @mousedown="onResizeStart(el.tcIdx, 'right', $event)"
+                  @touchstart="onResizeStart(el.tcIdx, 'right', $event)"
                   title="Redimensionner à droite"
                 ></div>
 
@@ -60,6 +65,7 @@
                 <div
                   class="move-handle"
                   @mousedown="onMoveStart(el.tcIdx, $event)"
+                  @touchstart="onMoveStart(el.tcIdx, $event)"
                   title="Déplacer le timecode"
                 ></div>
 
@@ -220,6 +226,7 @@
                           class="text-separator"
                           :class="{ 'separator-dragging': resizingSeparatorIdx === el.tcIdx && resizingSeparatorSubIdx === segIdx }"
                           @mousedown="onSeparatorResizeStart(el.tcIdx, segIdx, $event)"
+                          @touchstart="onSeparatorResizeStart(el.tcIdx, segIdx, $event)"
                         >
                           <template v-if="!props.hideConfig">
                             <div class="separator-line"></div>
@@ -333,13 +340,15 @@
               v-if="props.lineNumber === 1 && !props.hideConfig"
               class="scene-change-grab-handle"
               @mousedown="onSceneChangeDragStart(idx, sceneChange, $event)"
+              @touchstart="onSceneChangeDragStart(idx, sceneChange, $event)"
               title="Glisser pour déplacer le changement de plan"
             ></div>
 
-            <!-- Bouton de suppression visible au hover uniquement sur la dernière ligne et si pas en mode hideConfig -->
+            <!-- Bouton de suppression visible au hover sur desktop, toujours visible sur mobile (dernière ligne uniquement) -->
             <button
-              v-if="props.isLastLine && isSceneChangeHovered(sceneChange.id) && !props.hideConfig"
+              v-if="props.isLastLine && !props.hideConfig"
               class="scene-change-delete-btn"
+              :class="{ 'is-hovered': isSceneChangeHovered(sceneChange.id) }"
               @click="onSceneChangeDelete(sceneChange.id)"
               title="Supprimer le changement de plan"
             >
@@ -455,6 +464,7 @@ import {
   validatePositions,
   type SeparatorPositions
 } from '../../utils/separatorEncoding'
+import { createScrollHandler } from './useTouchAndMouse'
 
 interface Timecode {
   id?: number
@@ -629,7 +639,7 @@ function getSegmentDistortStyle(idx: number, segmentIdx: number): CSSProperties 
   const blockWidth = getBlockWidth(idx)
   const totalFlexes = segments.reduce((sum, _, i) => sum + getSegmentFlex(idx, i), 0)
   const segmentFlex = getSegmentFlex(idx, segmentIdx)
-  const separatorWidth = 12 // Largeur d'un séparateur
+  const separatorWidth = 14 // Largeur d'un séparateur (agrandi pour mobile)
   const totalSeparatorsWidth = (segments.length - 1) * separatorWidth
 
   // Calcule la largeur disponible pour ce segment
@@ -639,13 +649,16 @@ function getSegmentDistortStyle(idx: number, segmentIdx: number): CSSProperties 
 }
 
 // Commence le redimensionnement du séparateur
-function onSeparatorResizeStart(idx: number, separatorIdx: number, event: MouseEvent) {
+function onSeparatorResizeStart(idx: number, separatorIdx: number, event: MouseEvent | TouchEvent) {
   event.stopPropagation()
   event.preventDefault()
 
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+
   resizingSeparatorIdx.value = idx
   resizingSeparatorSubIdx.value = separatorIdx
-  separatorResizeStartX.value = event.clientX
+  separatorResizeStartX.value = clientX
 
   // Sauvegarde les flex values actuelles
   const segments = getTextSegments(idx)
@@ -656,20 +669,26 @@ function onSeparatorResizeStart(idx: number, separatorIdx: number, event: MouseE
 
   document.addEventListener('mousemove', onSeparatorResizeMove)
   document.addEventListener('mouseup', onSeparatorResizeEnd)
+  document.addEventListener('touchmove', onSeparatorResizeMove, { passive: false })
+  document.addEventListener('touchend', onSeparatorResizeEnd)
+  document.addEventListener('touchcancel', onSeparatorResizeEnd)
   document.body.style.cursor = 'ew-resize'
 }
 
 // Met à jour la position du séparateur pendant le drag
-function onSeparatorResizeMove(event: MouseEvent) {
+function onSeparatorResizeMove(event: MouseEvent | TouchEvent) {
   if (resizingSeparatorIdx.value === null || resizingSeparatorSubIdx.value === null) return
+
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
 
   const idx = resizingSeparatorIdx.value
   const sepIdx = resizingSeparatorSubIdx.value
   const blockWidth = getBlockWidth(idx)
-  const deltaX = event.clientX - separatorResizeStartX.value
+  const deltaX = clientX - separatorResizeStartX.value
 
   const segments = getTextSegments(idx)
-  const totalSeparatorsWidth = (segments.length - 1) * 12
+  const totalSeparatorsWidth = (segments.length - 1) * 14 // Largeur agrandiée pour mobile
   const availableWidth = blockWidth - totalSeparatorsWidth
 
   // Calculer la somme des flex des deux segments adjacents
@@ -711,6 +730,9 @@ function onSeparatorResizeEnd() {
 
   document.removeEventListener('mousemove', onSeparatorResizeMove)
   document.removeEventListener('mouseup', onSeparatorResizeEnd)
+  document.removeEventListener('touchmove', onSeparatorResizeMove)
+  document.removeEventListener('touchend', onSeparatorResizeEnd)
+  document.removeEventListener('touchcancel', onSeparatorResizeEnd)
   document.body.style.cursor = ''
 }
 
@@ -1529,6 +1551,28 @@ const onBandClick = () => {
   emit('line-selected', props.lineNumber)
 }
 
+// Handler pour le scroll tactile horizontal
+const scrollHandler = createScrollHandler(
+  (deltaX) => {
+    // Convertit les pixels en secondes
+    const deltaTime = deltaX / PX_PER_SEC
+
+    // Calcule le nouveau temps
+    let newTime = props.currentTime + deltaTime
+
+    // Borne le temps entre 0 et la durée de la vidéo
+    if (props.videoDuration) {
+      newTime = Math.max(0, Math.min(props.videoDuration, newTime))
+    } else {
+      newTime = Math.max(0, newTime)
+    }
+
+    // Émet l'événement seek vers le parent
+    emit('seek', newTime)
+  },
+  { preventDefault: true, threshold: 5 }
+)
+
 // Gestionnaire du scroll horizontal sur la bande rythmo
 const onWheelScroll = (event: WheelEvent) => {
   // Vérifie si c'est un scroll horizontal (Shift + scroll ou trackpad horizontal)
@@ -1599,45 +1643,56 @@ function onSceneChangeDelete(sceneChangeId: number) {
   emit('delete-scene-change', { id: sceneChangeId })
 }
 
-function onSceneChangeDragStart(idx: number, sceneChange: { id: number; timecode: number; x: number }, event: MouseEvent) {
+function onSceneChangeDragStart(idx: number, sceneChange: { id: number; timecode: number; x: number }, event: MouseEvent | TouchEvent) {
   event.stopPropagation()
   event.preventDefault()
 
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
   draggingSceneChangeIdx.value = idx
-  sceneChangeDragStartX.value = event.clientX
+  sceneChangeDragStartX.value = clientX
   sceneChangeDragStartTime.value = sceneChange.timecode
-  sceneChangeDragMouseX.value = event.clientX
-  sceneChangeDragMouseY.value = event.clientY
+  sceneChangeDragMouseX.value = clientX
+  sceneChangeDragMouseY.value = clientY
 
   // Émettre vers le parent pour initialiser l'état partagé
   emit('scene-change-drag-start', {
     sceneChangeId: sceneChange.id,
     index: idx,
     startTime: sceneChange.timecode,
-    startX: event.clientX,
-    startY: event.clientY
+    startX: clientX,
+    startY: clientY
   })
 
   document.addEventListener('mousemove', onSceneChangeDragMove)
   document.addEventListener('mouseup', onSceneChangeDragEnd)
+  document.addEventListener('touchmove', onSceneChangeDragMove, { passive: false })
+  document.addEventListener('touchend', onSceneChangeDragEnd)
+  document.addEventListener('touchcancel', onSceneChangeDragEnd)
   document.body.style.cursor = 'ew-resize'
 }
 
-function onSceneChangeDragMove(event: MouseEvent) {
+function onSceneChangeDragMove(event: MouseEvent | TouchEvent) {
   if (draggingSceneChangeIdx.value === null) return
 
-  sceneChangeDragMouseX.value = event.clientX
-  sceneChangeDragMouseY.value = event.clientY
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
 
-  const deltaX = event.clientX - sceneChangeDragStartX.value
+  sceneChangeDragMouseX.value = clientX
+  sceneChangeDragMouseY.value = clientY
+
+  const deltaX = clientX - sceneChangeDragStartX.value
   const deltaTime = deltaX / PX_PER_SEC
   const newTimecode = Math.max(0, sceneChangeDragStartTime.value + deltaTime)
 
   // Émettre vers le parent pour mettre à jour l'état partagé
   emit('scene-change-drag-update', {
     currentTime: newTimecode,
-    currentX: event.clientX,
-    currentY: event.clientY,
+    currentX: clientX,
+    currentY: clientY,
     isPreview: true
   })
 }
@@ -1663,6 +1718,9 @@ function onSceneChangeDragEnd() {
   draggingSceneChangeIdx.value = null
   document.removeEventListener('mousemove', onSceneChangeDragMove)
   document.removeEventListener('mouseup', onSceneChangeDragEnd)
+  document.removeEventListener('touchmove', onSceneChangeDragMove)
+  document.removeEventListener('touchend', onSceneChangeDragEnd)
+  document.removeEventListener('touchcancel', onSceneChangeDragEnd)
   document.body.style.cursor = ''
 }
 
@@ -1740,20 +1798,24 @@ function cancelEdit() {
 }
 
 // --- Fonctions de redimensionnement ---
-function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
+function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent | TouchEvent) {
   event.stopPropagation()
   event.preventDefault()
 
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
   resizingIdx.value = idx
   resizeMode.value = mode
-  resizeStartX.value = event.clientX
-  resizeMouseX.value = event.clientX
-  resizeMouseY.value = event.clientY
+  resizeStartX.value = clientX
+  resizeMouseX.value = clientX
+  resizeMouseY.value = clientY
 
   // Calcul de la position Y fixe relative au conteneur
   const containerRect = trackContainer.value?.getBoundingClientRect()
   if (containerRect) {
-    resizeFixedY.value = event.clientY - containerRect.top - 40 // 40px au-dessus de la souris
+    resizeFixedY.value = clientY - containerRect.top - 40 // 40px au-dessus du pointeur
   }
 
   const timecode = effectiveTimecodes.value[idx]
@@ -1762,16 +1824,22 @@ function onResizeStart(idx: number, mode: 'left' | 'right', event: MouseEvent) {
 
   document.addEventListener('mousemove', onResizeMove)
   document.addEventListener('mouseup', onResizeEnd)
+  document.addEventListener('touchmove', onResizeMove, { passive: false })
+  document.addEventListener('touchend', onResizeEnd)
+  document.addEventListener('touchcancel', onResizeEnd)
   document.body.style.cursor = 'ew-resize'
 }
 
-function onResizeMove(event: MouseEvent) {
+function onResizeMove(event: MouseEvent | TouchEvent) {
   if (resizingIdx.value === null || !resizeMode.value) return
 
-  // Mise à jour de la position X de la souris pour la tooltip (Y reste fixe)
-  resizeMouseX.value = event.clientX
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
 
-  const deltaX = event.clientX - resizeStartX.value
+  // Mise à jour de la position X du pointeur pour la tooltip (Y reste fixe)
+  resizeMouseX.value = clientX
+
+  const deltaX = clientX - resizeStartX.value
   const deltaTime = deltaX / PX_PER_SEC
 
   let newStart = resizeStartTime.value
@@ -1824,6 +1892,9 @@ function onResizeEnd() {
   resizeMode.value = null
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
+  document.removeEventListener('touchmove', onResizeMove)
+  document.removeEventListener('touchend', onResizeEnd)
+  document.removeEventListener('touchcancel', onResizeEnd)
   document.body.style.cursor = ''
 
   // Resynchronise avec les props après le redimensionnement
@@ -1849,26 +1920,42 @@ onBeforeUnmount(() => {
   isMounted.value = false
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
+  document.removeEventListener('touchmove', onResizeMove)
+  document.removeEventListener('touchend', onResizeEnd)
+  document.removeEventListener('touchcancel', onResizeEnd)
   document.removeEventListener('mousemove', onMoveMove)
   document.removeEventListener('mouseup', onMoveEnd)
+  document.removeEventListener('touchmove', onMoveMove)
+  document.removeEventListener('touchend', onMoveEnd)
+  document.removeEventListener('touchcancel', onMoveEnd)
   document.removeEventListener('mousemove', onSceneChangeDragMove)
   document.removeEventListener('mouseup', onSceneChangeDragEnd)
+  document.removeEventListener('touchmove', onSceneChangeDragMove)
+  document.removeEventListener('touchend', onSceneChangeDragEnd)
+  document.removeEventListener('touchcancel', onSceneChangeDragEnd)
   document.removeEventListener('mousemove', onSeparatorResizeMove)
   document.removeEventListener('mouseup', onSeparatorResizeEnd)
+  document.removeEventListener('touchmove', onSeparatorResizeMove)
+  document.removeEventListener('touchend', onSeparatorResizeEnd)
+  document.removeEventListener('touchcancel', onSeparatorResizeEnd)
   document.removeEventListener('click', handleGlobalClick)
   document.body.style.cursor = ''
 })
 
 // --- Fonctions de déplacement ---
-function onMoveStart(idx: number, event: MouseEvent) {
+function onMoveStart(idx: number, event: MouseEvent | TouchEvent) {
   event.stopPropagation()
   event.preventDefault()
 
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
   movingIdx.value = idx
-  moveStartX.value = event.clientX
-  moveStartY.value = event.clientY
-  moveMouseX.value = event.clientX
-  moveMouseY.value = event.clientY
+  moveStartX.value = clientX
+  moveStartY.value = clientY
+  moveMouseX.value = clientX
+  moveMouseY.value = clientY
 
   const timecode = effectiveTimecodes.value[idx]
   moveStartTime.value = timecode.start
@@ -1885,24 +1972,31 @@ function onMoveStart(idx: number, event: MouseEvent) {
 
   document.addEventListener('mousemove', onMoveMove)
   document.addEventListener('mouseup', onMoveEnd)
+  document.addEventListener('touchmove', onMoveMove, { passive: false })
+  document.addEventListener('touchend', onMoveEnd)
+  document.addEventListener('touchcancel', onMoveEnd)
   document.body.style.cursor = 'move'
 }
 
-function onMoveMove(event: MouseEvent) {
+function onMoveMove(event: MouseEvent | TouchEvent) {
   if (movingIdx.value === null) return
 
-  // Mise à jour de la position de la souris pour la tooltip
-  moveMouseX.value = event.clientX
-  moveMouseY.value = event.clientY
+  // Extraire les coordonnées de l'événement (mouse ou touch)
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
 
-  const deltaX = event.clientX - moveStartX.value
+  // Mise à jour de la position du pointeur pour la tooltip
+  moveMouseX.value = clientX
+  moveMouseY.value = clientY
+
+  const deltaX = clientX - moveStartX.value
   const deltaTime = deltaX / PX_PER_SEC
 
   // Calcul de la nouvelle position temporelle
   const newStart = Math.max(0, moveStartTime.value + deltaTime)
 
-  // Calcul de la ligne cible basée sur la position Y de la souris
-  const deltaY = event.clientY - moveStartY.value
+  // Calcul de la ligne cible basée sur la position Y du pointeur
+  const deltaY = clientY - moveStartY.value
   const lineHeight = 48 // Hauteur approximative d'une ligne rythmo (3rem = 48px)
   const lineOffset = Math.round(deltaY / lineHeight)
   const targetLine = Math.max(1, Math.min(6, props.lineNumber + lineOffset))
@@ -1928,8 +2022,8 @@ function onMoveMove(event: MouseEvent) {
     index: movingIdx.value,
     newStart,
     targetLineNumber: targetLine,
-    pointerX: event.clientX,
-    pointerY: event.clientY,
+    pointerX: clientX,
+    pointerY: clientY,
   } satisfies DragUpdatePayload)
 }
 
@@ -1970,6 +2064,9 @@ function onMoveEnd() {
 
   document.removeEventListener('mousemove', onMoveMove)
   document.removeEventListener('mouseup', onMoveEnd)
+  document.removeEventListener('touchmove', onMoveMove)
+  document.removeEventListener('touchend', onMoveEnd)
+  document.removeEventListener('touchcancel', onMoveEnd)
   document.body.style.cursor = ''
 
   // Resynchronise avec les props après le déplacement
@@ -2044,9 +2141,9 @@ function onMoveEnd() {
 .scene-change-grab-handle {
   position: absolute;
   top: -8px;
-  left: -3px;
-  width: 11px;
-  height: 16px;
+  left: -5px; /* Ajusté pour une zone plus large */
+  width: 14px; /* Agrandi pour mobile */
+  height: 20px; /* Agrandi pour mobile */
   background: rgba(132, 85, 246, 0.8);
   border: 1px solid #8455f6;
   border-radius: 3px;
@@ -2054,6 +2151,16 @@ function onMoveEnd() {
   opacity: 0;
   transition: all 0.2s ease;
   z-index: 5;
+}
+
+/* Sur mobile, agrandir et afficher toujours */
+@media (max-width: 768px) {
+  .scene-change-grab-handle {
+    width: 18px;
+    height: 24px;
+    left: -6px;
+    opacity: 0.8; /* Toujours visible sur mobile */
+  }
 }
 
 .scene-change-bar.hovered .scene-change-grab-handle,
@@ -2088,11 +2195,33 @@ function onMoveEnd() {
   justify-content: center; /* centré */
   z-index: 12;
   box-shadow: 0 6px 14px rgba(132,85,246,0.18);
-  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease;
+  opacity: 0; /* Caché par défaut sur desktop */
+  pointer-events: none;
 }
 
-.scene-change-delete-btn:hover {
+/* Afficher au hover sur desktop */
+.scene-change-bar:hover .scene-change-delete-btn,
+.scene-change-delete-btn.is-hovered {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Toujours visible sur mobile */
+@media (max-width: 768px) {
+  .scene-change-delete-btn {
+    opacity: 0.9;
+    pointer-events: auto;
+    height: 26px; /* Agrandi pour mobile */
+    width: 24px;
+    font-size: 14px;
+  }
+}
+
+.scene-change-delete-btn:hover,
+.scene-change-delete-btn:active {
   background: rgba(132, 85, 246, 1);
+  transform: translateX(-50%) scale(1.1);
 }
 
 .scene-change-drag-overlay {
@@ -2423,7 +2552,7 @@ function onMoveEnd() {
 .resize-handle {
   position: absolute;
   top: 0;
-  width: 8px;
+  width: 12px; /* Agrandi pour mobile */
   height: 100%;
   cursor: ew-resize;
   z-index: 15;
@@ -2431,8 +2560,16 @@ function onMoveEnd() {
   transition: background 0.2s;
 }
 
-.resize-handle:hover {
+.resize-handle:hover,
+.resize-handle:active {
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* Sur mobile, agrandir encore plus les zones */
+@media (max-width: 768px) {
+  .resize-handle {
+    width: 16px;
+  }
 }
 
 .resize-left {
@@ -2449,9 +2586,9 @@ function onMoveEnd() {
 .move-handle {
   position: absolute;
   bottom: 0;
-  left: 8px;
-  right: 8px;
-  height: 8px;
+  left: 12px; /* Ajusté pour correspondre à la largeur des resize-handles */
+  right: 12px;
+  height: 12px; /* Agrandi pour mobile */
   cursor: move;
   z-index: 15;
   background: transparent;
@@ -2459,8 +2596,18 @@ function onMoveEnd() {
   border-radius: 0 0 4px 4px;
 }
 
-.move-handle:hover {
+.move-handle:hover,
+.move-handle:active {
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* Sur mobile, agrandir encore plus la zone */
+@media (max-width: 768px) {
+  .move-handle {
+    height: 16px;
+    left: 16px;
+    right: 16px;
+  }
 }
 
 /* Overlay avec informations de ligne */
@@ -2807,7 +2954,7 @@ function onMoveEnd() {
 .text-separator {
   position: relative;
   height: 100%;
-  width: 12px;
+  width: 14px; /* Agrandi pour mobile */
   flex-shrink: 0;
   z-index: 25;
   cursor: ew-resize;
@@ -2817,6 +2964,13 @@ function onMoveEnd() {
   transition: all 0.2s ease;
   padding: 0;
   margin: 0;
+}
+
+/* Sur mobile, agrandir encore plus */
+@media (max-width: 768px) {
+  .text-separator {
+    width: 18px;
+  }
 }
 
 .text-separator:hover .separator-line,
@@ -2845,8 +2999,8 @@ function onMoveEnd() {
 
 .separator-handle {
   position: absolute;
-  width: 10px;
-  height: 20px;
+  width: 12px; /* Agrandi pour mobile */
+  height: 24px; /* Agrandi pour mobile */
   background: linear-gradient(135deg, rgba(132, 85, 246, 0.95), rgba(99, 102, 241, 0.95));
   border: 1px solid rgba(132, 85, 246, 0.8);
   border-radius: 3px;
@@ -2855,6 +3009,19 @@ function onMoveEnd() {
   pointer-events: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
+}
+
+/* Sur mobile, agrandir et afficher toujours */
+@media (max-width: 768px) {
+  .separator-handle {
+    width: 14px;
+    height: 28px;
+    opacity: 0.6; /* Toujours visible sur mobile */
+  }
+
+  .text-separator:active .separator-handle {
+    opacity: 1;
+  }
 }
 
 .separator-dragging {

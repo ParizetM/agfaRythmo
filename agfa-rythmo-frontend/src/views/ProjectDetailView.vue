@@ -87,34 +87,149 @@
           @click="showAiMenu = true"
           title="Fonctionnalités IA"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
           </svg>
-          <span class="hidden md:inline">IA</span>
+          <span>IA</span>
         </button>
 
-        <!-- Bouton export JSON -->
-        <ExportDropdown
-          v-if="project"
-          :projectName="project.name"
-          :videoPath="project.video_path"
-          :instrumentalPath="project.instrumental_audio_path"
-          @export="handleExport"
-          @generate-instrumental="handleGenerateInstrumental"
-        />
+        <!-- Desktop: Boutons séparés -->
+        <div class="hidden md:flex items-center gap-2">
+          <!-- Bouton export JSON -->
+          <ExportDropdown
+            v-if="project"
+            :projectName="project.name"
+            :videoPath="project.video_path"
+            :instrumentalPath="project.instrumental_audio_path"
+            @export="handleExport"
+            @generate-instrumental="handleGenerateInstrumental"
+          />
 
-        <!-- Bouton aperçu final -->
-        <button
-          v-if="project && project.video_path && compatibleTimecodes.length > 0"
-          class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-2 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
-          @click="goToFinalPreview"
-          title="Aperçu final plein écran"
-        >
+          <!-- Bouton aperçu final -->
+          <button
+            v-if="project && project.video_path && compatibleTimecodes.length > 0"
+            class="bg-agfa-blue hover:bg-agfa-blue-hover text-white border-none rounded-lg px-2 py-2 text-base font-bold cursor-pointer shadow-lg transition-colors duration-300"
+            @click="goToFinalPreview"
+            title="Aperçu final plein écran"
+          >
+            Aperçu final
+          </button>
+        </div>
 
-          <span class="hidden md:inline"
-        >Aperçu</span>
-           final
-        </button>
+        <!-- Mobile: Dropdown combiné -->
+        <div class="md:hidden relative" ref="mobileActionsRef">
+          <button
+            @click="toggleMobileActions"
+            class="bg-transparent text-gray-300 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg p-2 cursor-pointer transition-colors duration-300"
+            :title="isMobileActionsOpen ? 'Fermer le menu' : 'Actions'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+            </svg>
+          </button>
+
+          <!-- Menu dropdown mobile -->
+          <transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="transform opacity-0 scale-95"
+            enter-to-class="transform opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="transform opacity-100 scale-100"
+            leave-to-class="transform opacity-0 scale-95"
+          >
+            <div
+              v-if="isMobileActionsOpen"
+              class="absolute right-0 mt-2 w-64 rounded-lg shadow-xl backdrop-blur-sm bg-black/30 border border-gray-700/5 z-50 overflow-hidden"
+            >
+              <div class="py-1">
+                <!-- Aperçu final -->
+                <button
+                  v-if="project && project.video_path && compatibleTimecodes.length > 0"
+                  @click="handleMobilePreview"
+                  class="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors duration-150 flex items-start gap-3"
+                >
+                  <svg class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-white">Aperçu final</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Voir en plein écran</p>
+                  </div>
+                </button>
+
+                <!-- Séparateur -->
+                <div class="border-t border-gray-700 my-1"></div>
+
+                <!-- Options d'export -->
+                <div class="px-4 py-2">
+                  <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Télécharger</p>
+                </div>
+
+                <!-- Projet complet -->
+                <button
+                  v-if="project"
+                  @click="handleMobileExport('project')"
+                  class="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors duration-150 flex items-start gap-3"
+                >
+                  <svg class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-white">Projet (.agfa)</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Timecodes, personnages, settings</p>
+                  </div>
+                </button>
+
+                <!-- Vidéo source -->
+                <button
+                  v-if="project"
+                  @click="handleMobileExport('video')"
+                  class="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors duration-150 flex items-start gap-3"
+                >
+                  <svg class="w-5 h-5 text-pink-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-white">Vidéo source</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Vidéo originale</p>
+                  </div>
+                </button>
+
+                <!-- Audio complet -->
+                <button
+                  v-if="project"
+                  @click="handleMobileExport('audio')"
+                  class="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors duration-150 flex items-start gap-3"
+                >
+                  <svg class="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-white">Audio complet</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Bande son complète</p>
+                  </div>
+                </button>
+
+                <!-- Instrumental -->
+                <button
+                  v-if="project && project.instrumental_audio_path"
+                  @click="handleMobileExport('instrumental')"
+                  class="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors duration-150 flex items-start gap-3"
+                >
+                  <svg class="w-5 h-5 text-violet-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" class="opacity-50" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-white">Instrumental</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Sans voix</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
       </div>
     </header>
 
@@ -805,6 +920,28 @@ function goToFinalPreview() {
   })
 }
 
+// Gestion du dropdown mobile
+function toggleMobileActions() {
+  isMobileActionsOpen.value = !isMobileActionsOpen.value
+}
+
+function handleMobilePreview() {
+  isMobileActionsOpen.value = false
+  goToFinalPreview()
+}
+
+function handleMobileExport(type: 'project' | 'video' | 'audio' | 'instrumental') {
+  isMobileActionsOpen.value = false
+  handleExport(type)
+}
+
+// Fermer le dropdown mobile si clic à l'extérieur
+function handleClickOutsideMobileActions(event: MouseEvent) {
+  if (mobileActionsRef.value && !mobileActionsRef.value.contains(event.target as Node)) {
+    isMobileActionsOpen.value = false
+  }
+}
+
 // Fonction pour gérer les différents types d'export
 async function handleExport(type: 'project' | 'video' | 'audio' | 'instrumental') {
   if (!project.value) return
@@ -1083,6 +1220,10 @@ const editingCharacter = ref<Character | null>(null)
 const showKeyboardShortcuts = ref(false)
 const showCollaboratorsModal = ref(false)
 const showProjectSettings = ref(false)
+
+// Gestion du dropdown mobile (actions combinées)
+const isMobileActionsOpen = ref(false)
+const mobileActionsRef = ref<HTMLElement | null>(null)
 
 // Gestion de l'analyse IA des changements de plan
 const isAnalyzing = ref(false)
@@ -2753,6 +2894,9 @@ onMounted(async () => {
   // Ajouter les gestionnaires de raccourcis clavier
   window.addEventListener('keydown', handleGlobalKeydown)
 
+  // Ajouter le gestionnaire pour fermer le dropdown mobile
+  document.addEventListener('click', handleClickOutsideMobileActions)
+
   // Sauvegarder automatiquement l'état muteVocals dans localStorage
   watch(muteVocals, (newValue) => {
     if (project.value?.id) {
@@ -2818,6 +2962,7 @@ import { onUnmounted } from 'vue'
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  document.removeEventListener('click', handleClickOutsideMobileActions)
   if (focusInHandler) window.removeEventListener('focusin', focusInHandler)
   if (focusOutHandler) window.removeEventListener('focusout', focusOutHandler)
 
