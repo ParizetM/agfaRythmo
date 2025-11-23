@@ -3,6 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
   withCredentials: false,
+  timeout: 30000, // 30s timeout global (sauf vidéos)
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -15,8 +16,44 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
+
+  // Timeout plus long pour les vidéos
+  if (config.url?.includes('/videos/') || config.url?.includes('/audio-extract/')) {
+    config.timeout = 120000; // 2 minutes pour vidéos
+  }
+
   return config;
 });
+
+// Intercepteur pour retry automatique sur erreurs réseau
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+
+    // Ne pas retry si déjà retry ou si erreur 4xx/5xx (sauf 503)
+    if (!config || config.__retryCount >= 2 ||
+        (error.response && error.response.status !== 503 && error.response.status < 500)) {
+      return Promise.reject(error);
+    }
+
+    // Retry sur timeout ou erreurs réseau
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.response?.status === 503) {
+      config.__retryCount = config.__retryCount || 0;
+      config.__retryCount++;
+
+      // Backoff exponentiel : 1s, 2s
+      const delay = Math.min(1000 * Math.pow(2, config.__retryCount - 1), 3000);
+
+      console.warn(`[Retry ${config.__retryCount}/2] Requête échouée, retry dans ${delay}ms...`, config.url);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api.request(config);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Intercepteur pour gérer les erreurs d'authentification
 api.interceptors.response.use(

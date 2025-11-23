@@ -137,6 +137,36 @@
       </div>
     </div>
 
+    <!-- Message d'erreur de chargement général -->
+    <div
+      v-if="loadingError && !loading"
+      class="w-full max-w-4xl mx-auto p-6 bg-red-600 text-white rounded-lg mb-6"
+    >
+      <div class="flex items-center justify-center">
+        <div class="text-center">
+          <svg class="w-16 h-16 mx-auto mb-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h3 class="text-lg font-semibold mb-2">Erreur de chargement</h3>
+          <p class="mb-4">{{ loadingError }}</p>
+          <div class="flex gap-3 justify-center">
+            <button
+              @click="retryLoading"
+              class="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors"
+            >
+              Réessayer
+            </button>
+            <button
+              @click="goBack"
+              class="bg-transparent border-2 border-white text-white px-4 py-2 rounded-md font-medium hover:bg-white/10 transition-colors"
+            >
+              Retour aux projets
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Grid -->
     <div
       v-else
@@ -914,6 +944,7 @@ interface Project {
 }
 const project = ref<Project | null>(null)
 const loading = ref(true)
+const loadingError = ref<string | null>(null)
 const currentTime = ref(0)
 // Pour éviter de rebinder le currentTime à chaque update (empêche le seek natif)
 let lastSeekFromTimecode = false
@@ -2579,11 +2610,25 @@ function handleGlobalKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(async () => {
+// Fonction pour charger les données du projet
+async function loadProjectData() {
   loading.value = true
+  loadingError.value = null
+
+  // Timeout de sécurité : forcer la fin du loading après 30s
+  const loadingTimeout = setTimeout(() => {
+    if (loading.value) {
+      console.error('Timeout de chargement du projet atteint (30s)')
+      loading.value = false
+      loadingError.value = 'Le chargement du projet prend trop de temps. Veuillez vérifier votre connexion.'
+    }
+  }, 30000)
+
   try {
+    // Étape 1 : Charger le projet principal (critique)
     const res = await api.get(`/projects/${route.params.id}`)
     const data = res.data
+
     // Corrige le cas où timecodes est une string JSON
     if (typeof data.timecodes === 'string') {
       try {
@@ -2592,35 +2637,48 @@ onMounted(async () => {
         data.timecodes = []
       }
     }
+
     // Si le backend fournit les fps, on les récupère
     if (typeof data.fps === 'number' && data.fps > 0) {
       videoFps.value = data.fps
     }
+
     project.value = data
 
-    // Charger les paramètres du projet depuis l'API
-    await settingsStore.loadSettings(data.id)
+    // Étape 2 : Charger les données dépendantes EN PARALLÈLE (non-bloquant)
+    // Utilise Promise.allSettled pour ne pas bloquer si une requête échoue
+    const [settingsResult, sceneChangesResult, timecodesResult, charactersResult] = await Promise.allSettled([
+      settingsStore.loadSettings(data.id),
+      api.get(`/projects/${data.id}/scene-changes`),
+      loadTimecodes(),
+      loadCharacters()
+    ])
 
-    // Récupère les changements de plan
-    const scRes = await api.get(`/projects/${data.id}/scene-changes`)
-    sceneChanges.value = Array.isArray(scRes.data) ? scRes.data : []
+    // Traiter les résultats individuellement
+    if (sceneChangesResult.status === 'fulfilled') {
+      sceneChanges.value = Array.isArray(sceneChangesResult.value.data) ? sceneChangesResult.value.data : []
+    } else {
+      console.warn('Échec du chargement des scene changes:', sceneChangesResult.reason)
+      sceneChanges.value = []
+    }
 
-    // Charge les timecodes multi-lignes
-    await loadTimecodes()
+    if (timecodesResult.status === 'rejected') {
+      console.warn('Échec du chargement des timecodes:', timecodesResult.reason)
+      allTimecodes.value = []
+    }
 
-    // Charge les personnages
-    await loadCharacters()
+    if (charactersResult.status === 'rejected') {
+      console.warn('Échec du chargement des personnages:', charactersResult.reason)
+      allCharacters.value = []
+    }
 
     // Vérifier si une analyse est en cours
     if (data.analysis_status && ['pending', 'processing'].includes(data.analysis_status)) {
-      // Une analyse est déjà en cours, afficher le modal et démarrer le polling
       isAnalyzing.value = true
       showAnalysisModal.value = true
       analysisStatus.value = data.analysis_status
       analysisProgress.value = data.analysis_progress || 0
       analysisMessage.value = data.analysis_message || ''
-
-      // Démarrer le polling pour suivre la progression
       startAnalysisPolling()
     }
 
@@ -2630,18 +2688,29 @@ onMounted(async () => {
       muteVocals.value = savedMuteVocals === 'true'
     }
 
-    // Initialiser l'état de chargement vidéo APRÈS avoir chargé le projet
-    // Seulement si la vidéo n'est pas déjà chargée (loadedmetadata pas encore déclenché)
+    // Initialiser l'état de chargement vidéo
     if (!project.value?.video_path) {
       isVideoLoading.value = false
     } else if (videoDuration.value === 0) {
-      // Si la durée est 0, c'est que loadedmetadata n'a pas encore été déclenché
       isVideoLoading.value = true
+
+      // Timeout de sécurité pour la vidéo (15s)
+      setTimeout(() => {
+        if (isVideoLoading.value && videoDuration.value === 0) {
+          console.warn('Timeout de chargement vidéo - forçage fin du loading')
+          isVideoLoading.value = false
+          notificationService.error(
+            'Erreur vidéo',
+            'La vidéo met trop de temps à charger. Vérifiez votre connexion.'
+          )
+        }
+      }, 15000)
     }
   } catch (error) {
+    console.error('Erreur lors du chargement du projet:', error)
+
     // Vérifier si c'est une erreur d'accès refusé (403)
     if (error instanceof AxiosError && error.response?.status === 403) {
-      // Rediriger vers la page d'accueil avec un message d'erreur
       router.push({
         name: 'home',
         query: {
@@ -2651,18 +2720,35 @@ onMounted(async () => {
       return
     }
 
-    // Pour les autres erreurs (404, 500, etc.), rediriger également
-    project.value = null
-    sceneChanges.value = []
-    router.push({
-      name: 'home',
-      query: {
-        error: 'Projet introuvable ou erreur de chargement',
-      },
-    })
+    // Pour les autres erreurs, afficher le message d'erreur avec retry
+    let errorMessage = 'Erreur de chargement du projet'
+
+    if (error instanceof AxiosError) {
+      if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+        errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion Internet.'
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Projet introuvable.'
+      } else if (error.response && error.response.status >= 500) {
+        errorMessage = 'Erreur serveur. Veuillez réessayer dans quelques instants.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+    }
+
+    loadingError.value = errorMessage
   } finally {
+    clearTimeout(loadingTimeout)
     loading.value = false
   }
+}
+
+// Fonction pour réessayer le chargement
+function retryLoading() {
+  loadProjectData()
+}
+
+onMounted(async () => {
+  await loadProjectData()
 
   // Ajouter les gestionnaires de raccourcis clavier
   window.addEventListener('keydown', handleGlobalKeydown)

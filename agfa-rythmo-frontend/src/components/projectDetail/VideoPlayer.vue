@@ -16,7 +16,7 @@
       @stalled="onStalled"
       @error="onError"
       class="w-full max-w-4xl rounded-lg bg-black shadow-xl max-h-[60vh] object-contain"
-      preload="auto"
+      preload="metadata"
       playsinline
       webkit-playsinline
     />
