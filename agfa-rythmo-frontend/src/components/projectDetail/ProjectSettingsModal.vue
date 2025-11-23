@@ -127,6 +127,20 @@
                   <div class="font-semibold mb-1 text-sm">Contenu 16:9</div>
                   <div class="text-xs opacity-80">Vidéo + bande en 16:9 fixe</div>
                 </button>
+
+                <!-- Mode Audio Only -->
+                <button
+                  @click="localSettings.overlayPosition = 'audio-only'"
+                  :class="[
+                    'px-3 py-3 rounded-lg border-2 transition-all duration-200 text-left',
+                    localSettings.overlayPosition === 'audio-only'
+                      ? 'border-agfa-accent bg-agfa-accent bg-opacity-20 text-white shadow-lg shadow-agfa-accent/20'
+                      : 'border-gray-600 bg-agfa-button text-gray-400 hover:border-gray-500 hover:bg-gray-700',
+                  ]"
+                >
+                  <div class="font-semibold mb-1 text-sm">Audio uniquement</div>
+                  <div class="text-xs opacity-80">Bande plein écran sans vidéo</div>
+                </button>
               </div>
             </div>
             <!-- Hauteur de la bande -->
@@ -549,6 +563,61 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Mode Audio Only -->
+              <div
+                v-else-if="localSettings.overlayPosition === 'audio-only'"
+                class="preview-wrapper audio-only-mode"
+              >
+                <!-- Message explicatif -->
+                <div class="audio-only-message">
+                  <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                  </svg>
+                  <p class="text-gray-500 mt-2 text-xs">Mode Audio</p>
+                </div>
+
+                <!-- Bande pleine largeur comme les autres modes -->
+                <div
+                  class="preview-band-below full-width"
+                  :style="{
+                    height: (localSettings.bandHeight * localSettings.bandScale) + 'px',
+                    backgroundColor: localSettings.bandBackgroundColor,
+                    fontFamily: localSettings.fontFamily,
+                    fontSize: (localSettings.fontSize * localSettings.bandScale) + 'rem',
+                    fontWeight: localSettings.fontWeight,
+                  }"
+                >
+                  <div class="preview-band-content">
+                    <!-- Ticks -->
+                    <div class="preview-tick" v-for="i in 5" :key="i" :style="{ left: i * 20 + '%' }"></div>
+
+                    <!-- Scene change -->
+                    <div class="preview-scene-change" :style="{
+                      backgroundColor: localSettings.sceneChangeColor,
+                      left: '60%'
+                    }"></div>
+
+                    <!-- Timecodes -->
+                    <div class="preview-timecode" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                      left: '10%',
+                      width: '35%',
+                      backgroundColor: localSettings.timecodeStyle === 'default' ? '#4a5568' : 'transparent',
+                      border: localSettings.timecodeStyle === 'character-color' ? '1px solid #4a5568' : 'none'
+                    }">
+                      <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#4a5568' : 'white' }">Exemple</span>
+                    </div>
+                    <div class="preview-timecode active" :class="{ 'character-color-style': localSettings.timecodeStyle === 'character-color' }" :style="{
+                      left: '50%',
+                      width: '40%',
+                      backgroundColor: localSettings.timecodeStyle === 'default' ? '#48bb78' : 'transparent',
+                      border: localSettings.timecodeStyle === 'character-color' ? '2px solid #48bb78' : 'none'
+                    }">
+                      <span :style="{ fontWeight: localSettings.fontWeight, color: localSettings.timecodeStyle === 'character-color' ? '#48bb78' : 'white' }">Actif</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Description de l'aperçu -->
@@ -562,7 +631,9 @@
                         ? 'Sous - Pleine largeur'
                         : localSettings.overlayPosition === 'under-video-width'
                           ? 'Sous - Largeur vidéo'
-                          : 'Contenu 16:9'
+                          : localSettings.overlayPosition === 'contained-16-9'
+                            ? 'Contenu 16:9'
+                            : 'Audio uniquement'
                   }}:
                 </strong>
                 {{
@@ -572,7 +643,9 @@
                       ? "La bande rythmo sera affichée sous la vidéo avec une largeur de 100% de l'écran."
                       : localSettings.overlayPosition === 'under-video-width'
                         ? 'La bande rythmo sera affichée sous la vidéo, alignée sur sa largeur.'
-                        : 'La vidéo et la bande rythmo seront contenues dans un ratio 16:9 fixe.'
+                        : localSettings.overlayPosition === 'contained-16-9'
+                          ? 'La vidéo et la bande rythmo seront contenues dans un ratio 16:9 fixe.'
+                          : 'La bande rythmo sera affichée en plein écran avec audio, sans affichage vidéo.'
                 }}
               </p>
             </div>
@@ -1174,6 +1247,24 @@ onUnmounted(() => {
 .preview-timecode.character-color-style.active {
   box-shadow: none;
   border-width: 2px !important;
+}
+
+/* Mode audio-only */
+.preview-wrapper.audio-only-mode {
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.audio-only-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #374151 0%, #2d3748 100%);
+  border: 2px dashed rgba(132, 85, 246, 0.5);
+  border-radius: 0.5rem;
+  margin-bottom: 0;
 }
 
 /* Transitions pour le modal */

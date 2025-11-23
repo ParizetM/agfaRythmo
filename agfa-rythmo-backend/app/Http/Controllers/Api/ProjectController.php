@@ -152,7 +152,7 @@ class ProjectController extends Controller
             'project_settings.fontFamily' => 'required|string|max:255',
             'project_settings.bandBackgroundColor' => 'required|string|max:7',
             'project_settings.sceneChangeColor' => 'required|string|max:7',
-            'project_settings.overlayPosition' => 'required|in:over,under-full,under-video-width,contained-16-9',
+            'project_settings.overlayPosition' => 'required|in:over,under-full,under-video-width,contained-16-9,audio-only',
         ]);
 
         $project->update(['project_settings' => $validated['project_settings']]);

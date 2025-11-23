@@ -7,7 +7,7 @@ export interface ProjectSettings {
   fontWeight: number
   bandBackgroundColor: string
   sceneChangeColor: string
-  overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9'
+  overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' | 'audio-only'
 }
 
 /**

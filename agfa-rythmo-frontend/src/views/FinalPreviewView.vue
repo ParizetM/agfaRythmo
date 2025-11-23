@@ -35,7 +35,8 @@
         class="video-wrapper"
         :class="{
           'with-band-below': projectSettings.overlayPosition === 'under-full' || projectSettings.overlayPosition === 'under-video-width',
-          'contained-16-9': projectSettings.overlayPosition === 'contained-16-9'
+          'contained-16-9': projectSettings.overlayPosition === 'contained-16-9',
+          'audio-only-mode': projectSettings.overlayPosition === 'audio-only'
         }"
       >
         <div class="video-container">
@@ -45,6 +46,7 @@
             ref="video"
             :src="videoSrc"
             class="preview-video"
+            :class="{ 'video-hidden': projectSettings.overlayPosition === 'audio-only' }"
             playsinline
             webkit-playsinline
             preload="auto"
@@ -58,12 +60,49 @@
           <!-- Bande rythmo par-dessus la vidéo (ancrée en bas) -->
           <div
             v-if="videoWidth && videoHeight && projectSettings.overlayPosition === 'over'"
-            class="preview-rythmo overlay-mode"
+            class="preview-rythmo-overlay-container"
             :style="{
               width: rythmoBarWidth + 'px',
+              height: (rythmoBarHeight * projectSettings.bandScale) + 'px',
               left: '50%',
-              transform: `translateX(-50%) scale(${projectSettings.bandScale})`,
-              transformOrigin: 'bottom center',
+              transform: 'translateX(-50%)',
+            }"
+          >
+            <div
+              class="preview-rythmo overlay-mode"
+              :style="{
+                transform: `scale(${projectSettings.bandScale})`,
+                transformOrigin: 'bottom center',
+                height: rythmoBarHeight + 'px',
+              }"
+            >
+              <MultiRythmoBand
+                :timecodes="rythmoData"
+                :sceneChanges="sceneChangesData"
+                :currentTime="currentTime"
+                :videoDuration="videoDuration"
+                :rythmoLinesCount="getRythmoLinesCount"
+                :hideConfig="true"
+                :disableSelection="true"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Bande rythmo mode audio-only (pleine hauteur) -->
+        <div
+          v-if="projectSettings.overlayPosition === 'audio-only' && videoDuration > 0"
+          class="preview-rythmo-audio-only"
+          :style="{
+            height: (rythmoBarHeight * projectSettings.bandScale) + 'px',
+          }"
+        >
+          <div
+            class="preview-rythmo-audio-content"
+            :style="{
+              transform: `scale(${projectSettings.bandScale})`,
+              transformOrigin: 'center center',
+              height: rythmoBarHeight + 'px',
             }"
           >
             <MultiRythmoBand
@@ -146,6 +185,7 @@ const videoReady = ref(false)
 const isVideoLoading = ref(true)
 const rythmoBarWidth = ref<number>(0)
 const rythmoBarHeight = ref<number>(0)
+const isPlaying = ref(false)
 let interval: number
 let rafId: number
 
@@ -211,6 +251,7 @@ function exitPreview() {
 function updateTime() {
   if (video.value) {
     currentTime.value = video.value.currentTime
+    isPlaying.value = !video.value.paused
     rafId = requestAnimationFrame(updateTime)
     // Log toutes les 10 frames
     if (Math.floor(currentTime.value * 10) % 10 === 0) {
@@ -407,7 +448,7 @@ onUnmounted(() => {
 
 /* Mode below : la vidéo laisse de la place pour la bande */
 .video-wrapper.with-band-below .video-container {
-  max-height: calc(100vh - v-bind((rythmoBarHeight * projectSettings.bandScale) + 'px'));
+  max-height: calc(100vh - v-bind('(rythmoBarHeight * projectSettings.bandScale) + "px"'));
 }
 
 /* Mode contained 16:9 : la vidéo s'adapte à l'espace restant */
@@ -415,6 +456,23 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   max-height: none;
+}
+
+/* Mode audio-only : cacher la vidéo */
+.video-wrapper.audio-only-mode {
+  justify-content: center;
+}
+
+.video-wrapper.audio-only-mode .video-container {
+  display: none;
+}
+
+.video-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .preview-video {
@@ -427,14 +485,23 @@ onUnmounted(() => {
   display: block;
 }
 
+/* Container pour bande rythmo en mode overlay (gère la hauteur scalée) */
+.preview-rythmo-overlay-container {
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
 /* Bande rythmo en mode overlay (par-dessus, ancrée en bas de la vidéo) */
 .preview-rythmo.overlay-mode {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
+  width: 100%;
   pointer-events: none;
-  z-index: 10;
   opacity: 0.95;
   backdrop-filter: blur(2px);
 }
@@ -465,6 +532,22 @@ onUnmounted(() => {
 .preview-rythmo-container.below-mode.contained-width {
   width: 100%;
 }
+
+/* Mode audio-only : bande pleine hauteur */
+.preview-rythmo-audio-only {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-rythmo-audio-content {
+  width: 100%;
+}
+
 .play-error {
   position: absolute;
   top: 2rem;

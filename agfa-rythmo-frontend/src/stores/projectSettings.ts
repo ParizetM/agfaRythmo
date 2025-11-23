@@ -15,7 +15,7 @@ export interface ProjectSettings {
   fontWeight: number // Poids de la police (100-900)
   bandBackgroundColor: string // Couleur de fond de la bande
   sceneChangeColor: string // Couleur des changements de scène
-  overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' // Position de la bande par rapport à la vidéo
+  overlayPosition: 'over' | 'under-full' | 'under-video-width' | 'contained-16-9' | 'audio-only' // Position de la bande par rapport à la vidéo
   bandScale: number // Échelle de la bande dans l'aperçu final (1.0 = 100%)
   timecodeStyle: 'default' | 'character-color' // Style des timecodes : fond coloré (default) ou texte coloré sans fond (character-color)
 }

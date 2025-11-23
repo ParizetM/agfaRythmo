@@ -2200,9 +2200,9 @@ function onMoveEnd() {
   border-width: 2px;
 }
 .rythmo-block-gap {
-  background: rgba(75, 85, 99, 0.1) !important;
+  background: rgba(75, 85, 99, 0) !important;
   opacity: 0.3;
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(75, 85, 99, 0);
   z-index: 1; /* Gaps toujours derrière les blocs de texte */
 }
 .rythmo-text span,
