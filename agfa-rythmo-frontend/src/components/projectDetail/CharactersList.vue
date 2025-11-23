@@ -108,57 +108,79 @@
     </div>
 
     <!-- Modal de confirmation de suppression -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-auto"
+    <BaseModal
+      v-model:show="showDeleteModal"
+      title="Supprimer le personnage"
+      subtitle="Cette action est irréversible"
+      size="md"
+      icon-gradient="bg-gradient-to-br from-red-500 to-red-700"
+      @close="cancelDelete"
     >
-      <div class="bg-agfa-dark rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
-        <h3 class="text-xl font-semibold text-white mb-4">Supprimer le personnage</h3>
-        <p class="text-gray-300 mb-4">
-          Êtes-vous sûr de vouloir supprimer le personnage
-          <span
-            class="font-semibold px-2 py-1 rounded"
-            :style="{
-              backgroundColor: characterToDelete?.color,
-              color:
-                characterToDelete?.text_color ||
-                getContrastColor(characterToDelete?.color || '#FFFFFF'),
-            }"
-          >
-            "{{ characterToDelete?.name }}"
-          </span>
-          ?
-        </p>
-        <div class="mb-4">
-          <label class="flex items-center space-x-2 text-gray-300">
+      <template #icon>
+        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      </template>
+
+      <div>
+        <!-- Personnage à supprimer -->
+        <div v-if="characterToDelete" class="mb-6">
+          <p class="text-gray-400 text-sm mb-3">Vous allez supprimer :</p>
+          <div class="flex justify-center">
+            <span
+              class="inline-flex items-center px-4 py-2.5 rounded-lg text-lg font-bold shadow-lg"
+              :style="{
+                backgroundColor: characterToDelete.color,
+                color: characterToDelete.text_color || getContrastColor(characterToDelete.color),
+              }"
+            >
+              {{ characterToDelete.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Option de suppression des timecodes -->
+        <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <label class="flex items-start gap-3 cursor-pointer group">
             <input
               v-model="deleteTimecodes"
               type="checkbox"
-              class="rounded border-gray-600 bg-agfa-button focus:ring-blue-500"
+              class="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500 focus:ring-offset-0 cursor-pointer"
             />
-            <span class="text-sm">Supprimer également tous les timecodes de ce personnage</span>
+            <div class="flex-1">
+              <span class="text-sm font-semibold text-white group-hover:text-gray-200 transition-colors block">
+                Supprimer tous les timecodes associés
+              </span>
+              <p class="text-xs text-gray-400 mt-1">
+                Si décoché, les timecodes deviendront sans personnage
+              </p>
+            </div>
           </label>
-          <p class="text-xs text-gray-400 mt-1 ml-6">
-            Si décoché, les timecodes deviendront "sans personnage"
-          </p>
-        </div>
-        <div class="flex space-x-3">
-          <button
-            @click="cancelDelete"
-            class="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            @click="confirmDelete"
-            :disabled="isDeleting"
-            class="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {{ isDeleting ? 'Suppression...' : 'Supprimer' }}
-          </button>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <button
+          @click="cancelDelete"
+          :disabled="isDeleting"
+          class="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Annuler
+        </button>
+        <button
+          @click="confirmDelete"
+          :disabled="isDeleting"
+          class="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ isDeleting ? 'Suppression...' : 'Supprimer' }}
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -166,6 +188,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { characterApi, type Character } from '../../api/characters'
 import { getContrastColor } from '../../utils/colorUtils'
+import BaseModal from '../BaseModal.vue'
 
 const props = defineProps<{
   characters: Character[]
