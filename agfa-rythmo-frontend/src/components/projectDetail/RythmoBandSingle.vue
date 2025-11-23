@@ -137,6 +137,12 @@
                   >
                     <div class="character-dropdown-content">
                       <div
+                        v-if="!props.characters || props.characters.length === 0"
+                        class="character-option-empty"
+                      >
+                        Aucun personnage
+                      </div>
+                      <div
                         v-for="character in props.characters"
                         :key="character.id"
                         class="character-option"
@@ -163,6 +169,20 @@
                     @click.stop="toggleCharacterDisplay(el.tcIdx)"
                     :style="{ borderColor: getTimecodeCharacter(el.tcIdx)?.color }"
                     title="Afficher le personnage"
+                  >
+                    👤
+                  </button>
+
+                  <!-- Bouton pour associer un personnage quand aucun n'est assigné -->
+                  <button
+                    v-else-if="
+                      !getTimecodeCharacter(el.tcIdx) &&
+                      getBlockWidth(el.tcIdx) >= 50 &&
+                      isHovered
+                    "
+                    class="character-assign-btn"
+                    @click.stop="toggleCharacterDropdown(el.tcIdx)"
+                    title="Associer un personnage"
                   >
                     👤
                   </button>
@@ -987,6 +1007,14 @@ function changeTimecodeCharacter(idx: number, characterId: number | null) {
     timecode: tc,
     characterId: characterId,
   })
+
+  // Si on assigne un personnage (pas null), activer automatiquement son affichage
+  if (characterId !== null) {
+    emit('update-timecode-show-character', {
+      timecode: tc,
+      showCharacter: true,
+    })
+  }
 
   // Fermer le dropdown
   characterDropdownIdx.value = null
@@ -2308,6 +2336,30 @@ function onMoveEnd() {
   transform: scale(1.1);
 }
 
+.character-assign-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(132, 85, 246, 0.2);
+  border: 1px solid rgba(132, 85, 246, 0.5);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.character-assign-btn:hover {
+  background: rgba(132, 85, 246, 0.4);
+  border-color: rgba(132, 85, 246, 0.8);
+  transform: scale(1.1);
+}
+
 .delete-timecode-btn {
   position: absolute;
   top: 2px;
@@ -2557,6 +2609,15 @@ function onMoveEnd() {
 .character-option:hover {
   transform: scale(1.02);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.character-option-empty {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  font-style: italic;
 }
 
 /* Animation pour les actions de personnage */
